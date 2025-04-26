@@ -1,189 +1,222 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useContacts } from '../../context/ContactContext';
+import TagBadge from './TagBadge';
+import TagEditor from './TagEditor';
 
-const TagManager = () => {
-  const { tags, createTag, deleteTag, isLoading, error } = useContacts();
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#3867d6'); // Default color (secondary)
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!newTagName.trim()) {
-      return;
-    }
-    
-    await createTag({ 
-      name: newTagName.trim(),
-      color: newTagColor
-    });
-    
-    // Reset form
-    setNewTagName('');
-  };
-  
-  const handleDeleteTag = async (tagId) => {
-    if (window.confirm('Are you sure you want to delete this tag? This cannot be undone.')) {
-      await deleteTag(tagId);
-    }
-  };
-  
-  return (
-    <div className="tags-page">
-      <h1 className="mb-4">Manage Tags</h1>
+/**
+ * Tag Manager component for creating, editing, and deleting tags
+ * @param {Object} props - Component props
+ * @param {boolean} props.selectable - Whether tags can be selected
+ * @param {Array} props.selectedTags - Array of selected tag IDs
+ * @param {Function} props.onTagSelect - Function called when a tag is selected
+ */
+const TagManager = ({ selectable = false, selectedTags = [], onTagSelect }) => {
+  const { tags, deleteTag, getContactsByTag, isLoading } = useContacts();
+  const [mode, setMode] = useState('view'); // 'view', 'create', 'edit'
+  const [editingTag, setEditingTag] = useState(null);
+  const [deleteConfirmTag, setDeleteConfirmTag] = useState(null);
+  const [tagUsage, setTagUsage] = useState({});
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+
+  // Load tag usage data (number of contacts per tag)
+  useEffect(() => {
+    const loadTagUsage = async () => {
+      if (!tags || tags.length === 0) return;
       
-      {error && (
-        <div className="alert alert-danger mb-4" role="alert">
-          {error}
+      setIsLoadingUsage(true);
+      const usage = {};
+      
+      try {
+        for (const tag of tags) {
+          const contacts = await getContactsByTag(tag._id);
+          usage[tag._id] = contacts.length;
+        }
+        
+        setTagUsage(usage);
+      } catch (err) {
+        console.error('Error loading tag usage:', err);
+      } finally {
+        setIsLoadingUsage(false);
+      }
+    };
+    
+    loadTagUsage();
+  }, [tags, getContactsByTag]);
+
+  const handleCreateTag = () => {
+    setMode('create');
+    setEditingTag(null);
+  };
+
+  const handleEditTag = (tag) => {
+    setMode('edit');
+    setEditingTag(tag);
+  };
+
+  const handleDeleteTag = (tag) => {
+    setDeleteConfirmTag(tag);
+  };
+
+  const confirmDeleteTag = async () => {
+    if (!deleteConfirmTag) return;
+    
+    try {
+      await deleteTag(deleteConfirmTag._id);
+      setDeleteConfirmTag(null);
+    } catch (err) {
+      console.error('Error deleting tag:', err);
+    }
+  };
+
+  const handleTagSave = () => {
+    setMode('view');
+    setEditingTag(null);
+  };
+
+  const handleCancel = () => {
+    setMode('view');
+    setEditingTag(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center my-4">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="mt-2">Loading tags...</p>
+      </div>
+    );
+  }
+
+  // If we're in create or edit mode, show the editor
+  if (mode === 'create' || mode === 'edit') {
+    return (
+      <TagEditor
+        tag={editingTag}
+        onSave={handleTagSave}
+        onCancel={handleCancel}
+      />
+    );
+  }
+
+  return (
+    <div className="tag-manager">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h5 className="mb-0">Manage Tags</h5>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={handleCreateTag}
+        >
+          <i className="fas fa-plus-circle me-1"></i>
+          Create New Tag
+        </button>
+      </div>
+      
+      {tags && tags.length > 0 ? (
+        <div className="tag-list">
+          <div className="table-responsive">
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th>Tag</th>
+                  <th>Description</th>
+                  <th>Usage</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tags.map(tag => (
+                  <tr key={tag._id}>
+                    <td>
+                      <TagBadge tag={tag} onClick={selectable ? onTagSelect : null} />
+                    </td>
+                    <td>{tag.description || <span className="text-muted">No description</span>}</td>
+                    <td>
+                      {isLoadingUsage ? (
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      ) : (
+                        <span>{tagUsage[tag._id] || 0} contacts</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-outline-secondary me-2"
+                        onClick={() => handleEditTag(tag)}
+                        title="Edit tag"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDeleteTag(tag)}
+                        title="Delete tag"
+                        disabled={tagUsage[tag._id] > 0}
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="alert alert-info" role="alert">
+          <p className="mb-2">You don't have any tags yet.</p>
+          <p className="mb-0">Tags help you categorize your contacts based on interests, expertise, or connections.</p>
         </div>
       )}
       
-      <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
-        {/* Add new tag */}
-        <div className="card" style={{ flexBasis: '350px' }}>
-          <h3 className="mb-3">Add New Tag</h3>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="tagName" className="form-label">Tag Name</label>
-              <input
-                type="text"
-                id="tagName"
-                className="form-control"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                placeholder="e.g., Work, Family, Marketing"
-                disabled={isLoading}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="tagColor" className="form-label">Tag Color</label>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="color"
-                  id="tagColor"
-                  value={newTagColor}
-                  onChange={(e) => setNewTagColor(e.target.value)}
-                  style={{ 
-                    width: '40px', 
-                    height: '40px',
-                    padding: '2px',
-                    borderRadius: 'var(--border-radius-sm)',
-                    cursor: 'pointer',
-                    border: '1px solid var(--gray)'
-                  }}
-                  disabled={isLoading}
-                />
-                <div 
-                  className="tag" 
-                  style={{ 
-                    backgroundColor: newTagColor,
-                    color: isLightColor(newTagColor) ? '#000' : '#fff'
-                  }}
+      {/* Delete confirmation modal */}
+      {deleteConfirmTag && (
+        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Delete Tag</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setDeleteConfirmTag(null)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to delete the tag <TagBadge tag={deleteConfirmTag} />?
+                </p>
+                {tagUsage[deleteConfirmTag._id] > 0 && (
+                  <div className="alert alert-warning" role="alert">
+                    <i className="fas fa-exclamation-triangle me-2"></i>
+                    This tag is used by {tagUsage[deleteConfirmTag._id]} contacts. 
+                    Remove the tag from all contacts before deleting it.
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setDeleteConfirmTag(null)}
                 >
-                  Preview
-                </div>
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger" 
+                  onClick={confirmDeleteTag}
+                  disabled={tagUsage[deleteConfirmTag._id] > 0}
+                >
+                  Delete
+                </button>
               </div>
             </div>
-            
-            <button
-              type="submit"
-              className="btn btn-primary mt-3 w-100"
-              disabled={isLoading || !newTagName.trim()}
-            >
-              {isLoading ? 'Adding Tag...' : 'Add Tag'}
-            </button>
-          </form>
+          </div>
         </div>
-        
-        {/* Existing tags */}
-        <div className="card" style={{ flexBasis: '350px', flexGrow: 1 }}>
-          <h3 className="mb-3">Your Tags</h3>
-          
-          {tags.length === 0 ? (
-            <p>You haven't created any tags yet. Tags help you categorize your contacts.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {tags.map(tag => (
-                <li 
-                  key={tag._id} 
-                  className="flex justify-between items-center mb-2 p-2"
-                  style={{
-                    borderRadius: 'var(--border-radius-sm)',
-                    border: '1px solid var(--gray)'
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div 
-                      style={{ 
-                        width: '16px', 
-                        height: '16px', 
-                        backgroundColor: tag.color || '#3867d6',
-                        borderRadius: '50%'
-                      }}
-                    ></div>
-                    <span>{tag.name}</span>
-                  </div>
-                  
-                  <button
-                    onClick={() => handleDeleteTag(tag._id)}
-                    className="btn-sm"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--danger)',
-                      cursor: 'pointer'
-                    }}
-                    disabled={isLoading}
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-      
-      {/* Tag Usage Information */}
-      <div className="card mt-4">
-        <h3 className="mb-3">Using Tags</h3>
-        <p>
-          Tags help you organize and filter your contacts based on shared interests, 
-          industries, expertise, or any other category that makes sense for your network.
-        </p>
-        <h4 className="mt-3">Benefits of tagging:</h4>
-        <ul>
-          <li>Quickly filter contacts with similar interests</li>
-          <li>Create affinity groups based on shared tags</li>
-          <li>Easily find the right person when you need a specific expertise</li>
-          <li>Identify networking opportunities between contacts</li>
-        </ul>
-      </div>
+      )}
     </div>
   );
-};
-
-// Helper function to determine if a color is light or dark
-// to ensure text remains readable on colored backgrounds
-const isLightColor = (color) => {
-  // Convert hex to RGB
-  let r, g, b;
-  
-  if (color.startsWith('#')) {
-    const hex = color.slice(1);
-    r = parseInt(hex.slice(0, 2), 16);
-    g = parseInt(hex.slice(2, 4), 16);
-    b = parseInt(hex.slice(4, 6), 16);
-  } else {
-    // For named colors or rgb format, default to dark text
-    return false;
-  }
-  
-  // Calculate perceived brightness using the YIQ formula
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  return yiq >= 128; // >= 128 is light, < 128 is dark
 };
 
 export default TagManager;

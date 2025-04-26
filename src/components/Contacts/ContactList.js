@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useContacts } from '../../context/ContactContext';
+import TagBadge from '../Tags/TagBadge';
 
 const ContactList = () => {
   const { 
@@ -100,19 +101,31 @@ const ContactList = () => {
           <h4>Filter by tag:</h4>
           <div className="flex flex-wrap gap-2 mt-2">
             {tags.map(tag => (
-              <button
+              <TagBadge
                 key={tag._id}
-                className={`tag ${activeTag === tag._id ? 'tag-primary' : ''}`}
-                onClick={() => handleTagClick(tag._id)}
-              >
-                {tag.name}
-              </button>
+                tag={tag}
+                onClick={handleTagClick}
+                className={activeTag === tag._id ? 'active-tag' : ''}
+                style={{
+                  opacity: activeTag === tag._id ? 1 : 0.7,
+                  transform: activeTag === tag._id ? 'scale(1.05)' : 'none',
+                  boxShadow: activeTag === tag._id ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              />
             ))}
             {activeTag && (
               <button
-                className="tag"
+                className="clear-filter-btn"
                 onClick={() => setActiveTag(null)}
+                style={{
+                  border: '1px dashed #ccc',
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer'
+                }}
               >
+                <i className="fas fa-times-circle me-1"></i>
                 Clear Filter
               </button>
             )}
@@ -155,9 +168,11 @@ const ContactList = () => {
                 {contact.tags && contact.tags.length > 0 && (
                   <div className="contact-tags mt-2">
                     {contact.tags.map(tag => (
-                      <span key={tag._id} className="tag tag-secondary">
-                        {tag.name}
-                      </span>
+                      <TagBadge 
+                        key={tag._id} 
+                        tag={tag}
+                        small={true}
+                      />
                     ))}
                   </div>
                 )}

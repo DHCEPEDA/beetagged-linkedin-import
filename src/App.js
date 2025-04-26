@@ -9,7 +9,7 @@ import Register from './components/Auth/Register';
 import ContactList from './components/Contacts/ContactList';
 import ContactDetail from './components/Contacts/ContactDetail';
 import ContactImport from './components/Contacts/ContactImport';
-import TagManager from './components/Tags/TagManager';
+import TagsPage from './pages/TagsPage';
 import AffinityGroups from './components/Groups/AffinityGroups';
 import GroupDetail from './components/Groups/GroupDetail';
 
@@ -60,7 +60,7 @@ const App = () => {
           } />
           <Route path="/tags" element={
             <ProtectedRoute>
-              <TagManager />
+              <TagsPage />
             </ProtectedRoute>
           } />
           <Route path="/groups" element={

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ContactContext } from '../../context/ContactContext';
-import TagManager from '../Tags/TagManager';
+import TagSelector from '../Tags/TagSelector';
 
 const ContactDetail = () => {
   const { id } = useParams();
@@ -345,8 +345,11 @@ const ContactDetail = () => {
       <div className="card mb-4">
         <div className="card-body">
           <h5 className="mb-3">Tags</h5>
-          <TagManager 
-            selectable={true} 
+          <p className="text-muted mb-3">
+            Tags help you categorize contacts based on interests, expertise, or connections.
+            Click on a tag to add or remove it from this contact.
+          </p>
+          <TagSelector 
             selectedTags={currentTags} 
             onTagSelect={handleTagSelect}
           />
