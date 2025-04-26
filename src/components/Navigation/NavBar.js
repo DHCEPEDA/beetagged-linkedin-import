@@ -1,104 +1,290 @@
-import React, { useContext } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import { useContacts } from '../../context/ContactContext';
 
 const NavBar = () => {
-  const { logout } = useContext(AuthContext);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const { setSearchTerm } = useContacts();
   const location = useLocation();
-
-  const isActive = (path) => {
-    if (path === '/') {
-      return location.pathname === path;
-    }
-    return location.pathname.startsWith(path);
+  
+  const handleLogout = () => {
+    logout();
+    // Close mobile menu when logging out
+    setIsMenuOpen(false);
   };
-
+  
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+  
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top">
-      <div className="container">
-        <Link className="navbar-brand" to="/">
-          <i className="fas fa-tags me-2 text-primary"></i>
+    <nav className="navbar" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      backgroundColor: 'var(--white)',
+      boxShadow: 'var(--shadow-sm)',
+      zIndex: 1000,
+      padding: 'var(--spacing-sm) var(--spacing-md)'
+    }}>
+      <div className="container flex justify-between items-center">
+        <Link to="/" className="logo" style={{ 
+          fontSize: 'var(--font-size-xl)', 
+          fontWeight: 'bold',
+          color: 'var(--dark)'
+        }}>
           BeeTagger
         </Link>
         
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
+        {/* Mobile menu button */}
+        <button 
+          className="hide-desktop" 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 'var(--spacing-xs)'
+          }}
         >
-          <span className="navbar-toggler-icon"></span>
+          <div style={{
+            width: '24px',
+            height: '3px',
+            backgroundColor: 'var(--dark)',
+            marginBottom: '5px'
+          }}></div>
+          <div style={{
+            width: '24px',
+            height: '3px',
+            backgroundColor: 'var(--dark)',
+            marginBottom: '5px'
+          }}></div>
+          <div style={{
+            width: '24px',
+            height: '3px',
+            backgroundColor: 'var(--dark)'
+          }}></div>
         </button>
         
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <Link 
-                className={`nav-link ${isActive('/contacts') ? 'active' : ''}`} 
-                to="/contacts"
+        {/* Desktop & Mobile nav menu */}
+        <div className={`nav-menu ${isMenuOpen ? 'active' : ''}`} style={{
+          display: isMenuOpen ? 'flex' : 'none',
+          flexDirection: 'column',
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          width: '100%',
+          backgroundColor: 'var(--white)',
+          boxShadow: 'var(--shadow-md)',
+          padding: 'var(--spacing-md)',
+          '@media (min-width: 768px)': {
+            display: 'flex',
+            position: 'static',
+            flexDirection: 'row',
+            boxShadow: 'none',
+            padding: 0
+          }
+        }}>
+          {user ? (
+            <>
+              {/* Search bar - only show on contacts page */}
+              {location.pathname === '/' && (
+                <div className="search-container" style={{ margin: '0 var(--spacing-md)' }}>
+                  <input
+                    type="text"
+                    placeholder="Search contacts..."
+                    className="form-control"
+                    onChange={handleSearchChange}
+                    style={{ minWidth: '200px' }}
+                  />
+                </div>
+              )}
+              
+              <Link
+                to="/"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/' ? 'var(--primary)' : 'var(--dark)'
+                }}
               >
-                <i className="fas fa-address-book me-1"></i> Contacts
+                Contacts
               </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                className={`nav-link ${isActive('/groups') ? 'active' : ''}`} 
+              <Link
                 to="/groups"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/groups' ? 'var(--primary)' : 'var(--dark)'
+                }}
               >
-                <i className="fas fa-users me-1"></i> Groups
+                Groups
               </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                className={`nav-link ${isActive('/tags') ? 'active' : ''}`} 
+              <Link
                 to="/tags"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/tags' ? 'var(--primary)' : 'var(--dark)'
+                }}
               >
-                <i className="fas fa-tags me-1"></i> Tags
+                Tags
               </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                className={`nav-link ${isActive('/import') ? 'active' : ''}`} 
+              <Link
                 to="/import"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/import' ? 'var(--primary)' : 'var(--dark)'
+                }}
               >
-                <i className="fas fa-file-import me-1"></i> Import
+                Import
               </Link>
-            </li>
-          </ul>
-          
-          <ul className="navbar-nav">
-            <li className="nav-item dropdown">
-              <a
-                className="nav-link dropdown-toggle"
-                href="#"
-                id="userDropdown"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
+              <button
+                onClick={handleLogout}
+                className="nav-link"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: 'var(--dark)',
+                  cursor: 'pointer',
+                  marginLeft: 'auto'
+                }}
               >
-                <i className="fas fa-user-circle me-1"></i> Account
-              </a>
-              <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                <li>
-                  <a className="dropdown-item" href="#">
-                    <i className="fas fa-cog me-2"></i> Settings
-                  </a>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-                <li>
-                  <button 
-                    className="dropdown-item text-danger" 
-                    onClick={logout}
-                  >
-                    <i className="fas fa-sign-out-alt me-2"></i> Logout
-                  </button>
-                </li>
-              </ul>
-            </li>
-          </ul>
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/login' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/register' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Register
+              </Link>
+            </>
+          )}
+        </div>
+        
+        {/* Desktop nav - always visible on desktop */}
+        <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center' }}>
+          {user ? (
+            <>
+              {/* Search bar - only show on contacts page */}
+              {location.pathname === '/' && (
+                <div className="search-container" style={{ margin: '0 var(--spacing-md)' }}>
+                  <input
+                    type="text"
+                    placeholder="Search contacts..."
+                    className="form-control"
+                    onChange={handleSearchChange}
+                    style={{ minWidth: '200px' }}
+                  />
+                </div>
+              )}
+              
+              <Link
+                to="/"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Contacts
+              </Link>
+              <Link
+                to="/groups"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/groups' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Groups
+              </Link>
+              <Link
+                to="/tags"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/tags' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Tags
+              </Link>
+              <Link
+                to="/import"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/import' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Import
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="nav-link"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: 'var(--dark)',
+                  cursor: 'pointer'
+                }}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/login' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/register' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Register
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

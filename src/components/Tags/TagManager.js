@@ -1,342 +1,189 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { ContactContext } from '../../context/ContactContext';
+import React, { useState } from 'react';
+import { useContacts } from '../../context/ContactContext';
 
-const TAG_COLORS = [
-  '#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5',
-  '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50',
-  '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800',
-  '#ff5722', '#795548', '#607d8b'
-];
-
-const TagManager = ({ selectable = false, selectedTags = [], onTagSelect = () => {} }) => {
-  const { tags, loading, error, getTags, createTag, updateTag, deleteTag } = useContext(ContactContext);
-  
+const TagManager = () => {
+  const { tags, createTag, deleteTag, isLoading, error } = useContacts();
   const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
-  const [editingTag, setEditingTag] = useState(null);
-  const [editTagName, setEditTagName] = useState('');
-  const [editTagColor, setEditTagColor] = useState('');
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [editShowColorPicker, setEditShowColorPicker] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [newTagColor, setNewTagColor] = useState('#3867d6'); // Default color (secondary)
   
-  useEffect(() => {
-    getTags();
-  }, [getTags]);
-
-  const handleCreateTag = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (newTagName.trim() === '') return;
     
-    try {
-      await createTag({
-        name: newTagName.trim(),
-        color: newTagColor
-      });
-      setNewTagName('');
-      setShowColorPicker(false);
-    } catch (err) {
-      console.error('Failed to create tag:', err);
+    if (!newTagName.trim()) {
+      return;
     }
-  };
-
-  const handleUpdateTag = async (e) => {
-    e.preventDefault();
-    if (!editingTag || editTagName.trim() === '') return;
     
-    try {
-      await updateTag(editingTag.id, {
-        name: editTagName.trim(),
-        color: editTagColor
-      });
-      setEditingTag(null);
-    } catch (err) {
-      console.error('Failed to update tag:', err);
-    }
+    await createTag({ 
+      name: newTagName.trim(),
+      color: newTagColor
+    });
+    
+    // Reset form
+    setNewTagName('');
   };
-
+  
   const handleDeleteTag = async (tagId) => {
-    try {
+    if (window.confirm('Are you sure you want to delete this tag? This cannot be undone.')) {
       await deleteTag(tagId);
-      setDeleteConfirm(null);
-    } catch (err) {
-      console.error('Failed to delete tag:', err);
     }
   };
-
-  const startEditing = (tag) => {
-    setEditingTag(tag);
-    setEditTagName(tag.name);
-    setEditTagColor(tag.color);
-  };
-
-  const cancelEditing = () => {
-    setEditingTag(null);
-    setEditShowColorPicker(false);
-  };
-
-  if (loading && !tags) {
-    return (
-      <div className="text-center my-3">
-        <div className="spinner-border spinner-border-sm text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !tags) {
-    return (
-      <div className="alert alert-danger" role="alert">
-        Error loading tags: {error}
-      </div>
-    );
-  }
-
+  
   return (
-    <div className="tag-manager">
-      {!selectable && (
-        <h4 className="mb-3">Manage Tags</h4>
-      )}
+    <div className="tags-page">
+      <h1 className="mb-4">Manage Tags</h1>
       
-      {!selectable && (
-        <div className="card mb-4">
-          <div className="card-body">
-            <form onSubmit={handleCreateTag}>
-              <div className="row align-items-end">
-                <div className="col">
-                  <label htmlFor="newTagName" className="form-label">Tag Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="newTagName"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    placeholder="Enter tag name"
-                    required
-                  />
-                </div>
-                <div className="col-auto">
-                  <label htmlFor="newTagColor" className="form-label">Color</label>
-                  <div className="input-group">
-                    <span 
-                      className="input-group-text"
-                      style={{ 
-                        backgroundColor: newTagColor,
-                        width: '40px',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => setShowColorPicker(!showColorPicker)}
-                    ></span>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="newTagColor"
-                      value={newTagColor}
-                      onChange={(e) => setNewTagColor(e.target.value)}
-                      readOnly
-                    />
-                  </div>
-                  {showColorPicker && (
-                    <div className="color-picker-container mt-2 p-2 border rounded">
-                      <div className="d-flex flex-wrap">
-                        {TAG_COLORS.map(color => (
-                          <div 
-                            key={color}
-                            className="color-option m-1 border"
-                            style={{ 
-                              backgroundColor: color,
-                              width: '25px',
-                              height: '25px',
-                              cursor: 'pointer',
-                              borderRadius: '4px',
-                              border: newTagColor === color ? '2px solid black' : '1px solid #dee2e6'
-                            }}
-                            onClick={() => {
-                              setNewTagColor(color);
-                              setShowColorPicker(false);
-                            }}
-                          ></div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="col-auto">
-                  <button type="submit" className="btn btn-primary">
-                    <i className="fas fa-plus me-2"></i>Add Tag
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
+      {error && (
+        <div className="alert alert-danger mb-4" role="alert">
+          {error}
         </div>
       )}
       
-      <div className="row">
-        {tags && tags.length > 0 ? (
-          <div className="col">
-            <div className={selectable ? 'd-flex flex-wrap' : 'list-group'}>
+      <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
+        {/* Add new tag */}
+        <div className="card" style={{ flexBasis: '350px' }}>
+          <h3 className="mb-3">Add New Tag</h3>
+          
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="tagName" className="form-label">Tag Name</label>
+              <input
+                type="text"
+                id="tagName"
+                className="form-control"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="e.g., Work, Family, Marketing"
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="tagColor" className="form-label">Tag Color</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  id="tagColor"
+                  value={newTagColor}
+                  onChange={(e) => setNewTagColor(e.target.value)}
+                  style={{ 
+                    width: '40px', 
+                    height: '40px',
+                    padding: '2px',
+                    borderRadius: 'var(--border-radius-sm)',
+                    cursor: 'pointer',
+                    border: '1px solid var(--gray)'
+                  }}
+                  disabled={isLoading}
+                />
+                <div 
+                  className="tag" 
+                  style={{ 
+                    backgroundColor: newTagColor,
+                    color: isLightColor(newTagColor) ? '#000' : '#fff'
+                  }}
+                >
+                  Preview
+                </div>
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              className="btn btn-primary mt-3 w-100"
+              disabled={isLoading || !newTagName.trim()}
+            >
+              {isLoading ? 'Adding Tag...' : 'Add Tag'}
+            </button>
+          </form>
+        </div>
+        
+        {/* Existing tags */}
+        <div className="card" style={{ flexBasis: '350px', flexGrow: 1 }}>
+          <h3 className="mb-3">Your Tags</h3>
+          
+          {tags.length === 0 ? (
+            <p>You haven't created any tags yet. Tags help you categorize your contacts.</p>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0 }}>
               {tags.map(tag => (
-                editingTag && editingTag.id === tag.id ? (
-                  <div className="list-group-item" key={tag.id}>
-                    <form onSubmit={handleUpdateTag}>
-                      <div className="row align-items-center">
-                        <div className="col">
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={editTagName}
-                            onChange={(e) => setEditTagName(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="col-auto">
-                          <div className="input-group">
-                            <span 
-                              className="input-group-text"
-                              style={{ 
-                                backgroundColor: editTagColor,
-                                width: '40px',
-                                cursor: 'pointer'
-                              }}
-                              onClick={() => setEditShowColorPicker(!editShowColorPicker)}
-                            ></span>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={editTagColor}
-                              onChange={(e) => setEditTagColor(e.target.value)}
-                              readOnly
-                              style={{ width: '100px' }}
-                            />
-                          </div>
-                          {editShowColorPicker && (
-                            <div className="color-picker-container mt-2 p-2 border rounded position-absolute" style={{ zIndex: 1000 }}>
-                              <div className="d-flex flex-wrap">
-                                {TAG_COLORS.map(color => (
-                                  <div 
-                                    key={color}
-                                    className="color-option m-1 border"
-                                    style={{ 
-                                      backgroundColor: color,
-                                      width: '25px',
-                                      height: '25px',
-                                      cursor: 'pointer',
-                                      borderRadius: '4px',
-                                      border: editTagColor === color ? '2px solid black' : '1px solid #dee2e6'
-                                    }}
-                                    onClick={() => {
-                                      setEditTagColor(color);
-                                      setEditShowColorPicker(false);
-                                    }}
-                                  ></div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="col-auto">
-                          <button type="submit" className="btn btn-primary btn-sm me-2">
-                            <i className="fas fa-save"></i>
-                          </button>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={cancelEditing}>
-                            <i className="fas fa-times"></i>
-                          </button>
-                        </div>
-                      </div>
-                    </form>
+                <li 
+                  key={tag._id} 
+                  className="flex justify-between items-center mb-2 p-2"
+                  style={{
+                    borderRadius: 'var(--border-radius-sm)',
+                    border: '1px solid var(--gray)'
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div 
+                      style={{ 
+                        width: '16px', 
+                        height: '16px', 
+                        backgroundColor: tag.color || '#3867d6',
+                        borderRadius: '50%'
+                      }}
+                    ></div>
+                    <span>{tag.name}</span>
                   </div>
-                ) : selectable ? (
-                  <div 
-                    key={tag.id}
-                    className="tag m-1 cursor-pointer"
-                    style={{ 
-                      backgroundColor: selectedTags.includes(tag.id) ? tag.color : tag.color + '20',
-                      color: selectedTags.includes(tag.id) ? 'white' : tag.color,
-                      border: `1px solid ${tag.color}`
+                  
+                  <button
+                    onClick={() => handleDeleteTag(tag._id)}
+                    className="btn-sm"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--danger)',
+                      cursor: 'pointer'
                     }}
-                    onClick={() => onTagSelect(tag.id)}
+                    disabled={isLoading}
                   >
-                    {tag.name}
-                    {selectedTags.includes(tag.id) && <i className="fas fa-check ms-1"></i>}
-                  </div>
-                ) : (
-                  <div className="list-group-item d-flex justify-content-between align-items-center" key={tag.id}>
-                    <div className="d-flex align-items-center">
-                      <span 
-                        className="badge rounded-pill me-2"
-                        style={{ backgroundColor: tag.color, width: '20px', height: '20px' }}
-                      ></span>
-                      <span>{tag.name}</span>
-                    </div>
-                    <div>
-                      <button 
-                        className="btn btn-outline-primary btn-sm me-2"
-                        onClick={() => startEditing(tag)}
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                      <button 
-                        className="btn btn-outline-danger btn-sm"
-                        onClick={() => setDeleteConfirm(tag)}
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                    </div>
-                  </div>
-                )
+                    Delete
+                  </button>
+                </li>
               ))}
-            </div>
-          </div>
-        ) : (
-          <div className="col">
-            <div className="alert alert-info">
-              No tags found. {!selectable && 'Create your first tag above.'}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Delete confirmation modal */}
-      {deleteConfirm && (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Delete Tag</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setDeleteConfirm(null)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Are you sure you want to delete the tag "<strong>{deleteConfirm.name}</strong>"?</p>
-                <p className="text-danger">This will remove this tag from all contacts.</p>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setDeleteConfirm(null)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-danger" 
-                  onClick={() => handleDeleteTag(deleteConfirm.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
+            </ul>
+          )}
         </div>
-      )}
+      </div>
+      
+      {/* Tag Usage Information */}
+      <div className="card mt-4">
+        <h3 className="mb-3">Using Tags</h3>
+        <p>
+          Tags help you organize and filter your contacts based on shared interests, 
+          industries, expertise, or any other category that makes sense for your network.
+        </p>
+        <h4 className="mt-3">Benefits of tagging:</h4>
+        <ul>
+          <li>Quickly filter contacts with similar interests</li>
+          <li>Create affinity groups based on shared tags</li>
+          <li>Easily find the right person when you need a specific expertise</li>
+          <li>Identify networking opportunities between contacts</li>
+        </ul>
+      </div>
     </div>
   );
+};
+
+// Helper function to determine if a color is light or dark
+// to ensure text remains readable on colored backgrounds
+const isLightColor = (color) => {
+  // Convert hex to RGB
+  let r, g, b;
+  
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else {
+    // For named colors or rgb format, default to dark text
+    return false;
+  }
+  
+  // Calculate perceived brightness using the YIQ formula
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return yiq >= 128; // >= 128 is light, < 128 is dark
 };
 
 export default TagManager;

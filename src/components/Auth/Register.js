@@ -1,7 +1,6 @@
-import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
-import { loginWithSocial } from '../../utils/socialAuth';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -10,148 +9,196 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
   
-  const { register } = useContext(AuthContext);
-
+  const { user, register, error, isLoading } = useAuth();
+  const navigate = useNavigate();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+  
+  // Update form errors when backend error changes
+  useEffect(() => {
+    if (error) {
+      setSubmitError(error);
+    }
+  }, [error]);
+  
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.id]: e.target.value
+      [name]: value
     });
+    
+    // Clear field error when user types
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+    
+    // Clear submit error when form changes
+    if (submitError) {
+      setSubmitError('');
+    }
   };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Invalid email address';
+    }
+    
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
     
     if (formData.password !== formData.confirmPassword) {
-      return setError('Passwords do not match');
+      errors.confirmPassword = 'Passwords do not match';
     }
     
-    setIsLoading(true);
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    try {
-      await register(formData.name, formData.email, formData.password);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to register. Please try again.');
-      setIsLoading(false);
+    if (!validateForm()) {
+      return;
+    }
+    
+    const { name, email, password } = formData;
+    const success = await register({ name, email, password });
+    
+    if (success) {
+      navigate('/');
     }
   };
-
-  const handleSocialRegister = async (provider) => {
-    setError('');
-    setIsLoading(true);
-    
-    try {
-      const userData = await loginWithSocial(provider);
-      if (userData) {
-        await register(userData.name, userData.email, null, userData);
-      }
-    } catch (err) {
-      setError(`Failed to register with ${provider}. Please try again.`);
-      setIsLoading(false);
-    }
-  };
-
+  
   return (
-    <div className="auth-form">
-      <div className="card">
-        <div className="card-body">
-          <h2 className="text-center mb-4">Sign Up for BeeTagger</h2>
+    <div className="flex" style={{ minHeight: 'calc(100vh - 80px)' }}>
+      <div className="w-50 p-5">
+        <div className="card" style={{ maxWidth: '450px', margin: '0 auto' }}>
+          <h2 className="text-center mb-4">Create Your Account</h2>
           
-          {error && <div className="alert alert-danger">{error}</div>}
+          {submitError && (
+            <div className="alert alert-danger" role="alert">
+              {submitError}
+            </div>
+          )}
           
           <form onSubmit={handleSubmit}>
-            <div className="mb-3">
+            <div className="form-group">
               <label htmlFor="name" className="form-label">Full Name</label>
               <input
                 type="text"
-                className="form-control"
                 id="name"
+                name="name"
+                className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
                 value={formData.name}
                 onChange={handleChange}
-                required
+                disabled={isLoading}
               />
+              {formErrors.name && (
+                <div className="invalid-feedback">{formErrors.name}</div>
+              )}
             </div>
             
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label">Email address</label>
+            <div className="form-group">
+              <label htmlFor="email" className="form-label">Email</label>
               <input
                 type="email"
-                className="form-control"
                 id="email"
+                name="email"
+                className={`form-control ${formErrors.email ? 'is-invalid' : ''}`}
                 value={formData.email}
                 onChange={handleChange}
-                required
+                disabled={isLoading}
               />
+              {formErrors.email && (
+                <div className="invalid-feedback">{formErrors.email}</div>
+              )}
             </div>
             
-            <div className="mb-3">
+            <div className="form-group">
               <label htmlFor="password" className="form-label">Password</label>
               <input
                 type="password"
-                className="form-control"
                 id="password"
+                name="password"
+                className={`form-control ${formErrors.password ? 'is-invalid' : ''}`}
                 value={formData.password}
                 onChange={handleChange}
-                required
-                minLength="6"
+                disabled={isLoading}
               />
+              {formErrors.password && (
+                <div className="invalid-feedback">{formErrors.password}</div>
+              )}
             </div>
             
-            <div className="mb-3">
+            <div className="form-group">
               <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
               <input
                 type="password"
-                className="form-control"
                 id="confirmPassword"
+                name="confirmPassword"
+                className={`form-control ${formErrors.confirmPassword ? 'is-invalid' : ''}`}
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                required
+                disabled={isLoading}
               />
+              {formErrors.confirmPassword && (
+                <div className="invalid-feedback">{formErrors.confirmPassword}</div>
+              )}
             </div>
             
-            <button 
-              type="submit" 
-              className="btn btn-primary w-100 mb-3"
+            <button
+              type="submit"
+              className="btn btn-primary w-100 mt-3"
               disabled={isLoading}
             >
-              {isLoading ? (
-                <span>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Creating account...
-                </span>
-              ) : 'Sign Up'}
+              {isLoading ? 'Creating Account...' : 'Sign Up'}
             </button>
           </form>
           
-          <div className="text-center mb-3">
-            <span className="text-muted">Or sign up with</span>
+          <div className="text-center mt-3">
+            <p>
+              Already have an account? <Link to="/login">Log in</Link>
+            </p>
           </div>
-          
-          <div className="d-grid gap-2 mb-3">
-            <button 
-              className="btn btn-outline-primary" 
-              onClick={() => handleSocialRegister('linkedin')}
-              disabled={isLoading}
-            >
-              <i className="fab fa-linkedin me-2"></i>LinkedIn
-            </button>
-            
-            <button 
-              className="btn btn-outline-primary" 
-              onClick={() => handleSocialRegister('facebook')}
-              disabled={isLoading}
-            >
-              <i className="fab fa-facebook-f me-2"></i>Facebook
-            </button>
-          </div>
-          
-          <p className="text-center mt-3">
-            Already have an account? <Link to="/login">Log In</Link>
+        </div>
+      </div>
+      
+      <div className="w-50 p-5 hide-mobile" style={{ backgroundColor: 'var(--secondary)', color: 'white' }}>
+        <div style={{ maxWidth: '500px', margin: '0 auto' }}>
+          <h1 className="mb-4">Join BeeTagger Today</h1>
+          <p className="mb-4">
+            Create an account to start organizing your professional network and
+            discover the power of contact tagging and affinity groups.
           </p>
+          <ul style={{ listStyleType: 'none', padding: 0 }}>
+            <li className="mb-2">✓ Organize contacts by interests and expertise</li>
+            <li className="mb-2">✓ Connect with people who share similar passions</li>
+            <li className="mb-2">✓ Import and sync your social media connections</li>
+            <li className="mb-2">✓ Build powerful professional relationships</li>
+          </ul>
         </div>
       </div>
     </div>

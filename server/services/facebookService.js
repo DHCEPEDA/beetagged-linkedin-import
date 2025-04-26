@@ -11,27 +11,27 @@ class FacebookService {
    */
   async getProfileWithToken(accessToken) {
     try {
-      const response = await axios.get('https://graph.facebook.com/v17.0/me', {
+      // Verify the token first
+      const isValid = await this.verifyAccessToken(accessToken);
+      if (!isValid) {
+        throw new Error('Invalid Facebook access token');
+      }
+      
+      // Get user data
+      const response = await axios.get('https://graph.facebook.com/v18.0/me', {
         params: {
-          fields: 'id,name,email,picture',
+          fields: 'id,name,email,picture.type(large)',
           access_token: accessToken
         }
       });
       
-      const profile = response.data;
-      
-      return {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        picture: profile.picture?.data?.url
-      };
+      return response.data;
     } catch (error) {
-      console.error('Facebook getProfileWithToken error:', error);
+      console.error('Error getting Facebook profile:', error);
       throw error;
     }
   }
-  
+
   /**
    * Get Facebook friends list
    * @param {string} accessToken - Facebook access token
@@ -39,59 +39,19 @@ class FacebookService {
    */
   async getFriends(accessToken) {
     try {
-      // In a real app, we would call the Facebook Graph API to get real friends
-      // https://graph.facebook.com/v17.0/me/friends
-      // Note: Facebook's API now only returns friends who also use your app
-      
-      // For this demo, we'll return mock data
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Simulate friends data
-      return [
-        {
-          id: 'facebook_1',
-          name: 'John Williams',
-          email: null, // Facebook doesn't provide friend emails via API
-          profileUrl: 'https://www.facebook.com/johnwilliams',
-          picture: null
-        },
-        {
-          id: 'facebook_2',
-          name: 'Sarah Thompson',
-          email: null,
-          profileUrl: 'https://www.facebook.com/sarahthompson',
-          picture: null
-        },
-        {
-          id: 'facebook_3',
-          name: 'Robert Garcia',
-          email: null,
-          profileUrl: 'https://www.facebook.com/robertgarcia',
-          picture: null
-        },
-        {
-          id: 'facebook_4',
-          name: 'Jennifer Lee',
-          email: null,
-          profileUrl: 'https://www.facebook.com/jenniferlee',
-          picture: null
-        },
-        {
-          id: 'facebook_5',
-          name: 'Christopher Wilson',
-          email: null,
-          profileUrl: 'https://www.facebook.com/christopherwilson',
-          picture: null
+      const response = await axios.get('https://graph.facebook.com/v18.0/me/friends', {
+        params: {
+          access_token: accessToken
         }
-      ];
+      });
+      
+      return response.data.data;
     } catch (error) {
-      console.error('Facebook getFriends error:', error);
+      console.error('Error getting Facebook friends:', error);
       throw error;
     }
   }
-  
+
   /**
    * Verify a Facebook access token
    * @param {string} accessToken - Facebook access token to verify
@@ -103,7 +63,8 @@ class FacebookService {
       const appSecret = process.env.FACEBOOK_APP_SECRET;
       
       if (!appId || !appSecret) {
-        throw new Error('Facebook app ID or app secret not provided');
+        console.error('Facebook App ID or App Secret not set in environment variables');
+        return false;
       }
       
       const response = await axios.get('https://graph.facebook.com/debug_token', {
@@ -113,13 +74,15 @@ class FacebookService {
         }
       });
       
-      return response.data.data.is_valid === true;
+      return response.data.data && 
+             response.data.data.app_id === appId && 
+             response.data.data.is_valid === true;
     } catch (error) {
-      console.error('Facebook verifyAccessToken error:', error);
+      console.error('Error verifying Facebook token:', error);
       return false;
     }
   }
-  
+
   /**
    * Get extended Facebook access token
    * @param {string} accessToken - Short-lived access token
@@ -131,10 +94,10 @@ class FacebookService {
       const appSecret = process.env.FACEBOOK_APP_SECRET;
       
       if (!appId || !appSecret) {
-        throw new Error('Facebook app ID or app secret not provided');
+        throw new Error('Facebook App ID or App Secret not set in environment variables');
       }
       
-      const response = await axios.get('https://graph.facebook.com/v17.0/oauth/access_token', {
+      const response = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
         params: {
           grant_type: 'fb_exchange_token',
           client_id: appId,
@@ -145,7 +108,7 @@ class FacebookService {
       
       return response.data;
     } catch (error) {
-      console.error('Facebook getExtendedAccessToken error:', error);
+      console.error('Error extending Facebook token:', error);
       throw error;
     }
   }

@@ -29,12 +29,7 @@ const connectDB = async () => {
     }
     
     // Real MongoDB connection
-    const conn = await mongoose.connect(dbUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useCreateIndex: true,
-      useFindAndModify: false
-    });
+    const conn = await mongoose.connect(dbUri);
     
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {

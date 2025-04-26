@@ -1,5 +1,8 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+
+// Import components
 import NavBar from './components/Navigation/NavBar';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
@@ -9,75 +12,70 @@ import ContactImport from './components/Contacts/ContactImport';
 import TagManager from './components/Tags/TagManager';
 import AffinityGroups from './components/Groups/AffinityGroups';
 import GroupDetail from './components/Groups/GroupDetail';
-import { AuthContext } from './context/AuthContext';
 
 const App = () => {
-  const { isAuthenticated, loading, checkAuth } = useContext(AuthContext);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    const initAuth = async () => {
-      await checkAuth();
-      setInitialCheckDone(true);
-    };
-
-    initAuth();
-  }, [checkAuth]);
-
-  if (loading || !initialCheckDone) {
-    return (
-      <div className="app-loading-container">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+  // Protected route component
+  const ProtectedRoute = ({ children }) => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center" style={{ height: '80vh' }}>
+          <div className="loader"></div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
+
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+
+    return children;
+  };
 
   return (
-    <Router>
-      {isAuthenticated && <NavBar />}
-      <div className="container mt-4">
+    <div className="app">
+      <NavBar />
+      <main className="container" style={{ paddingTop: '80px' }}>
         <Routes>
-          <Route 
-            path="/" 
-            element={isAuthenticated ? <ContactList /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/login" 
-            element={!isAuthenticated ? <Login /> : <Navigate to="/" />} 
-          />
-          <Route 
-            path="/register" 
-            element={!isAuthenticated ? <Register /> : <Navigate to="/" />} 
-          />
-          <Route 
-            path="/contacts" 
-            element={isAuthenticated ? <ContactList /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/contacts/:id" 
-            element={isAuthenticated ? <ContactDetail /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/import" 
-            element={isAuthenticated ? <ContactImport /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/tags" 
-            element={isAuthenticated ? <TagManager /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/groups" 
-            element={isAuthenticated ? <AffinityGroups /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/groups/:id" 
-            element={isAuthenticated ? <GroupDetail /> : <Navigate to="/login" />} 
-          />
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Protected routes */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <ContactList />
+            </ProtectedRoute>
+          } />
+          <Route path="/contacts/:id" element={
+            <ProtectedRoute>
+              <ContactDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/import" element={
+            <ProtectedRoute>
+              <ContactImport />
+            </ProtectedRoute>
+          } />
+          <Route path="/tags" element={
+            <ProtectedRoute>
+              <TagManager />
+            </ProtectedRoute>
+          } />
+          <Route path="/groups" element={
+            <ProtectedRoute>
+              <AffinityGroups />
+            </ProtectedRoute>
+          } />
+          <Route path="/groups/:id" element={
+            <ProtectedRoute>
+              <GroupDetail />
+            </ProtectedRoute>
+          } />
         </Routes>
-      </div>
-    </Router>
+      </main>
+    </div>
   );
 };
 

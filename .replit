@@ -15,6 +15,10 @@ author = "agent"
 task = "workflow.run"
 args = "Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Client"
+
 [[workflows.workflow]]
 name = "Server"
 author = "agent"
@@ -27,11 +31,30 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install && node server/index.js"
+args = "node server/index.js"
 waitForPort = 8000
 
+[[workflows.workflow]]
+name = "Client"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx webpack serve --mode development --host 0.0.0.0 --port 5000"
+waitForPort = 5000
+
 [deployment]
-run = ["sh", "-c", "npm install && node server/index.js"]
+run = ["sh", "-c", "node server/index.js"]
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
 
 [[ports]]
 localPort = 8000
