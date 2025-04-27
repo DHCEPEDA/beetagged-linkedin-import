@@ -12,6 +12,8 @@ import ContactImport from './components/Contacts/ContactImport';
 import TagsPage from './pages/TagsPage';
 import AffinityGroups from './components/Groups/AffinityGroups';
 import GroupDetail from './components/Groups/GroupDetail';
+import SocialConnectionPage from './pages/SocialConnectionPage';
+import LinkedInCallback from './components/Social/LinkedInCallback';
 
 const App = () => {
   const { user, isLoading } = useAuth();
@@ -73,6 +75,14 @@ const App = () => {
               <GroupDetail />
             </ProtectedRoute>
           } />
+          <Route path="/connect" element={
+            <ProtectedRoute>
+              <SocialConnectionPage />
+            </ProtectedRoute>
+          } />
+          
+          {/* LinkedIn OAuth callback route - public */}
+          <Route path="/linkedin-callback" element={<LinkedInCallback />} />
         </Routes>
       </main>
     </div>

@@ -147,6 +147,17 @@ const NavBar = () => {
               >
                 Import
               </Link>
+              <Link
+                to="/connect"
+                className="nav-link"
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/connect' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Connect Social
+              </Link>
               <button
                 onClick={handleLogout}
                 className="nav-link"
@@ -246,6 +257,16 @@ const NavBar = () => {
                 }}
               >
                 Import
+              </Link>
+              <Link
+                to="/connect"
+                className="nav-link"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  color: location.pathname === '/connect' ? 'var(--primary)' : 'var(--dark)'
+                }}
+              >
+                Connect Social
               </Link>
               <button
                 onClick={handleLogout}

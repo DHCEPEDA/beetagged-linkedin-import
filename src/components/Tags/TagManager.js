@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useContacts } from '../../context/ContactContext';
 import TagBadge from './TagBadge';
+import HoverTagBadge from './HoverTagBadge';
 import TagEditor from './TagEditor';
 
 /**
@@ -129,7 +130,7 @@ const TagManager = ({ selectable = false, selectedTags = [], onTagSelect }) => {
                 {tags.map(tag => (
                   <tr key={tag._id}>
                     <td>
-                      <TagBadge tag={tag} onClick={selectable ? onTagSelect : null} />
+                      <HoverTagBadge tag={tag} onClick={selectable ? onTagSelect : null} />
                     </td>
                     <td>{tag.description || <span className="text-muted">No description</span>}</td>
                     <td>
@@ -184,7 +185,7 @@ const TagManager = ({ selectable = false, selectedTags = [], onTagSelect }) => {
               </div>
               <div className="modal-body">
                 <p>
-                  Are you sure you want to delete the tag <TagBadge tag={deleteConfirmTag} />?
+                  Are you sure you want to delete the tag <HoverTagBadge tag={deleteConfirmTag} />?
                 </p>
                 {tagUsage[deleteConfirmTag._id] > 0 && (
                   <div className="alert alert-warning" role="alert">

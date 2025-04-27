@@ -1,6 +1,8 @@
 import React from 'react';
 import { useContacts } from '../../context/ContactContext';
 import TagBadge from './TagBadge';
+import HoverTagBadge from './HoverTagBadge';
+import AvailableTagBadge from './AvailableTagBadge';
 
 /**
  * TagSelector component allows users to select and deselect tags for contacts.
@@ -44,7 +46,7 @@ const TagSelector = ({ selectedTags = [], onTagSelect }) => {
           ) : (
             <div className="tags-list">
               {appliedTags.map(tag => (
-                <TagBadge
+                <HoverTagBadge
                   key={tag._id}
                   tag={tag}
                   onClick={handleTagClick}
@@ -62,39 +64,13 @@ const TagSelector = ({ selectedTags = [], onTagSelect }) => {
         {availableTags.length === 0 ? (
           <p className="text-muted small">No more tags available. Create new tags from the Tag Manager.</p>
         ) : (
-          <div className="tags-list" style={{ display: 'flex', flexWrap: 'wrap' }}>
+          <div className="tags-list">
             {availableTags.map(tag => (
-              <span
+              <AvailableTagBadge
                 key={tag._id}
-                className="available-tag"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: '#333',
-                  border: `1px solid ${tag.color}`,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '4px 12px',
-                  borderRadius: '16px',
-                  fontSize: '0.875rem',
-                  margin: '0 8px 8px 0'
-                }}
-                onClick={() => handleTagClick(tag._id)}
-              >
-                <span 
-                  className="tag-color-dot"
-                  style={{ 
-                    backgroundColor: tag.color,
-                    display: 'inline-block',
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    marginRight: '5px'
-                  }}
-                ></span>
-                {tag.name}
-                <i className="fas fa-plus-circle ms-1"></i>
-              </span>
+                tag={tag}
+                onClick={handleTagClick}
+              />
             ))}
           </div>
         )}

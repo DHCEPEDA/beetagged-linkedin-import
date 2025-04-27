@@ -6,6 +6,7 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ContactProvider } from './context/ContactContext';
 import './index.css';
+import './styles/tags.css';
 
 // Create a client for React Query
 const queryClient = new QueryClient();

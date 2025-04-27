@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useContacts } from '../../context/ContactContext';
 import TagBadge from '../Tags/TagBadge';
+import HoverTagBadge from '../Tags/HoverTagBadge';
 
 const ContactList = () => {
   const { 
@@ -101,7 +102,7 @@ const ContactList = () => {
           <h4>Filter by tag:</h4>
           <div className="flex flex-wrap gap-2 mt-2">
             {tags.map(tag => (
-              <TagBadge
+              <HoverTagBadge
                 key={tag._id}
                 tag={tag}
                 onClick={handleTagClick}
@@ -168,7 +169,7 @@ const ContactList = () => {
                 {contact.tags && contact.tags.length > 0 && (
                   <div className="contact-tags mt-2">
                     {contact.tags.map(tag => (
-                      <TagBadge 
+                      <HoverTagBadge 
                         key={tag._id} 
                         tag={tag}
                         small={true}

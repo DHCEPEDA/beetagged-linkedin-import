@@ -1,0 +1,120 @@
+.social-connection-wizard {
+  margin-bottom: 30px;
+}
+
+.wizard-header {
+  margin-bottom: 30px;
+}
+
+.steps-indicator {
+  margin-top: 15px;
+}
+
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  color: #6c757d;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.step-indicator.active .step-number {
+  background-color: #007bff;
+  color: white;
+}
+
+.step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.step-indicator.active .step-label {
+  color: #007bff;
+  font-weight: 600;
+}
+
+.wizard-content {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.step-content {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.platform-options .card {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.platform-options .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-check-input:checked {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.connect-accounts {
+  margin-bottom: 25px;
+}
+
+.btn-facebook {
+  background-color: #1877F2 !important;
+  border-color: #1877F2 !important;
+}
+
+.btn-facebook:hover {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+}
+
+.btn-linkedin {
+  background-color: #0A66C2 !important;
+  border-color: #0A66C2 !important;
+}
+
+.btn-linkedin:hover {
+  background-color: #0a59a9 !important;
+  border-color: #0a59a9 !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .wizard-content {
+    padding: 15px;
+  }
+  
+  .step-number {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+}

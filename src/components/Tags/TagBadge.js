@@ -10,8 +10,19 @@ import { isLightColor } from '../../utils/colorUtils';
  * @param {string} props.className - Additional class names
  * @param {Object} props.style - Additional inline styles
  * @param {boolean} props.small - Whether to use a smaller size
+ * @param {Function} props.onMouseEnter - Mouse enter event handler
+ * @param {Function} props.onMouseLeave - Mouse leave event handler
  */
-const TagBadge = ({ tag, onClick, removable = false, className = '', style = {}, small = false }) => {
+const TagBadge = ({ 
+  tag, 
+  onClick, 
+  removable = false, 
+  className = '', 
+  style = {}, 
+  small = false,
+  onMouseEnter,
+  onMouseLeave
+}) => {
   const handleClick = (e) => {
     if (onClick) {
       e.stopPropagation();
@@ -35,6 +46,8 @@ const TagBadge = ({ tag, onClick, removable = false, className = '', style = {},
         ...style
       }}
       onClick={handleClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {tag.name}
       {removable && onClick && (
