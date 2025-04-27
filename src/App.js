@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
 // Import components
@@ -19,14 +19,19 @@ import AuthPage from './pages/auth-page';
 const App = () => {
   const { user, isLoading } = useAuth();
 
-  // Protected route component
+  // Create a simple component for the loader
+  const Loader = () => (
+    <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+      <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  );
+
+  // Protected route component 
   const ProtectedRoute = ({ children }) => {
     if (isLoading) {
-      return (
-        <div className="flex justify-center items-center" style={{ height: '80vh' }}>
-          <div className="loader"></div>
-        </div>
-      );
+      return <Loader />;
     }
 
     if (!user) {
@@ -36,11 +41,26 @@ const App = () => {
     return children;
   };
 
+  // Create a simple component for testing
+  const TestComponent = () => (
+    <div className="container mt-5">
+      <div className="card">
+        <div className="card-body">
+          <h1 className="card-title">Test Page</h1>
+          <p className="card-text">This is a test component to verify routing is working properly.</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="app">
       <NavBar />
       <main className="container" style={{ paddingTop: '80px' }}>
         <Routes>
+          {/* Test route */}
+          <Route path="/test" element={<TestComponent />} />
+          
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

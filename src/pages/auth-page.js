@@ -1,115 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [formErrors, setFormErrors] = useState({});
-  const [submitError, setSubmitError] = useState('');
-  
-  const { user, login, register, loginWithFacebook, error, isLoading } = useAuth();
   const navigate = useNavigate();
-  
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
-  
-  // Update form errors when backend error changes
-  useEffect(() => {
-    if (error) {
-      setSubmitError(error);
-    }
-  }, [error]);
-  
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Clear field error when user types
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: ''
-      });
-    }
-    
-    // Clear submit error when form changes
-    if (submitError) {
-      setSubmitError('');
-    }
-  };
-  
-  const validateForm = () => {
-    const errors = {};
-    
-    if (!isLogin && !formData.name.trim()) {
-      errors.name = 'Name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Invalid email address';
-    }
-    
-    if (!formData.password) {
-      errors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    
-    if (!isLogin && formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    if (isLogin) {
-      const success = await login(formData.email, formData.password);
-      if (success) {
-        navigate('/');
-      }
-    } else {
-      const success = await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password
-      });
-      if (success) {
-        navigate('/');
-      }
-    }
-  };
-  
-  const handleFacebookLogin = async () => {
-    try {
-      await loginWithFacebook();
-      navigate('/');
-    } catch (error) {
-      console.error('Facebook login error:', error);
-    }
-  };
   
   return (
     <div className="container py-5">
@@ -138,13 +32,7 @@ const AuthPage = () => {
               
               <h2 className="mb-4">{isLogin ? 'Welcome Back!' : 'Create an Account'}</h2>
               
-              {submitError && (
-                <div className="alert alert-danger" role="alert">
-                  {submitError}
-                </div>
-              )}
-              
-              <form onSubmit={handleSubmit}>
+              <form>
                 {!isLogin && (
                   <div className="mb-3">
                     <label htmlFor="name" className="form-label">Name</label>
@@ -152,14 +40,9 @@ const AuthPage = () => {
                       type="text"
                       id="name"
                       name="name"
-                      className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
-                      value={formData.name}
-                      onChange={handleChange}
-                      disabled={isLoading}
+                      className="form-control"
+                      placeholder="Enter your name"
                     />
-                    {formErrors.name && (
-                      <div className="invalid-feedback">{formErrors.name}</div>
-                    )}
                   </div>
                 )}
                 
@@ -169,14 +52,9 @@ const AuthPage = () => {
                     type="email"
                     id="email"
                     name="email"
-                    className={`form-control ${formErrors.email ? 'is-invalid' : ''}`}
-                    value={formData.email}
-                    onChange={handleChange}
-                    disabled={isLoading}
+                    className="form-control"
+                    placeholder="Enter your email"
                   />
-                  {formErrors.email && (
-                    <div className="invalid-feedback">{formErrors.email}</div>
-                  )}
                 </div>
                 
                 <div className="mb-3">
@@ -185,14 +63,9 @@ const AuthPage = () => {
                     type="password"
                     id="password"
                     name="password"
-                    className={`form-control ${formErrors.password ? 'is-invalid' : ''}`}
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={isLoading}
+                    className="form-control"
+                    placeholder="Enter your password"
                   />
-                  {formErrors.password && (
-                    <div className="invalid-feedback">{formErrors.password}</div>
-                  )}
                 </div>
                 
                 {!isLogin && (
@@ -202,30 +75,17 @@ const AuthPage = () => {
                       type="password"
                       id="confirmPassword"
                       name="confirmPassword"
-                      className={`form-control ${formErrors.confirmPassword ? 'is-invalid' : ''}`}
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      disabled={isLoading}
+                      className="form-control"
+                      placeholder="Confirm your password"
                     />
-                    {formErrors.confirmPassword && (
-                      <div className="invalid-feedback">{formErrors.confirmPassword}</div>
-                    )}
                   </div>
                 )}
                 
                 <button
                   type="submit"
                   className="btn btn-primary w-100 mb-3"
-                  disabled={isLoading}
                 >
-                  {isLoading ? (
-                    <span>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      {isLogin ? 'Logging in...' : 'Creating account...'}
-                    </span>
-                  ) : (
-                    isLogin ? 'Login' : 'Register'
-                  )}
+                  {isLogin ? 'Login' : 'Register'}
                 </button>
               </form>
               
@@ -234,8 +94,6 @@ const AuthPage = () => {
                 <button
                   type="button"
                   className="btn btn-outline-primary mb-3 w-100"
-                  onClick={handleFacebookLogin}
-                  disabled={isLoading}
                 >
                   <i className="fab fa-facebook me-2"></i> Continue with Facebook
                 </button>
