@@ -14,6 +14,7 @@ import AffinityGroups from './components/Groups/AffinityGroups';
 import GroupDetail from './components/Groups/GroupDetail';
 import SocialConnectionPage from './pages/SocialConnectionPage';
 import LinkedInCallback from './components/Social/LinkedInCallback';
+import AuthPage from './pages/auth-page';
 
 const App = () => {
   const { user, isLoading } = useAuth();
@@ -29,7 +30,7 @@ const App = () => {
     }
 
     if (!user) {
-      return <Navigate to="/login" replace />;
+      return <Navigate to="/auth" replace />;
     }
 
     return children;
@@ -43,6 +44,7 @@ const App = () => {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/auth" element={<AuthPage />} />
           
           {/* Protected routes */}
           <Route path="/" element={

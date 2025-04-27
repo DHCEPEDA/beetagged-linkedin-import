@@ -176,26 +176,15 @@ const NavBar = () => {
           ) : (
             <>
               <Link
-                to="/login"
+                to="/auth"
                 className="nav-link"
                 onClick={() => setIsMenuOpen(false)}
                 style={{
                   padding: 'var(--spacing-sm) var(--spacing-md)',
-                  color: location.pathname === '/login' ? 'var(--primary)' : 'var(--dark)'
+                  color: location.pathname === '/auth' ? 'var(--primary)' : 'var(--dark)'
                 }}
               >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="nav-link"
-                onClick={() => setIsMenuOpen(false)}
-                style={{
-                  padding: 'var(--spacing-sm) var(--spacing-md)',
-                  color: location.pathname === '/register' ? 'var(--primary)' : 'var(--dark)'
-                }}
-              >
-                Register
+                Login / Register
               </Link>
             </>
           )}
@@ -285,24 +274,14 @@ const NavBar = () => {
           ) : (
             <>
               <Link
-                to="/login"
+                to="/auth"
                 className="nav-link"
                 style={{
                   padding: 'var(--spacing-sm) var(--spacing-md)',
-                  color: location.pathname === '/login' ? 'var(--primary)' : 'var(--dark)'
+                  color: location.pathname === '/auth' ? 'var(--primary)' : 'var(--dark)'
                 }}
               >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="nav-link"
-                style={{
-                  padding: 'var(--spacing-sm) var(--spacing-md)',
-                  color: location.pathname === '/register' ? 'var(--primary)' : 'var(--dark)'
-                }}
-              >
-                Register
+                Login / Register
               </Link>
             </>
           )}
