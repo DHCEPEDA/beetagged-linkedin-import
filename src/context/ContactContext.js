@@ -179,25 +179,7 @@ export const ContactProvider = ({ children }) => {
     }
   };
   
-  // Import contacts from social network
-  const importSocialContacts = async (provider) => {
-    try {
-      setIsLoading(true);
-      const res = await axios.post(`/api/contacts/import/${provider}`);
-      
-      if (res.data.success) {
-        loadContacts(); // Reload contacts after import
-        setError(null);
-        return res.data.data;
-      }
-    } catch (error) {
-      console.error(`Error importing ${provider} contacts:`, error);
-      setError(error.response?.data?.message || `Failed to import ${provider} contacts. Please try again.`);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
   
   // Add a tag to a contact
   const addTagToContact = async (contactId, tagId) => {
@@ -278,6 +260,34 @@ export const ContactProvider = ({ children }) => {
       console.error('Error deleting tag:', error);
       setError(error.response?.data?.message || 'Failed to delete tag. Please try again.');
       return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Import contacts from social network
+  const importSocialContacts = async (provider) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const res = await axios.post(`/api/contacts/import/${provider}`);
+      
+      if (res.data.success) {
+        // Refresh the contacts list
+        await loadContacts();
+        return {
+          success: true,
+          imported: res.data.imported || 0,
+          message: res.data.message
+        };
+      } else {
+        throw new Error(res.data.message || `Failed to import contacts from ${provider}`);
+      }
+    } catch (error) {
+      console.error(`Error importing contacts from ${provider}:`, error);
+      setError(error.response?.data?.message || `Failed to import contacts from ${provider}. Please try again.`);
+      throw error;
     } finally {
       setIsLoading(false);
     }
