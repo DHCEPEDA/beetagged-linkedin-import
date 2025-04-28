@@ -83,6 +83,10 @@ module.exports = {
         { 
           from: 'public/check-react.html', 
           to: 'check-react.html' 
+        },
+        { 
+          from: 'public/facebook-test.html', 
+          to: 'facebook-test.html' 
         }
       ],
     }),
