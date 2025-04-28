@@ -14,6 +14,7 @@ const contactRoutes = require('./routes/contacts');
 const tagRoutes = require('./routes/tags');
 const groupRoutes = require('./routes/groups');
 const socialRoutes = require('./routes/social');
+const configRoutes = require('./routes/config');
 
 // Import database connection
 const connectDB = require('./config/db');
@@ -62,6 +63,7 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/social', socialRoutes);
+app.use('/api/config', configRoutes);
 
 // Serve static assets
 app.use(express.static(path.join(__dirname, '..', 'public')));

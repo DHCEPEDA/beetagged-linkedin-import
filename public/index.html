@@ -86,8 +86,8 @@
   
   <!-- Facebook App ID -->
   <script>
-    // This is set directly from environment variables at build time
-    window.FACEBOOK_APP_ID = '123456789012345';  // Will be replaced with real ID by webpack
+    // Using the environment variable from .env
+    window.FACEBOOK_APP_ID = '<%= process.env.FACEBOOK_APP_ID %>';
   </script>
 
   <!-- App Configuration -->

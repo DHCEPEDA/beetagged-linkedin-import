@@ -44,12 +44,14 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html',
-      inject: false // Don't automatically inject the bundle, we're doing it manually
+      inject: false, // Don't automatically inject the bundle, we're doing it manually
+      templateParameters: {
+        'process.env.FACEBOOK_APP_ID': process.env.FACEBOOK_APP_ID || ''
+      }
     }),
     new webpack.DefinePlugin({
       // Define environment variables for client-side access
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-      'process.env.FACEBOOK_APP_ID': JSON.stringify(process.env.FACEBOOK_APP_ID || '')
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
     }),
     new CopyPlugin({
       patterns: [
