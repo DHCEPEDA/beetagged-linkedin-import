@@ -1,0 +1,60 @@
+/**
+ * BeeButton styling
+ * Based on the original iOS BeeButton implementation with
+ * cornerRadius of 2.0 and goldBeeColor background
+ */
+
+.bee-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  border: none;
+  border-radius: 2px; /* From BeeButton.m cornerRadius = 2.0 */
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.bee-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.bee-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bee-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Primary variant - uses goldBeeColor #FD9E31 */
+.bee-button-primary {
+  background-color: #FD9E31; /* goldBeeColor from UIColor+Bee */
+  color: white;
+}
+
+.bee-button-primary:hover {
+  background-color: #FEA845; /* Lightened goldBeeColor */
+}
+
+/* Secondary variant */
+.bee-button-secondary {
+  background-color: #ECF0F1; /* cloudsColor from UIColor+Bee */
+  color: #333;
+}
+
+.bee-button-secondary:hover {
+  background-color: #D6DBDD; /* Darkened cloudsColor */
+}

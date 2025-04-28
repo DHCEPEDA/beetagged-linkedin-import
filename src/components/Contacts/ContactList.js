@@ -1,189 +1,275 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useContacts } from '../../context/ContactContext';
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import ContactCard from './ContactCard';
 import TagBadge from '../Tags/TagBadge';
-import HoverTagBadge from '../Tags/HoverTagBadge';
+import BeeSpinner from '../UI/BeeSpinner';
+import './ContactList.css';
 
-const ContactList = () => {
-  const { 
-    filteredContacts, 
-    isLoading, 
-    error, 
-    tags, 
-    activeTag, 
-    setActiveTag,
-    loadContacts 
-  } = useContacts();
-  const [showEmptyState, setShowEmptyState] = useState(false);
-  
-  // Load contacts on mount
+/**
+ * Contact List component with filtering and searching
+ * Based on the iOS ContactsViewController implementation
+ */
+const ContactList = ({
+  contacts = [],
+  onContactClick,
+  isLoading = false,
+  onTagFilterChange,
+  allTags = [],
+  className = '',
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [filteredContacts, setFilteredContacts] = useState(contacts);
+  const [groupByLetter, setGroupByLetter] = useState(true);
+  const [groupedContacts, setGroupedContacts] = useState({});
+
+  // Filter contacts when search query, contacts array or selected tags change
   useEffect(() => {
-    loadContacts();
-  }, [loadContacts]);
-  
-  // Show empty state after a short delay if no contacts
-  useEffect(() => {
-    if (!isLoading && filteredContacts.length === 0) {
-      const timer = setTimeout(() => {
-        setShowEmptyState(true);
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    } else {
-      setShowEmptyState(false);
+    let result = [...contacts];
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(contact => {
+        const fullName = `${contact.first_name || ''} ${contact.last_name || ''}`.toLowerCase();
+        const nameMatch = fullName.includes(query);
+        const hometownMatch = contact.hometown && contact.hometown.toLowerCase().includes(query);
+        
+        // Check work history
+        let workMatch = false;
+        if (contact.work && contact.work.length > 0) {
+          workMatch = contact.work.some(work => {
+            const employer = work.employer && work.employer.toLowerCase().includes(query);
+            const position = work.position && work.position.toLowerCase().includes(query);
+            return employer || position;
+          });
+        }
+        
+        // Check education history
+        let educationMatch = false;
+        if (contact.education && contact.education.length > 0) {
+          educationMatch = contact.education.some(edu => 
+            edu.school && edu.school.toLowerCase().includes(query)
+          );
+        }
+        
+        return nameMatch || hometownMatch || workMatch || educationMatch;
+      });
     }
-  }, [isLoading, filteredContacts]);
-  
-  const handleTagClick = (tagId) => {
-    if (activeTag === tagId) {
-      setActiveTag(null); // Clear active tag if clicked again
+    
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
+      result = result.filter(contact => {
+        // If contact has no tags, it doesn't match
+        if (!contact.tags || contact.tags.length === 0) return false;
+        
+        // Check if any selected tag exists in the contact's tags
+        return selectedTags.some(selectedTag => 
+          contact.tags.some(tag => tag.name === selectedTag.name)
+        );
+      });
+    }
+    
+    setFilteredContacts(result);
+    
+    // Group contacts by first letter of last name (or first name if last name is missing)
+    if (groupByLetter) {
+      const grouped = result.reduce((acc, contact) => {
+        // Determine group letter (first letter of last name, or first name if no last name)
+        let groupLetter;
+        if (contact.last_name && contact.last_name.trim()) {
+          groupLetter = contact.last_name.charAt(0).toUpperCase();
+        } else if (contact.first_name && contact.first_name.trim()) {
+          groupLetter = contact.first_name.charAt(0).toUpperCase();
+        } else {
+          groupLetter = '#'; // Fallback for contacts with no name
+        }
+        
+        // Create group if it doesn't exist
+        if (!acc[groupLetter]) {
+          acc[groupLetter] = [];
+        }
+        
+        // Add contact to group
+        acc[groupLetter].push(contact);
+        return acc;
+      }, {});
+      
+      // Sort groups alphabetically
+      setGroupedContacts(
+        Object.keys(grouped)
+          .sort()
+          .reduce((acc, key) => {
+            acc[key] = grouped[key];
+            return acc;
+          }, {})
+      );
+    }
+  }, [contacts, searchQuery, selectedTags, groupByLetter]);
+
+  // Handle tag selection for filtering
+  const handleTagSelect = (tag) => {
+    const isSelected = selectedTags.some(t => t.name === tag.name);
+    
+    if (isSelected) {
+      // Remove tag from selection
+      const newSelectedTags = selectedTags.filter(t => t.name !== tag.name);
+      setSelectedTags(newSelectedTags);
+      onTagFilterChange && onTagFilterChange(newSelectedTags);
     } else {
-      setActiveTag(tagId);
+      // Add tag to selection
+      const newSelectedTags = [...selectedTags, tag];
+      setSelectedTags(newSelectedTags);
+      onTagFilterChange && onTagFilterChange(newSelectedTags);
     }
   };
-  
-  if (isLoading) {
-    return (
-      <div className="text-center p-5">
-        <div className="loader"></div>
-        <p>Loading contacts...</p>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div className="alert alert-danger" role="alert">
-        {error}
-      </div>
-    );
-  }
-  
-  if (showEmptyState) {
-    return (
-      <div className="text-center p-5">
-        <h2>No Contacts Found</h2>
-        {activeTag ? (
-          <p>No contacts match the selected tag. Try selecting a different tag or clear the filter.</p>
-        ) : (
-          <>
-            <p>You don't have any contacts yet. Get started by:</p>
-            <div className="mt-4">
-              <Link to="/import" className="btn btn-primary me-2">
-                Import Contacts
-              </Link>
-              <button className="btn btn-secondary">
-                Add Contact Manually
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-  
+
+  // Toggle between grouped and flat view
+  const toggleGrouping = () => {
+    setGroupByLetter(!groupByLetter);
+  };
+
+  // Render the contacts list
+  const renderContacts = () => {
+    if (isLoading) {
+      return (
+        <div className="contact-list-loading">
+          <BeeSpinner isLoading={true} size="large" />
+          <p>Loading contacts...</p>
+        </div>
+      );
+    }
+    
+    if (filteredContacts.length === 0) {
+      return (
+        <div className="contact-list-empty">
+          <p>No contacts found.</p>
+          {searchQuery.trim() && (
+            <p>Try adjusting your search or filters.</p>
+          )}
+        </div>
+      );
+    }
+    
+    if (groupByLetter) {
+      // Grouped view
+      return Object.keys(groupedContacts).map(letter => (
+        <div key={letter} className="contact-list-group">
+          <div className="contact-list-group-header">{letter}</div>
+          {groupedContacts[letter].map(contact => (
+            <ContactCard
+              key={contact.id}
+              contact={contact}
+              onClick={() => onContactClick && onContactClick(contact)}
+            />
+          ))}
+        </div>
+      ));
+    } else {
+      // Flat view
+      return filteredContacts.map(contact => (
+        <ContactCard
+          key={contact.id}
+          contact={contact}
+          onClick={() => onContactClick && onContactClick(contact)}
+        />
+      ));
+    }
+  };
+
   return (
-    <div className="contacts-page">
-      <div className="flex justify-between items-center mb-4">
-        <h1>Your Contacts</h1>
-        <div>
-          <Link to="/import" className="btn btn-primary me-2">
-            Import Contacts
-          </Link>
-          <button className="btn btn-secondary">
-            Add Contact
+    <div className={`contact-list ${className}`}>
+      <div className="contact-list-header">
+        <div className="contact-list-search">
+          <input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="contact-list-search-input"
+          />
+          <button
+            className="contact-list-search-clear"
+            onClick={() => setSearchQuery('')}
+            style={{ visibility: searchQuery ? 'visible' : 'hidden' }}
+          >
+            &times;
           </button>
         </div>
+        
+        <button
+          className="contact-list-view-toggle"
+          onClick={toggleGrouping}
+        >
+          {groupByLetter ? 'Flat View' : 'Group by Letter'}
+        </button>
       </div>
       
-      {/* Tags filter */}
-      {tags.length > 0 && (
-        <div className="tags-filter mb-4">
-          <h4>Filter by tag:</h4>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {tags.map(tag => (
-              <HoverTagBadge
-                key={tag._id}
-                tag={tag}
-                onClick={handleTagClick}
-                className={activeTag === tag._id ? 'active-tag' : ''}
-                style={{
-                  opacity: activeTag === tag._id ? 1 : 0.7,
-                  transform: activeTag === tag._id ? 'scale(1.05)' : 'none',
-                  boxShadow: activeTag === tag._id ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              />
-            ))}
-            {activeTag && (
-              <button
-                className="clear-filter-btn"
-                onClick={() => setActiveTag(null)}
-                style={{
-                  border: '1px dashed #ccc',
-                  padding: '4px 12px',
-                  borderRadius: '16px',
-                  backgroundColor: 'transparent',
-                  cursor: 'pointer'
-                }}
-              >
-                <i className="fas fa-times-circle me-1"></i>
-                Clear Filter
-              </button>
-            )}
-          </div>
+      {/* Tag filters */}
+      {allTags.length > 0 && (
+        <div className="contact-list-tags">
+          {allTags.map((tag, index) => (
+            <TagBadge
+              key={`filter-${tag.name}-${index}`}
+              name={tag.name}
+              color={tag.color}
+              count={tag.count}
+              size="small"
+              selected={selectedTags.some(t => t.name === tag.name)}
+              onClick={() => handleTagSelect(tag)}
+            />
+          ))}
         </div>
       )}
       
-      {/* Contacts list */}
-      <div className="contacts-grid" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-        gap: 'var(--spacing-md)'
-      }}>
-        {filteredContacts.map(contact => (
-          <Link to={`/contacts/${contact._id}`} key={contact._id} className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div className="flex items-start gap-4">
-              <div className="contact-avatar" style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--gray)',
-                backgroundImage: contact.profilePicture ? `url(${contact.profilePicture})` : 'none',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '1.5rem',
-                fontWeight: 'bold'
-              }}>
-                {!contact.profilePicture && contact.name.charAt(0).toUpperCase()}
-              </div>
-              
-              <div className="contact-info">
-                <h3 className="contact-name">{contact.name}</h3>
-                {contact.email && <p className="contact-email">{contact.email}</p>}
-                {contact.phone && <p className="contact-phone">{contact.phone}</p>}
-                
-                {contact.tags && contact.tags.length > 0 && (
-                  <div className="contact-tags mt-2">
-                    {contact.tags.map(tag => (
-                      <HoverTagBadge 
-                        key={tag._id} 
-                        tag={tag}
-                        small={true}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
+      {/* Selected filters display */}
+      {selectedTags.length > 0 && (
+        <div className="contact-list-active-filters">
+          <span className="contact-list-active-filters-label">Active Filters:</span>
+          {selectedTags.map((tag, index) => (
+            <TagBadge
+              key={`active-${tag.name}-${index}`}
+              name={tag.name}
+              color={tag.color}
+              size="small"
+              selected={true}
+              onClick={() => handleTagSelect(tag)}
+              onDelete={() => handleTagSelect(tag)}
+            />
+          ))}
+          <button
+            className="contact-list-clear-filters"
+            onClick={() => {
+              setSelectedTags([]);
+              onTagFilterChange && onTagFilterChange([]);
+            }}
+          >
+            Clear All
+          </button>
+        </div>
+      )}
+      
+      {/* Contacts */}
+      <div className="contact-list-content">
+        {renderContacts()}
       </div>
     </div>
   );
+};
+
+ContactList.propTypes = {
+  contacts: PropTypes.arrayOf(PropTypes.object),
+  onContactClick: PropTypes.func,
+  isLoading: PropTypes.bool,
+  onTagFilterChange: PropTypes.func,
+  allTags: PropTypes.arrayOf(
+    PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      color: PropTypes.string,
+      count: PropTypes.number,
+    })
+  ),
+  className: PropTypes.string,
 };
 
 export default ContactList;

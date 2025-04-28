@@ -1,0 +1,78 @@
+/**
+ * ContactCard styling
+ * Based on the iOS ContactCell implementation
+ */
+
+.contact-card {
+  display: flex;
+  padding: 15px;
+  border-bottom: 1px solid #eaeaea;
+  background-color: white;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 1px;
+  min-height: 70px; /* kContactCellHeight from Constants.h */
+}
+
+.contact-card:hover {
+  background-color: #f8f8f8;
+}
+
+.contact-card-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  overflow: hidden;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.contact-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.contact-card-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.contact-card-name {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.contact-card-info {
+  display: flex;
+  margin-bottom: 3px;
+  font-size: 14px;
+  color: #666;
+}
+
+.contact-card-label {
+  font-weight: 500;
+  margin-right: 5px;
+  color: #888;
+}
+
+.contact-card-value {
+  color: #555;
+}
+
+.contact-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  gap: 5px;
+}
+
+/* Make sure the tag badges inside contact cards are smaller */
+.contact-card .tag-badge {
+  padding: 2px 8px;
+  font-size: 11px;
+}

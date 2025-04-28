@@ -1,399 +1,223 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ContactContext } from '../../context/ContactContext';
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import TagBadge from '../Tags/TagBadge';
 import TagSelector from '../Tags/TagSelector';
+import BeeButton from '../UI/BeeButton';
+import './ContactDetail.css';
 
-const ContactDetail = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { 
-    contacts, 
-    getContact, 
-    updateContact, 
-    deleteContact, 
-    addTagToContact,
-    removeTagFromContact,
-    loading, 
-    error 
-  } = useContext(ContactContext);
+/**
+ * Contact detail component for viewing and editing a single contact
+ * Based on iOS ContactViewController implementation
+ */
+const ContactDetail = ({
+  contact,
+  availableTags = [],
+  onTagsUpdate,
+  onClose,
+  className = '',
+}) => {
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [selectedTags, setSelectedTags] = useState(contact.tags || []);
+
+  // Format displayed name
+  const displayName = contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
   
-  const [contact, setContact] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    title: '',
-    notes: ''
-  });
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [currentTags, setCurrentTags] = useState([]);
-  
-  useEffect(() => {
-    getContact(id);
-  }, [getContact, id]);
-  
-  useEffect(() => {
-    if (contacts) {
-      const foundContact = contacts.find(c => c.id === id);
-      if (foundContact) {
-        setContact(foundContact);
-        setFormData({
-          name: foundContact.name || '',
-          email: foundContact.email || '',
-          phone: foundContact.phone || '',
-          company: foundContact.company || '',
-          title: foundContact.title || '',
-          notes: foundContact.notes || ''
-        });
-        setCurrentTags(foundContact.tags.map(tag => tag.id));
-      }
-    }
-  }, [contacts, id]);
-
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await updateContact(id, formData);
-      setEditing(false);
-    } catch (err) {
-      console.error('Failed to update contact:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    try {
-      await deleteContact(id);
-      navigate('/contacts');
-    } catch (err) {
-      console.error('Failed to delete contact:', err);
-    }
-  };
-
-  const handleTagSelect = async (tagId) => {
-    if (currentTags.includes(tagId)) {
-      await removeTagFromContact(id, tagId);
-      setCurrentTags(currentTags.filter(t => t !== tagId));
-    } else {
-      await addTagToContact(id, tagId);
-      setCurrentTags([...currentTags, tagId]);
-    }
-  };
-
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  // Handle saving tags
+  const handleSaveTags = () => {
+    onTagsUpdate && onTagsUpdate(contact.id, selectedTags);
+    setIsEditingTags(false);
   };
   
-  const getRandomColor = (name) => {
-    const colors = [
-      '#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6',
-      '#1abc9c', '#d35400', '#34495e', '#16a085', '#c0392b'
-    ];
+  // Handle tag selection
+  const handleTagSelect = (tag) => {
+    setSelectedTags([...selectedTags, tag]);
+  };
+  
+  // Handle tag deselection
+  const handleTagDeselect = (tag) => {
+    setSelectedTags(selectedTags.filter(t => t.name !== tag.name));
+  };
+  
+  // Handle creating a new tag
+  const handleTagCreate = (tag) => {
+    // Add to selected tags
+    setSelectedTags([...selectedTags, tag]);
+  };
+
+  // Group work and education entries
+  const renderDetailSection = (title, items, keyField, valueField) => {
+    if (!items || items.length === 0) return null;
     
-    // Simple hash function for consistent color based on name
-    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-
-  if (loading) {
     return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="contact-detail-section">
+        <h3 className="contact-detail-section-title">{title}</h3>
+        <div className="contact-detail-section-content">
+          {items.map((item, index) => (
+            <div key={`${title}-${index}`} className="contact-detail-item">
+              <div className="contact-detail-item-label">{item[keyField]}</div>
+              <div className="contact-detail-item-value">{item[valueField]}</div>
+            </div>
+          ))}
         </div>
       </div>
     );
-  }
-
-  if (error) {
-    return (
-      <div className="alert alert-danger" role="alert">
-        Error loading contact: {error}
-      </div>
-    );
-  }
-
-  if (!contact) {
-    return (
-      <div className="alert alert-warning" role="alert">
-        Contact not found.
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className="container">
-      <div className="mb-4">
-        <Link to="/contacts" className="btn btn-outline-secondary">
-          <i className="fas fa-arrow-left me-2"></i>Back to Contacts
-        </Link>
+    <div className={`contact-detail ${className}`}>
+      <div className="contact-detail-header">
+        <button className="contact-detail-back" onClick={onClose}>
+          &larr; Back
+        </button>
+        <h2 className="contact-detail-title">Contact Details</h2>
       </div>
-
-      <div className="card mb-4">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-start mb-4">
-            <div className="d-flex align-items-center">
-              <div 
-                className="contact-avatar me-3"
-                style={{ 
-                  backgroundColor: getRandomColor(contact.name),
-                  width: '60px',
-                  height: '60px',
-                  fontSize: '1.5rem'
-                }}
-              >
-                {getInitials(contact.name)}
-              </div>
-              <div>
-                <h2 className="mb-1">{contact.name}</h2>
-                <div>
-                  {contact.linkedinConnected && (
-                    <span className="social-connection" title="LinkedIn Connection">
-                      <i className="fab fa-linkedin social-icon text-primary"></i>
-                      LinkedIn Connection
-                    </span>
-                  )}
-                  {contact.facebookConnected && (
-                    <span className="social-connection" title="Facebook Friend">
-                      <i className="fab fa-facebook-f social-icon text-primary"></i>
-                      Facebook Friend
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              {!editing ? (
-                <div>
-                  <button 
-                    className="btn btn-primary me-2"
-                    onClick={() => setEditing(true)}
-                  >
-                    <i className="fas fa-edit me-2"></i>Edit
-                  </button>
-                  <button 
-                    className="btn btn-outline-danger"
-                    onClick={() => setDeleteModal(true)}
-                  >
-                    <i className="fas fa-trash-alt me-2"></i>Delete
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <button 
-                    className="btn btn-secondary me-2"
-                    onClick={() => setEditing(false)}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={handleSubmit}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-save me-2"></i>Save
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
+      
+      <div className="contact-detail-content">
+        <div className="contact-detail-profile">
+          <div className="contact-detail-avatar">
+            <img 
+              src={contact.pictureUrl || '/images/placeholder-avatar.png'} 
+              alt={`${displayName}'s avatar`} 
+              onError={(e) => {
+                e.target.onerror = null; 
+                e.target.src = '/images/placeholder-avatar.png';
+              }}
+            />
           </div>
-
-          {!editing ? (
-            <div className="row">
-              <div className="col-md-6">
-                <div className="mb-3">
-                  <h5 className="text-muted mb-2">Contact Information</h5>
-                  <div className="mb-2">
-                    <strong><i className="fas fa-envelope me-2"></i>Email:</strong> {contact.email || 'Not specified'}
-                  </div>
-                  <div className="mb-2">
-                    <strong><i className="fas fa-phone me-2"></i>Phone:</strong> {contact.phone || 'Not specified'}
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <h5 className="text-muted mb-2">Professional Details</h5>
-                  <div className="mb-2">
-                    <strong><i className="fas fa-building me-2"></i>Company:</strong> {contact.company || 'Not specified'}
-                  </div>
-                  <div className="mb-2">
-                    <strong><i className="fas fa-briefcase me-2"></i>Title:</strong> {contact.title || 'Not specified'}
-                  </div>
-                </div>
+          
+          <div className="contact-detail-info">
+            <h1 className="contact-detail-name">{displayName}</h1>
+            
+            {contact.hometown && (
+              <div className="contact-detail-field">
+                <span className="contact-detail-field-label">Location:</span>
+                <span className="contact-detail-field-value">{contact.hometown}</span>
               </div>
-              
-              <div className="col-md-6">
-                <div className="mb-3">
-                  <h5 className="text-muted mb-2">Notes</h5>
-                  <p>{contact.notes || 'No notes available.'}</p>
-                </div>
+            )}
+            
+            {contact.gender && (
+              <div className="contact-detail-field">
+                <span className="contact-detail-field-label">Gender:</span>
+                <span className="contact-detail-field-value">{contact.gender}</span>
+              </div>
+            )}
+            
+            {contact.relationshipStatus && (
+              <div className="contact-detail-field">
+                <span className="contact-detail-field-label">Relationship:</span>
+                <span className="contact-detail-field-value">{contact.relationshipStatus}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Tags Section */}
+        <div className="contact-detail-tags-section">
+          <div className="contact-detail-tags-header">
+            <h3 className="contact-detail-section-title">Tags</h3>
+            {!isEditingTags && (
+              <BeeButton onClick={() => setIsEditingTags(true)}>
+                Edit Tags
+              </BeeButton>
+            )}
+          </div>
+          
+          {isEditingTags ? (
+            <div className="contact-detail-tags-editor">
+              <TagSelector
+                availableTags={availableTags}
+                selectedTags={selectedTags}
+                onTagSelect={handleTagSelect}
+                onTagDeselect={handleTagDeselect}
+                onTagCreate={handleTagCreate}
+                title="Choose Tags"
+              />
+              <div className="contact-detail-tags-actions">
+                <BeeButton onClick={handleSaveTags} variant="primary">
+                  Save Tags
+                </BeeButton>
+                <BeeButton onClick={() => setIsEditingTags(false)} variant="secondary">
+                  Cancel
+                </BeeButton>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="mb-3">
-                    <label htmlFor="name" className="form-label">Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
+            <div className="contact-detail-tags">
+              {selectedTags.length > 0 ? (
+                <div className="contact-detail-tags-list">
+                  {selectedTags.map((tag, index) => (
+                    <TagBadge
+                      key={`tag-${tag.name}-${index}`}
+                      name={tag.name}
+                      color={tag.color}
+                      size="medium"
                     />
-                  </div>
-                  
-                  <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  
-                  <div className="mb-3">
-                    <label htmlFor="phone" className="form-label">Phone</label>
-                    <input
-                      type="tel"
-                      className="form-control"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                    />
-                  </div>
+                  ))}
                 </div>
-                
-                <div className="col-md-6">
-                  <div className="mb-3">
-                    <label htmlFor="company" className="form-label">Company</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="company"
-                      name="company"
-                      value={formData.company}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  
-                  <div className="mb-3">
-                    <label htmlFor="title" className="form-label">Title</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="title"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  
-                  <div className="mb-3">
-                    <label htmlFor="notes" className="form-label">Notes</label>
-                    <textarea
-                      className="form-control"
-                      id="notes"
-                      name="notes"
-                      rows="3"
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                    ></textarea>
-                  </div>
-                </div>
-              </div>
-            </form>
+              ) : (
+                <p className="contact-detail-no-tags">
+                  No tags assigned. Click "Edit Tags" to add some.
+                </p>
+              )}
+            </div>
           )}
         </div>
-      </div>
-
-      <div className="card mb-4">
-        <div className="card-body">
-          <h5 className="mb-3">Tags</h5>
-          <p className="text-muted mb-3">
-            Tags help you categorize contacts based on interests, expertise, or connections.
-            Click on a tag to add or remove it from this contact.
-          </p>
-          <TagSelector 
-            selectedTags={currentTags} 
-            onTagSelect={handleTagSelect}
-          />
-        </div>
-      </div>
-
-      {/* Delete confirmation modal */}
-      {deleteModal && (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Delete Contact</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setDeleteModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Are you sure you want to delete <strong>{contact.name}</strong>? This action cannot be undone.</p>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setDeleteModal(false)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-danger" 
-                  onClick={handleDeleteConfirm}
-                >
-                  Delete
-                </button>
-              </div>
+        
+        {/* Work History */}
+        {renderDetailSection(
+          'Work History',
+          contact.work,
+          'employer',
+          'position'
+        )}
+        
+        {/* Education */}
+        {renderDetailSection(
+          'Education',
+          contact.education,
+          'school',
+          'degree'
+        )}
+        
+        {/* Bio/About */}
+        {contact.bio && (
+          <div className="contact-detail-section">
+            <h3 className="contact-detail-section-title">About</h3>
+            <div className="contact-detail-bio">
+              {contact.bio}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
+};
+
+ContactDetail.propTypes = {
+  contact: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    name: PropTypes.string,
+    first_name: PropTypes.string,
+    last_name: PropTypes.string,
+    pictureUrl: PropTypes.string,
+    hometown: PropTypes.string,
+    gender: PropTypes.string,
+    relationshipStatus: PropTypes.string,
+    work: PropTypes.array,
+    education: PropTypes.array,
+    bio: PropTypes.string,
+    tags: PropTypes.array,
+  }).isRequired,
+  availableTags: PropTypes.arrayOf(
+    PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      color: PropTypes.string,
+      count: PropTypes.number,
+    })
+  ),
+  onTagsUpdate: PropTypes.func,
+  onClose: PropTypes.func.isRequired,
+  className: PropTypes.string,
 };
 
 export default ContactDetail;

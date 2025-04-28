@@ -1,0 +1,100 @@
+/**
+ * BeeSpinner styling
+ * Based on the iOS BASpinner implementation from BASpinner.h/m files
+ */
+
+.bee-spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+/* Full-screen spinner overlay */
+.bee-spinner-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 1000;
+}
+
+/* The spinner itself */
+.bee-spinner {
+  position: relative;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #FD9E31; /* goldBeeColor from UIColor+Bee */
+  animation: spin 1s linear infinite;
+}
+
+/* Spinner sizes */
+.bee-spinner-small {
+  width: 30px;
+  height: 30px;
+}
+
+.bee-spinner-medium {
+  width: 50px;
+  height: 50px;
+}
+
+.bee-spinner-large {
+  width: 70px;
+  height: 70px;
+}
+
+/* Orbiting planets animation inspired by BASpinner.m implementation */
+.bee-spinner-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 80%;
+  transform: translate(-50%, -50%);
+  animation: orbit 2s linear infinite;
+}
+
+.bee-spinner-planet {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background-color: #FD9E31; /* goldBeeColor from UIColor+Bee */
+  border-radius: 50%;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+/* Animations */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}

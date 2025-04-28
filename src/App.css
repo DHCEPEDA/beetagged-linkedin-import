@@ -1,14 +1,32 @@
-/* BeeTagger App Styles */
+/* BeeTagged App Styles */
 
 /* Color variables */
 :root {
   --bee-yellow: #FFC107;
-  --bee-dark: #212121;
+  --bee-dark: #212121; 
   --bee-light: #F8F9FA;
+  --gold-bee-color: #FD9E31; /* From original iOS UIColor+Bee */
+  --yellow-bee-color: #FFEC16; /* From original iOS UIColor+Bee */
 }
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Bee logo floating animation */

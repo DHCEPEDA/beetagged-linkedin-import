@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Direct React Test</title>
+  
+  <!-- React and ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .bee-logo {
+      width: 150px;
+      height: 150px;
+      margin: 20px auto;
+      display: block;
+    }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    .floating {
+      animation: float 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div id="direct-react-root"></div>
+
+  <script type="text/babel">
+    // Simple React component
+    const App = () => {
+      return (
+        <div className="container">
+          <h1>BeeTagged Direct React Test</h1>
+          <p>If you can see this text, React is rendering correctly!</p>
+          <img 
+            src="/images/diago-bee.svg" 
+            alt="BeeTagged Logo" 
+            className="bee-logo floating" 
+          />
+          <p>The logo above should be animated with a floating effect.</p>
+          <p>This is a direct test of React rendering, bypassing webpack.</p>
+        </div>
+      );
+    };
+
+    // Render directly to the DOM
+    const root = ReactDOM.createRoot(document.getElementById('direct-react-root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

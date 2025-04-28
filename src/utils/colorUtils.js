@@ -1,6 +1,12 @@
 /**
  * Color utility functions for tag and UI components
+ * Based on the iOS UIColor+Bee implementation
  */
+
+// Standard bee colors from UIColor+Bee
+export const GOLD_BEE_COLOR = '#FD9E31'; // the darker yellow of the bee icon
+export const YELLOW_BEE_COLOR = '#FFEC16'; // the lighter color of the bee icon
+export const CLOUDS_COLOR = '#ECF0F1'; // a light gray color
 
 /**
  * Determines if a color is light or dark to ensure text displayed on it remains readable.
@@ -8,40 +14,13 @@
  * @returns {boolean} true if the color is light, false if dark
  */
 export const isLightColor = (color) => {
-  // Default to treating as dark if color format is invalid
-  if (!color || typeof color !== 'string') {
-    return false;
-  }
+  const rgb = hexToRgb(color);
+  if (!rgb) return true;
   
-  // Convert hex to RGB
-  let r, g, b;
-  
-  if (color.startsWith('#')) {
-    const hex = color.slice(1);
-    // Handle both 3-digit and 6-digit hex
-    if (hex.length === 3) {
-      r = parseInt(hex[0] + hex[0], 16);
-      g = parseInt(hex[1] + hex[1], 16);
-      b = parseInt(hex[2] + hex[2], 16);
-    } else if (hex.length === 6) {
-      r = parseInt(hex.slice(0, 2), 16);
-      g = parseInt(hex.slice(2, 4), 16);
-      b = parseInt(hex.slice(4, 6), 16);
-    } else {
-      // Invalid hex, default to dark
-      return false;
-    }
-  } else {
-    // For named colors or other formats, default to dark text
-    return false;
-  }
-  
-  // Calculate perceived brightness using the YIQ formula
-  // This gives more weight to colors the human eye is more sensitive to
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  
-  // YIQ threshold: >= 128 is light, < 128 is dark
-  return yiq >= 128;
+  // Calculate perceived brightness using the formula:
+  // (0.299*R + 0.587*G + 0.114*B)
+  const brightness = (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) / 255;
+  return brightness > 0.65; // Threshold can be adjusted as needed
 };
 
 /**
@@ -50,27 +29,23 @@ export const isLightColor = (color) => {
  * @returns {Object|null} Object with r, g, b values or null if invalid
  */
 export const hexToRgb = (hex) => {
-  if (!hex || typeof hex !== 'string') {
+  // Remove the hash if it exists
+  hex = hex.replace(/^#/, '');
+  
+  // Check if it's a 3-digit hex
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  
+  // Check if it's a valid hex
+  if (hex.length !== 6) {
     return null;
   }
   
-  // Remove the # if it exists
-  const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
-  
-  // Handle both 3-digit and 6-digit hex
-  let r, g, b;
-  
-  if (cleanHex.length === 3) {
-    r = parseInt(cleanHex[0] + cleanHex[0], 16);
-    g = parseInt(cleanHex[1] + cleanHex[1], 16);
-    b = parseInt(cleanHex[2] + cleanHex[2], 16);
-  } else if (cleanHex.length === 6) {
-    r = parseInt(cleanHex.slice(0, 2), 16);
-    g = parseInt(cleanHex.slice(2, 4), 16);
-    b = parseInt(cleanHex.slice(4, 6), 16);
-  } else {
-    return null;
-  }
+  // Convert to RGB
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
   
   return { r, g, b };
 };
@@ -83,7 +58,12 @@ export const hexToRgb = (hex) => {
  * @returns {string} Hex color string (e.g., '#3867d6')
  */
 export const rgbToHex = (r, g, b) => {
-  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  const toHex = (c) => {
+    const hex = Math.max(0, Math.min(255, Math.round(c))).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+  
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
 /**
@@ -96,14 +76,12 @@ export const lightenColor = (color, percent = 20) => {
   const rgb = hexToRgb(color);
   if (!rgb) return color;
   
-  const { r, g, b } = rgb;
-  const amount = Math.floor(255 * (percent / 100));
+  const factor = percent / 100;
+  const r = rgb.r + (255 - rgb.r) * factor;
+  const g = rgb.g + (255 - rgb.g) * factor;
+  const b = rgb.b + (255 - rgb.b) * factor;
   
-  const newR = Math.min(r + amount, 255);
-  const newG = Math.min(g + amount, 255);
-  const newB = Math.min(b + amount, 255);
-  
-  return rgbToHex(newR, newG, newB);
+  return rgbToHex(r, g, b);
 };
 
 /**
@@ -116,14 +94,12 @@ export const darkenColor = (color, percent = 20) => {
   const rgb = hexToRgb(color);
   if (!rgb) return color;
   
-  const { r, g, b } = rgb;
-  const amount = Math.floor(255 * (percent / 100));
+  const factor = percent / 100;
+  const r = rgb.r * (1 - factor);
+  const g = rgb.g * (1 - factor);
+  const b = rgb.b * (1 - factor);
   
-  const newR = Math.max(r - amount, 0);
-  const newG = Math.max(g - amount, 0);
-  const newB = Math.max(b - amount, 0);
-  
-  return rgbToHex(newR, newG, newB);
+  return rgbToHex(r, g, b);
 };
 
 /**
@@ -131,10 +107,24 @@ export const darkenColor = (color, percent = 20) => {
  * @returns {string} Random hex color string
  */
 export const getRandomColor = () => {
-  const letters = '0123456789ABCDEF';
-  let color = '#';
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color;
+  // Bee-like colors from UIColor+Bee implementation
+  const beeColors = [
+    '#FD9E31', // goldBeeColor - the darker yellow of the bee icon
+    '#FFEC16', // yellowBeeColor - the lighter color of the bee icon
+    '#ECF0F1', // cloudsColor - a light gray color
+    // Additional complementary colors
+    '#FFC107', // Amber
+    '#FFB300', // Amber darken-1
+    '#FF9800', // Orange
+    '#FB8C00', // Orange darken-1
+    '#FF5722', // Deep Orange
+    '#FFA000', // Amber darken-2
+    '#F57C00', // Orange darken-2
+    '#3F51B5', // Indigo (for contrast)
+    '#2196F3', // Blue
+    '#03A9F4', // Light Blue
+    '#8BC34A', // Light Green
+  ];
+  
+  return beeColors[Math.floor(Math.random() * beeColors.length)];
 };

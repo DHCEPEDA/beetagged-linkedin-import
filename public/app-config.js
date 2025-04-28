@@ -1,17 +1,19 @@
 /**
- * BeeTagger Application Configuration
+ * BeeTagged Application Configuration
  * Web equivalent of InfoPlist.strings from iOS
  */
 
 const AppConfig = {
   // App information
-  appName: "BeeTagger",
+  appName: "BeeTagged",
   appVersion: "1.0.0",
   
   // Branding
   branding: {
-    primaryColor: "#FFC107", // Bee yellow
+    primaryColor: "#FD9E31", // goldBeeColor - the darker yellow of the bee icon
     secondaryColor: "#212121", // Dark gray
+    accentColor: "#FFEC16", // yellowBeeColor - the lighter color of the bee icon
+    backgroundColor: "#ECF0F1", // cloudsColor - light gray for backgrounds
     logoPath: "/images/diago-bee.svg"
   },
   

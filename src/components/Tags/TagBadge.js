@@ -1,63 +1,71 @@
 import React from 'react';
-import { isLightColor } from '../../utils/colorUtils';
+import PropTypes from 'prop-types';
+import { isLightColor, GOLD_BEE_COLOR } from '../../utils/colorUtils';
+import '../../styles/tags.css';
 
 /**
- * Reusable tag badge component for displaying tags consistently across the application
- * @param {Object} props - Component props
- * @param {Object} props.tag - The tag object with name, color, etc.
- * @param {Function} props.onClick - Optional click handler
- * @param {boolean} props.removable - Whether to show a remove icon
- * @param {string} props.className - Additional class names
- * @param {Object} props.style - Additional inline styles
- * @param {boolean} props.small - Whether to use a smaller size
- * @param {Function} props.onMouseEnter - Mouse enter event handler
- * @param {Function} props.onMouseLeave - Mouse leave event handler
+ * Component to display a single tag badge
+ * Based on the iOS TagCell implementation
  */
-const TagBadge = ({ 
-  tag, 
-  onClick, 
-  removable = false, 
-  className = '', 
-  style = {}, 
-  small = false,
-  onMouseEnter,
-  onMouseLeave
+const TagBadge = ({
+  name,
+  count,
+  color = GOLD_BEE_COLOR,
+  size = 'medium',
+  selected = false,
+  onClick,
+  onDelete,
+  className = '',
+  ...props
 }) => {
-  const handleClick = (e) => {
-    if (onClick) {
-      e.stopPropagation();
-      onClick(tag._id);
-    }
-  };
-
+  // Determine text color based on background color lightness
+  const textColor = isLightColor(color) ? '#333333' : '#FFFFFF';
+  
+  // Size class for the badge
+  const sizeClass = `tag-badge-${size}`;
+  
+  // Apply selected styling
+  const selectedClass = selected ? 'selected' : '';
+  
   return (
-    <span
-      className={`tag-badge ${className} ${onClick ? 'clickable' : ''} ${small ? 'tag-small' : ''}`}
-      style={{
-        backgroundColor: tag.color,
-        color: isLightColor(tag.color) ? '#000' : '#fff',
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: small ? '2px 8px' : '4px 12px',
-        borderRadius: '16px',
-        fontSize: small ? '0.75rem' : '0.875rem',
-        margin: '0 4px 4px 0',
-        cursor: onClick ? 'pointer' : 'default',
-        ...style
-      }}
-      onClick={handleClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+    <div
+      className={`tag-badge ${sizeClass} ${selectedClass} ${className}`}
+      style={{ backgroundColor: color, color: textColor }}
+      onClick={onClick}
+      {...props}
     >
-      {tag.name}
-      {removable && onClick && (
-        <i 
-          className="fas fa-times-circle ms-1"
-          style={{ marginLeft: '5px' }}
-        ></i>
+      <span className="tag-name">{name}</span>
+      
+      {count !== undefined && count > 0 && (
+        <span className="tag-count">{count}</span>
       )}
-    </span>
+      
+      {onDelete && (
+        <button
+          type="button"
+          className="tag-delete-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          aria-label={`Remove tag ${name}`}
+        >
+          &times;
+        </button>
+      )}
+    </div>
   );
+};
+
+TagBadge.propTypes = {
+  name: PropTypes.string.isRequired,
+  count: PropTypes.number,
+  color: PropTypes.string,
+  size: PropTypes.oneOf(['small', 'medium', 'large']),
+  selected: PropTypes.bool,
+  onClick: PropTypes.func,
+  onDelete: PropTypes.func,
+  className: PropTypes.string,
 };
 
 export default TagBadge;
