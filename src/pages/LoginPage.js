@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BeeButton from '../components/UI/BeeButton';
 import BeeSpinner from '../components/UI/BeeSpinner';
@@ -7,10 +7,16 @@ import { GOLD_BEE_COLOR, YELLOW_BEE_COLOR } from '../utils/colorUtils';
 import './LoginPage.css';
 
 /**
- * Login page component for BeeTagger app
+ * Login page component for BeeTagged app
  * Based on the original iOS ViewController login implementation
  */
 const LoginPage = () => {
+  console.log("LoginPage rendering"); // Debug line
+  
+  useEffect(() => {
+    console.log("LoginPage mounted");
+    return () => console.log("LoginPage unmounted");
+  }, []);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();

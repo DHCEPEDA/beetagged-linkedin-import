@@ -48,7 +48,7 @@ module.exports = {
     new webpack.DefinePlugin({
       // Define environment variables for client-side access
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-      'process.env.FACEBOOK_APP_ID': JSON.stringify('123456789012345')
+      'process.env.FACEBOOK_APP_ID': JSON.stringify(process.env.FACEBOOK_APP_ID || '')
     }),
     new CopyPlugin({
       patterns: [
