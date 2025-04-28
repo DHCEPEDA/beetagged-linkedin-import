@@ -30,12 +30,9 @@
         <!-- Bee Eye -->
         <circle cx="69" cy="108" r="2" fill="#000000" />
         
-        <!-- Bee Stinger -->
-        <path d="M128,110 L132,110" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
-        
-        <!-- Bee Stripes -->
-        <path d="M85,110 L115,110" stroke="#000000" stroke-width="9" />
-        <path d="M95,110 L125,110" stroke="#000000" stroke-width="9" />
+        <!-- Bee Vertical Stripes (replacing horizontal ones) -->
+        <path d="M90,95 L90,125" stroke="#000000" stroke-width="9" stroke-linecap="round" />
+        <path d="M110,95 L110,125" stroke="#000000" stroke-width="9" stroke-linecap="round" />
         
         <!-- Bee Wings -->
         <path d="M95,80 C105,65 120,60 130,65 C120,85 105,95 95,90 Z" 
