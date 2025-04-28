@@ -17,7 +17,7 @@ const MinimalApp = () => {
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
       <h1 style={{ color: '#FD9E31' }}>BeeTagged</h1>
-      <p>Contact Management Simplified</p>
+      <p>Contact. Search</p>
       
       <img 
         src="/images/beelogo-actual.svg" 

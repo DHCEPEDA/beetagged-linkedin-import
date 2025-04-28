@@ -6,10 +6,10 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Get MongoDB connection URI from environment variables
-    const dbUri = process.env.MONGO_URI || 'mongodb://localhost:27017/beetagger';
+    const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/beetagger';
     
     // For development without a real MongoDB, create a mock connection
-    if (process.env.NODE_ENV === 'development' && !process.env.MONGO_URI) {
+    if (process.env.NODE_ENV === 'development' && !process.env.MONGODB_URI && !process.env.MONGO_URI) {
       console.log('No MongoDB URI provided. Running in mock mode...');
       mongoose.connection.db = {
         collection: () => ({
