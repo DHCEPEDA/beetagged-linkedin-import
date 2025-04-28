@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: './src/index.js',
@@ -21,6 +22,10 @@ module.exports = {
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,
+        type: 'asset/resource',
       }
     ]
   },
@@ -44,13 +49,32 @@ module.exports = {
       // Define environment variables for client-side access
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
       'process.env.FACEBOOK_APP_ID': JSON.stringify('123456789012345')
-    })
+    }),
+    new CopyPlugin({
+      patterns: [
+        { 
+          from: 'public/images', 
+          to: 'images' 
+        },
+        { 
+          from: 'public/test.html', 
+          to: 'test.html' 
+        }
+      ],
+    }),
   ],
   devServer: {
     historyApiFallback: true,
-    static: {
-      directory: path.join(__dirname, 'dist'),
-    },
+    static: [
+      {
+        directory: path.join(__dirname, 'public'),
+        publicPath: '/'
+      },
+      {
+        directory: path.join(__dirname, 'dist'),
+        publicPath: '/'
+      }
+    ],
     port: 5000,
     proxy: [
       {

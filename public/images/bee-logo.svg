@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Bee Logo</title>
+    <defs>
+        <radialGradient id="yellowGradient" cx="50%" cy="50%" r="70%" fx="50%" fy="50%">
+            <stop offset="0%" style="stop-color:#FFD54F;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#FFC107;stop-opacity:1" />
+        </radialGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000033" />
+        </filter>
+    </defs>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Wings -->
+        <ellipse fill="#E1E1E1" opacity="0.7" cx="70" cy="75" rx="40" ry="25" transform="rotate(-15 70 75)" filter="url(#shadow)"></ellipse>
+        <ellipse fill="#E1E1E1" opacity="0.7" cx="130" cy="75" rx="40" ry="25" transform="rotate(15 130 75)" filter="url(#shadow)"></ellipse>
+        
+        <!-- Body -->
+        <ellipse fill="url(#yellowGradient)" cx="100" cy="110" rx="55" ry="48" filter="url(#shadow)"></ellipse>
+        
+        <!-- Stripes -->
+        <rect fill="#212121" x="70" y="95" width="60" height="10" rx="5"></rect>
+        <rect fill="#212121" x="70" y="115" width="60" height="10" rx="5"></rect>
+        <rect fill="#212121" x="70" y="135" width="60" height="10" rx="5"></rect>
+        
+        <!-- Head -->
+        <circle fill="#212121" cx="100" cy="65" r="25" filter="url(#shadow)"></circle>
+        
+        <!-- Eyes -->
+        <circle fill="white" cx="88" cy="60" r="9"></circle>
+        <circle fill="white" cx="112" cy="60" r="9"></circle>
+        <circle fill="#212121" cx="88" cy="60" r="4"></circle>
+        <circle fill="#212121" cx="112" cy="60" r="4"></circle>
+        
+        <!-- Antenna -->
+        <path d="M90,50 C85,35 78,25 72,20" stroke="#212121" stroke-width="3" stroke-linecap="round"></path>
+        <path d="M110,50 C115,35 122,25 128,20" stroke="#212121" stroke-width="3" stroke-linecap="round"></path>
+        <circle fill="#212121" cx="72" cy="20" r="4"></circle>
+        <circle fill="#212121" cx="128" cy="20" r="4"></circle>
+        
+        <!-- Smile -->
+        <path d="M88,75 C88,82 112,82 112,75" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"></path>
+        
+        <!-- Stinger -->
+        <path d="M100,158 L100,168" stroke="#212121" stroke-width="3" stroke-linecap="round"></path>
+        
+        <!-- Legs -->
+        <path d="M70,125 C65,135 55,140 45,138" stroke="#212121" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M70,115 C60,120 55,130 50,140" stroke="#212121" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M130,125 C135,135 145,140 155,138" stroke="#212121" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M130,115 C140,120 145,130 150,140" stroke="#212121" stroke-width="2" stroke-linecap="round"></path>
+    </g>
+</svg>

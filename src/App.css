@@ -1,0 +1,75 @@
+/* BeeTagger App Styles */
+
+/* Color variables */
+:root {
+  --bee-yellow: #FFC107;
+  --bee-dark: #212121;
+  --bee-light: #F8F9FA;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Bee logo floating animation */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.bee-logo {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Facebook login button styling */
+.facebook-login-btn {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.facebook-login-btn:hover {
+  transform: translateY(3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Override Bootstrap colors */
+.btn-warning {
+  background-color: var(--bee-yellow);
+  border-color: var(--bee-yellow);
+}
+
+.btn-warning:hover {
+  background-color: #e6ac00;
+  border-color: #e6ac00;
+}
+
+.bg-warning {
+  background-color: var(--bee-yellow) !important;
+}
+
+/* Card styling */
+.card {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Navigation styling */
+.navbar-brand {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .bee-logo-container {
+    margin-bottom: 1rem;
+  }
+}
