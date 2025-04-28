@@ -77,6 +77,11 @@
 <body>
   <div id="root"></div>
   
+  <!-- Inject environment variables from server -->
+  <script>
+    window.FACEBOOK_APP_ID = '<%= process.env.FACEBOOK_APP_ID %>';
+  </script>
+
   <!-- App Configuration -->
   <script src="/app-config.js"></script>
   

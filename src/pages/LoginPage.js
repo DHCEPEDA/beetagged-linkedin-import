@@ -42,7 +42,7 @@ const LoginPage = () => {
         <div className="login-content">
           <div className="login-header">
             <div className="login-logo">
-              <img src="/images/diago-bee.svg" alt="BeeTagged Logo" />
+              <img src="/images/beelogo-actual.svg" alt="BeeTagged Logo" />
             </div>
             <h1 className="login-title">BeeTagged</h1>
             <p className="login-subtitle">

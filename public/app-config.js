@@ -29,7 +29,7 @@ const AppConfig = {
   socialNetworks: {
     facebook: {
       enabled: true,
-      appId: "123456789012345" // Will be replaced with actual ID from environment
+      appId: window.FACEBOOK_APP_ID || '' // Will be filled from environment variables
     },
     linkedin: {
       enabled: false // Not implemented yet
