@@ -29,7 +29,8 @@ const AppConfig = {
   socialNetworks: {
     facebook: {
       enabled: true,
-      appId: window.FACEBOOK_APP_ID || '123456789012345' // Fallback to placeholder for development
+      // Set directly from the server or via HTML template
+      appId: window.FACEBOOK_APP_ID || ''
     },
     linkedin: {
       enabled: false // Not implemented yet

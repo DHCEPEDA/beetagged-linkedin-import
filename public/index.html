@@ -86,7 +86,8 @@
   
   <!-- Facebook App ID -->
   <script>
-    window.FACEBOOK_APP_ID = '';  // Will be set by server
+    // This is set directly from environment variables at build time
+    window.FACEBOOK_APP_ID = '123456789012345';  // Will be replaced with real ID by webpack
   </script>
 
   <!-- App Configuration -->
@@ -97,5 +98,8 @@
   
   <!-- Bootstrap Bundle with Popper -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Bundle should be at the end of the body -->
+  <script src="/bundle.js"></script>
 </body>
 </html>
