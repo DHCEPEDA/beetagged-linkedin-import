@@ -14,7 +14,7 @@ const TestPage = () => {
       <h1>BeeTagged Test Page</h1>
       <p>If you can see this, React is rendering correctly!</p>
       <img 
-        src="/images/diago-bee.svg" 
+        src="/images/diagobee-custom.svg" 
         alt="BeeTagged Logo" 
         style={floatingStyle}
       />
