@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Simple Facebook Integration</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      background: linear-gradient(to right, #FD9E31, #FFEC16);
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+    }
+    header img {
+      height: 50px;
+      margin-right: 15px;
+    }
+    header h1 {
+      margin: 0;
+      color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-top: 0;
+      color: #FD9E31;
+    }
+    button {
+      background-color: #1877F2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px 0;
+    }
+    button:hover {
+      background-color: #166FE5;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    button.bee-btn {
+      background-color: #FD9E31;
+    }
+    button.bee-btn:hover {
+      background-color: #e88c20;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      font-size: 14px;
+    }
+    #status {
+      margin-top: 15px;
+    }
+    .status-box {
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="images/beelogo-actual.svg" alt="BeeTagged Logo">
+    <h1>BeeTagged</h1>
+  </header>
+
+  <div class="card">
+    <h2>Facebook Integration Test</h2>
+    <p>This page tests the Facebook Login integration for BeeTagged. It uses the Facebook JavaScript SDK directly.</p>
+    
+    <div>
+      <button id="initSDK">1. Initialize Facebook SDK</button>
+      <button id="checkStatus" disabled>2. Check Login Status</button>
+      <button id="fbLogin" disabled>3. Login with Facebook</button>
+      <button id="getUserInfo" disabled>4. Get User Info</button>
+      <button id="getFriends" disabled>5. Get Friends List</button>
+      <button id="logOut" disabled>Log Out</button>
+    </div>
+    
+    <div id="status">
+      <p>Click "Initialize Facebook SDK" to begin...</p>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Configuration Information</h2>
+    <p>Current domain: <strong id="currentDomain"></strong></p>
+    <p>Facebook App ID: <strong id="fbAppId">1222790436230433</strong></p>
+    <p>API Version: <strong>v18.0</strong></p>
+  </div>
+
+  <div class="card">
+    <h2>Troubleshooting</h2>
+    <p>If you receive a "JSSDK Unknown Host domain" error, make sure to:</p>
+    <ol>
+      <li>Go to <a href="https://developers.facebook.com/apps/" target="_blank">Facebook Developers</a></li>
+      <li>Select your app with ID: <span id="troubleshootingAppId">1222790436230433</span></li>
+      <li>Go to Settings > Basic and add <strong id="troubleshootingDomain"></strong> to "App Domains"</li>
+      <li>Go to Facebook Login > Settings and add <strong id="troubleshootingDomain2"></strong> to "Allowed Domains for the JavaScript SDK"</li>
+      <li>Make sure "Login with the JavaScript SDK" is enabled under "Use Cases"</li>
+    </ol>
+  </div>
+
+  <script>
+    // Update domain information
+    document.getElementById('currentDomain').textContent = window.location.hostname;
+    document.getElementById('troubleshootingDomain').textContent = window.location.hostname;
+    document.getElementById('troubleshootingDomain2').textContent = window.location.hostname;
+    
+    // Facebook App ID
+    const FB_APP_ID = document.getElementById('fbAppId').textContent;
+    document.getElementById('troubleshootingAppId').textContent = FB_APP_ID;
+    
+    // Status display helper
+    const statusDiv = document.getElementById('status');
+    function updateStatus(message, type = 'info') {
+      const statusBox = document.createElement('div');
+      statusBox.className = `status-box ${type}`;
+      statusBox.innerHTML = message;
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(statusBox);
+    }
+    
+    // Log helper
+    function logJson(label, data) {
+      updateStatus(`<strong>${label}:</strong><pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+    }
+    
+    // Initialize SDK button
+    document.getElementById('initSDK').addEventListener('click', function() {
+      updateStatus('Initializing Facebook SDK...', 'info');
+      
+      // Load the Facebook SDK asynchronously
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: FB_APP_ID,
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+        
+        updateStatus('Facebook SDK initialized successfully!', 'success');
+        document.getElementById('checkStatus').disabled = false;
+        document.getElementById('fbLogin').disabled = false;
+      };
+      
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        js.onerror = function() {
+          updateStatus('Error loading Facebook SDK. Check your internet connection and domain settings.', 'error');
+        };
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    });
+    
+    // Check login status button
+    document.getElementById('checkStatus').addEventListener('click', function() {
+      updateStatus('Checking login status...', 'info');
+      
+      FB.getLoginStatus(function(response) {
+        logJson('Login Status', response);
+        
+        if (response.status === 'connected') {
+          updateStatus('You are logged in and have authorized the app!', 'success');
+          document.getElementById('getUserInfo').disabled = false;
+          document.getElementById('getFriends').disabled = false;
+          document.getElementById('logOut').disabled = false;
+        } else {
+          updateStatus('You are not fully logged in. Please click "Login with Facebook"', 'info');
+        }
+      });
+    });
+    
+    // Login button
+    document.getElementById('fbLogin').addEventListener('click', function() {
+      updateStatus('Attempting to log in...', 'info');
+      
+      FB.login(function(response) {
+        logJson('Login Response', response);
+        
+        if (response.status === 'connected') {
+          updateStatus('Login successful!', 'success');
+          document.getElementById('getUserInfo').disabled = false;
+          document.getElementById('getFriends').disabled = false;
+          document.getElementById('logOut').disabled = false;
+        } else {
+          updateStatus('Login failed or was cancelled by the user.', 'error');
+        }
+      }, {scope: 'public_profile,email,user_friends'});
+    });
+    
+    // Get user info button
+    document.getElementById('getUserInfo').addEventListener('click', function() {
+      updateStatus('Fetching user information...', 'info');
+      
+      FB.api('/me', {fields: 'id,name,email,picture'}, function(response) {
+        if (!response || response.error) {
+          updateStatus('Error fetching user data: ' + (response.error ? response.error.message : 'Unknown error'), 'error');
+          return;
+        }
+        
+        logJson('User Info', response);
+      });
+    });
+    
+    // Get friends button
+    document.getElementById('getFriends').addEventListener('click', function() {
+      updateStatus('Fetching friends list...', 'info');
+      
+      FB.api('/me/friends', function(response) {
+        if (!response || response.error) {
+          updateStatus('Error fetching friends: ' + (response.error ? response.error.message : 'Unknown error'), 'error');
+          return;
+        }
+        
+        if (response.data.length === 0) {
+          updateStatus('No friends found who use this app. Note: Facebook only returns friends who have also authorized your app.', 'info');
+        } else {
+          logJson('Friends List', response);
+        }
+      });
+    });
+    
+    // Logout button
+    document.getElementById('logOut').addEventListener('click', function() {
+      updateStatus('Logging out...', 'info');
+      
+      FB.logout(function(response) {
+        updateStatus('Logged out successfully!', 'success');
+        document.getElementById('getUserInfo').disabled = true;
+        document.getElementById('getFriends').disabled = true;
+        document.getElementById('logOut').disabled = true;
+      });
+    });
+  </script>
+</body>
+</html>

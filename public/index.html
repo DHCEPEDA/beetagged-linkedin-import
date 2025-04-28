@@ -3,103 +3,338 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BeeTagged - Contact Management</title>
-  
-  <!-- Favicon -->
-  <link rel="icon" href="/images/beelogo-actual.svg" type="image/svg+xml">
-  
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Bootstrap CSS -->
+  <title>BeeTagged - Contact Management Platform</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <meta name="description" content="BeeTagged - Manage and tag your contacts across social networks">
-  
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      background-color: #f5f5f5;
-    }
     :root {
-      --primary: #FFC107; /* Bee yellow */
-      --primary-dark: #FFA000;
-      --secondary: #333333;
-      --dark: #212121;
-      --light: #F8F9FA;
-      --spacing-xs: 4px;
-      --spacing-sm: 8px;
-      --spacing-md: 16px;
-      --spacing-lg: 24px;
-      --spacing-xl: 32px;
-    }
-    .btn-primary {
-      background-color: var(--primary);
-      border-color: var(--primary);
-      color: var(--dark);
-    }
-    .btn-primary:hover {
-      background-color: var(--primary-dark);
-      border-color: var(--primary-dark);
-      color: var(--dark);
-    }
-    .bg-primary {
-      background-color: var(--primary) !important;
-    }
-    .text-primary {
-      color: var(--primary) !important;
+      --bee-yellow: #FFEC16;
+      --bee-gold: #FD9E31;
     }
     
-    /* Bee logo floating animation */
-    @keyframes float {
-      0% {
-        transform: translateY(0px);
-      }
-      50% {
-        transform: translateY(-10px);
-      }
-      100% {
-        transform: translateY(0px);
-      }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
     }
     
-    .floating {
-      animation: float 3s ease-in-out infinite;
+    .hero {
+      background: linear-gradient(135deg, var(--bee-gold), var(--bee-yellow));
+      color: white;
+      padding: 80px 0;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .app-section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    
+    .section-header {
+      color: var(--bee-gold);
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    
+    .feature-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: transform 0.3s;
+      height: 100%;
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .feature-icon {
+      font-size: 2rem;
+      color: var(--bee-gold);
+      margin-bottom: 15px;
+    }
+    
+    .fb-btn {
+      background-color: #1877F2;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background-color 0.2s;
+    }
+    
+    .fb-btn:hover {
+      background-color: #1669E2;
+      color: white;
+    }
+    
+    .bee-btn {
+      background: linear-gradient(to right, var(--bee-gold), var(--bee-yellow));
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+    
+    .bee-btn:hover {
+      opacity: 0.9;
+      color: white;
+    }
+    
+    .status-box {
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      display: none;
+    }
+    
+    .status-success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .logo {
+      height: 50px;
     }
   </style>
 </head>
 <body>
-  <!-- React root element -->
-  <div id="root">
-    <!-- Fallback content that will show while React is loading -->
-    <div style="text-align: center; padding: 20px;">
-      <h2>Loading BeeTagged...</h2>
-      <img src="/images/beelogo-actual.svg" alt="BeeTagged Logo" style="width: 150px; height: 150px; margin: 20px auto; animation: float 3s ease-in-out infinite;">
+  <!-- Nav -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container">
+      <div class="logo-container">
+        <img src="images/beelogo-actual.svg" alt="BeeTagged Logo" class="logo">
+        <a class="navbar-brand" href="#">BeeTagged</a>
+      </div>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#features">Features</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#login">Login</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/facebook-simple.html">Facebook Test</a>
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
-  
-  <!-- Facebook App ID -->
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container text-center">
+      <h1 class="display-4">Welcome to BeeTagged</h1>
+      <p class="lead">Streamline your professional networking with intelligent contact management</p>
+      <a href="#login" class="btn bee-btn btn-lg mt-3">Get Started</a>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section id="features" class="py-5">
+    <div class="container">
+      <div class="app-section">
+        <h2 class="section-header text-center mb-5">Key Features</h2>
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="feature-card">
+              <div class="feature-icon">📱</div>
+              <h5>Social Integration</h5>
+              <p>Connect your LinkedIn and Facebook accounts to automatically map your phone contacts to your social connections.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-card">
+              <div class="feature-icon">🏷️</div>
+              <h5>Smart Tagging</h5>
+              <p>Categorize your contacts using tags to quickly find people with similar interests or professional backgrounds.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-card">
+              <div class="feature-icon">👥</div>
+              <h5>Affinity Groups</h5>
+              <p>Create groups based on tags to easily manage and communicate with people who share common interests.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-card">
+              <div class="feature-icon">🔍</div>
+              <h5>Advanced Search</h5>
+              <p>Quickly find the right contacts using multiple search criteria including tags, location, and company.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-card">
+              <div class="feature-icon">💼</div>
+              <h5>Career Networking</h5>
+              <p>Identify connections who can help with career opportunities or introductions to key people in your industry.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-card">
+              <div class="feature-icon">📊</div>
+              <h5>Network Insights</h5>
+              <p>Visualize and understand your professional network with helpful analytics and suggestions.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Login Section -->
+  <section id="login" class="py-5 bg-light">
+    <div class="container">
+      <div class="app-section">
+        <div class="row">
+          <div class="col-md-6">
+            <h2 class="section-header">Login to BeeTagged</h2>
+            <p>Sign in to access your contacts, tags, and groups. Use your Facebook account for quick login.</p>
+            
+            <div class="mt-4">
+              <button id="fbLoginBtn" class="btn fb-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9.19795 21.5H13.198V13.4901H16.8021L17.198 9.50977H13.198V7.5C13.198 6.94772 13.6457 6.5 14.198 6.5H17.198V2.5H14.198C11.4365 2.5 9.19795 4.73858 9.19795 7.5V9.50977H7.19795L6.80206 13.4901H9.19795V21.5Z"/>
+                </svg>
+                Continue with Facebook
+              </button>
+              <div id="statusBox" class="status-box"></div>
+            </div>
+            
+            <p class="mt-4">Don't have an account? <a href="#">Register Now</a></p>
+          </div>
+          <div class="col-md-6">
+            <img src="images/diago-bee.svg" alt="BeeTagged Illustration" class="img-fluid">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white py-4">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="logo-container">
+            <img src="images/beelogo-actual.svg" alt="BeeTagged Logo" class="logo">
+            <h5 class="mb-0">BeeTagged</h5>
+          </div>
+          <p class="mt-2">Professional Contact Management Platform</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p>&copy; 2025 BeeTagged. All rights reserved.</p>
+          <div>
+            <a href="#" class="text-white me-3">Terms of Service</a>
+            <a href="#" class="text-white me-3">Privacy Policy</a>
+            <a href="#" class="text-white">Contact Us</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Facebook SDK Integration -->
   <script>
-    // Will be filled in by the server when the page loads
-    window.FACEBOOK_APP_ID = '';
+    // Facebook App ID
+    const FACEBOOK_APP_ID = '1222790436230433';
+    
+    // Facebook SDK initialization
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId: FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0'
+      });
+      
+      FB.getLoginStatus(function(response) {
+        console.log('FB login status:', response);
+        if (response.status === 'connected') {
+          showLoginSuccess(response);
+        }
+      });
+    };
+    
+    // Load Facebook SDK
+    (function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+    
+    // Facebook login button
+    document.getElementById('fbLoginBtn').addEventListener('click', function() {
+      FB.login(function(response) {
+        console.log('FB login response:', response);
+        if (response.status === 'connected') {
+          showLoginSuccess(response);
+        } else {
+          showLoginError('Login cancelled or failed');
+        }
+      }, {scope: 'public_profile,email,user_friends'});
+    });
+    
+    // Show login success
+    function showLoginSuccess(response) {
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = 'status-box status-success';
+      statusBox.style.display = 'block';
+      
+      FB.api('/me', {fields: 'name,email,picture'}, function(userData) {
+        console.log('User data:', userData);
+        
+        statusBox.innerHTML = `
+          <h5>Login Successful!</h5>
+          <p>Welcome, ${userData.name || 'User'}!</p>
+          <p>User ID: ${userData.id || 'Unknown'}</p>
+          <p>Email: ${userData.email || 'Not available'}</p>
+          ${userData.picture ? `<img src="${userData.picture.data.url}" alt="Profile" width="50" height="50" style="border-radius:50%">` : ''}
+          <div class="mt-3">
+            <a href="/facebook-simple.html" class="btn bee-btn btn-sm">Continue to Test Page</a>
+          </div>
+        `;
+      });
+    }
+    
+    // Show login error
+    function showLoginError(message) {
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = 'status-box status-error';
+      statusBox.style.display = 'block';
+      statusBox.innerHTML = `<h5>Error</h5><p>${message}</p>`;
+    }
   </script>
 
-  <!-- App Configuration -->
-  <script src="/app-config.js"></script>
-  
-  <!-- Facebook SDK will be initialized from the React components -->
-  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-  
-  <!-- Bootstrap Bundle with Popper -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-  
-  <!-- Bundle should be at the end of the body -->
-  <script src="/bundle.js"></script>
 </body>
 </html>
