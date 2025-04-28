@@ -14,7 +14,7 @@ const AppConfig = {
     secondaryColor: "#212121", // Dark gray
     accentColor: "#FFEC16", // yellowBeeColor - the lighter color of the bee icon
     backgroundColor: "#ECF0F1", // cloudsColor - light gray for backgrounds
-    logoPath: "/images/diagobee-custom.svg"
+    logoPath: "/images/beelogo-actual.svg"
   },
   
   // Features configuration
