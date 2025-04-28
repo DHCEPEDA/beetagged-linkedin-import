@@ -21,7 +21,7 @@ const connectDB = require('./config/db');
 
 // Initialize app
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 
 // Connect to database
 connectDB();

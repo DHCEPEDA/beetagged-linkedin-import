@@ -103,7 +103,7 @@ module.exports = {
         publicPath: '/'
       }
     ],
-    port: 5000,
+    port: 3000,
     host: '0.0.0.0',
     allowedHosts: 'all',
     headers: {
@@ -112,7 +112,7 @@ module.exports = {
     proxy: [
       {
         context: ['/api'],
-        target: 'http://localhost:8000'
+        target: 'http://localhost:5000'
       }
     ]
   }
