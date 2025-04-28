@@ -1,26 +1,24 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
+import MinimalApp from './MinimalApp';
 
 // For debugging
-console.log("React is loading...");
+console.log("Minimal React app is loading...");
 console.log("Root element exists:", document.getElementById('root') !== null);
 
 // Create root using the React 18 API
 const container = document.getElementById('root');
 if (container) {
+  console.log("Root container found, rendering minimal app");
   const root = createRoot(container);
 
-  // Render our App component with proper routing
+  // Render our minimal component without routing or other complexities
   root.render(
     <React.StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <MinimalApp />
     </React.StrictMode>
   );
-  console.log("React app rendered");
+  console.log("Minimal React app rendered");
 } else {
   console.error("Root element not found! Cannot mount React application.");
   // Create a backup element if root doesn't exist
