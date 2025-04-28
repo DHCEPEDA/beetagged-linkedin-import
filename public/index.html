@@ -75,7 +75,14 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <!-- React root element -->
+  <div id="root">
+    <!-- Fallback content that will show while React is loading -->
+    <div style="text-align: center; padding: 20px;">
+      <h2>Loading BeeTagged...</h2>
+      <img src="/images/beelogo-actual.svg" alt="BeeTagged Logo" style="width: 150px; height: 150px; margin: 20px auto; animation: float 3s ease-in-out infinite;">
+    </div>
+  </div>
   
   <!-- Facebook App ID -->
   <script>
