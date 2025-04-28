@@ -198,6 +198,11 @@ app.use('/api/config', configRoutes);
 // Serve static assets
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Direct access route
+app.get('/direct', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'direct-access.html'));
+});
+
 // Serve the React app - all other routes go to index.html
 app.get('*', (req, res) => {
   res.render('index', { 
