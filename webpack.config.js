@@ -92,6 +92,11 @@ module.exports = {
       }
     ],
     port: 5000,
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    },
     proxy: [
       {
         context: ['/api'],

@@ -29,7 +29,7 @@ const AppConfig = {
   socialNetworks: {
     facebook: {
       enabled: true,
-      appId: process.env.FACEBOOK_APP_ID || "123456789012345"
+      appId: "123456789012345" // Will be replaced with actual ID from environment
     },
     linkedin: {
       enabled: false // Not implemented yet
@@ -48,13 +48,10 @@ const AppConfig = {
   
   // Debug settings
   debug: {
-    enabled: process.env.NODE_ENV !== "production",
+    enabled: true,
     logLevel: "info" // "debug", "info", "warn", "error"
   }
 };
 
 // Make the configuration available globally
 window.AppConfig = AppConfig;
-
-// Export for module usage
-export default AppConfig;
