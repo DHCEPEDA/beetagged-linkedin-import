@@ -12,10 +12,21 @@ const FacebookLoginButton = ({ onLogin }) => {
 
   // Initialize Facebook SDK
   useEffect(() => {
-    const loadFacebookSDK = () => {
+    // Initialize Facebook SDK when it's loaded
+    if (window.FB) {
+      window.FB.init({
+        appId: '123456789012345', // This will be replaced with your actual app ID
+        cookie: true,
+        xfbml: true,
+        version: 'v16.0'
+      });
+      
+      setIsSdkLoaded(true);
+    } else {
+      // If FB SDK is not loaded yet, set up a callback
       window.fbAsyncInit = function() {
         window.FB.init({
-          appId: process.env.REACT_APP_FACEBOOK_APP_ID || process.env.FACEBOOK_APP_ID,
+          appId: '123456789012345', // This will be replaced with your actual app ID
           cookie: true,
           xfbml: true,
           version: 'v16.0'
@@ -23,27 +34,7 @@ const FacebookLoginButton = ({ onLogin }) => {
         
         setIsSdkLoaded(true);
       };
-      
-      // Load the SDK asynchronously
-      (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-      }(document, 'script', 'facebook-jssdk'));
-    };
-    
-    loadFacebookSDK();
-    
-    // Cleanup function
-    return () => {
-      // Remove the script tag if component unmounts
-      const facebookScriptTag = document.getElementById('facebook-jssdk');
-      if (facebookScriptTag) {
-        facebookScriptTag.parentNode.removeChild(facebookScriptTag);
-      }
-    };
+    }
   }, []);
 
   const handleFacebookLogin = async () => {
