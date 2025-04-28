@@ -29,7 +29,7 @@ const AppConfig = {
   socialNetworks: {
     facebook: {
       enabled: true,
-      appId: process.env.FACEBOOK_APP_ID || '' // Access via webpack environment injection
+      appId: window.FACEBOOK_APP_ID || '123456789012345' // Fallback to placeholder for development
     },
     linkedin: {
       enabled: false // Not implemented yet

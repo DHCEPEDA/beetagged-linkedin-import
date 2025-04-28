@@ -61,6 +61,10 @@ module.exports = {
           to: 'test.html' 
         },
         { 
+          from: 'public/test-plain.html', 
+          to: 'test-plain.html' 
+        },
+        { 
           from: 'public/converter.html', 
           to: 'converter.html' 
         },
