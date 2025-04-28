@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="3401" systemVersion="13A603" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+    <entity name="Contact" representedClassName="Contact" syncable="YES">
+        <attribute name="bio" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="birthday" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="educationData" optional="YES" attributeType="Binary" syncable="YES"/>
+        <attribute name="email" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="fbId" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="first_name" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="gender" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="groupByLastName" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="hasGeneratedTags" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="headline" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="hometown" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="industry" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="last_name" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="linkedInUrl" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="locationName" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="parseId" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="pictureUrl" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="positionIndustry" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="positionIsCurrent" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="positionName" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="positionSize" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="positionSummary" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="positionTitle" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="relationshipStatus" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="tagData" optional="YES" attributeType="Binary" syncable="YES"/>
+        <attribute name="workData" optional="YES" attributeType="Binary" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="Contact" positionX="0" positionY="0" width="0" height="0"/>
+    </elements>
+</model>

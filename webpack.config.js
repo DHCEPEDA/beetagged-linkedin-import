@@ -67,6 +67,14 @@ module.exports = {
         { 
           from: 'public/debug.html', 
           to: 'debug.html' 
+        },
+        { 
+          from: 'public/app-config.js', 
+          to: 'app-config.js' 
+        },
+        { 
+          from: 'public/check-react.html', 
+          to: 'check-react.html' 
         }
       ],
     }),
