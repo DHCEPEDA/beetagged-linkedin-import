@@ -57,6 +57,136 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Direct Facebook test endpoint
+app.get('/fb-test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>BeeTagged - Facebook Test</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+        body {
+          background-color: #f8f9fa;
+          font-family: Arial, sans-serif;
+          padding: 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          padding: 20px;
+        }
+        .fb-button {
+          background-color: #1877F2;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 10px 20px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          width: 100%;
+          margin: 20px 0;
+        }
+        .status {
+          margin-top: 20px;
+          padding: 15px;
+          border-radius: 4px;
+          display: none;
+        }
+        .success {
+          background-color: #d4edda;
+          color: #155724;
+        }
+        .error {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container text-center">
+        <h1 style="color: #FD9E31;">BeeTagged</h1>
+        <p>Facebook Login Test</p>
+        
+        <div>
+          <button id="loginBtn" class="fb-button">
+            Continue with Facebook
+          </button>
+          
+          <div id="statusBox" class="status"></div>
+        </div>
+      </div>
+
+      <script>
+        // Facebook App ID directly from server environment
+        const FACEBOOK_APP_ID = '${process.env.FACEBOOK_APP_ID || "1222790436230433"}';
+        
+        window.fbAsyncInit = function() {
+          FB.init({
+            appId: FACEBOOK_APP_ID,
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+          });
+          
+          FB.getLoginStatus(function(response) {
+            console.log('FB status:', response);
+            if (response.status === 'connected') {
+              showSuccess(response);
+            }
+          });
+        };
+        
+        (function(d, s, id) {
+          var js, fjs = d.getElementsByTagName(s)[0];
+          if (d.getElementById(id)) return;
+          js = d.createElement(s); js.id = id;
+          js.src = "https://connect.facebook.net/en_US/sdk.js";
+          fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+        
+        document.getElementById('loginBtn').addEventListener('click', function() {
+          FB.login(function(response) {
+            console.log('Login response:', response);
+            if (response.status === 'connected') {
+              showSuccess(response);
+            } else {
+              showError('Login cancelled or failed');
+            }
+          }, {scope: 'public_profile,email'});
+        });
+        
+        function showSuccess(response) {
+          const statusBox = document.getElementById('statusBox');
+          statusBox.className = 'status success';
+          statusBox.style.display = 'block';
+          
+          FB.api('/me', {fields: 'name,email'}, function(userData) {
+            statusBox.innerHTML = '<h4>Login Successful!</h4>' +
+              '<p>Welcome, ' + userData.name + '!</p>' +
+              '<p>User ID: ' + userData.id + '</p>' +
+              '<p>Email: ' + (userData.email || 'Not available') + '</p>';
+          });
+        }
+        
+        function showError(message) {
+          const statusBox = document.getElementById('statusBox');
+          statusBox.className = 'status error';
+          statusBox.style.display = 'block';
+          statusBox.innerHTML = '<h4>Error</h4><p>' + message + '</p>';
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Set up routes
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
