@@ -59,6 +59,14 @@ module.exports = {
         { 
           from: 'public/test.html', 
           to: 'test.html' 
+        },
+        { 
+          from: 'public/converter.html', 
+          to: 'converter.html' 
+        },
+        { 
+          from: 'public/debug.html', 
+          to: 'debug.html' 
         }
       ],
     }),

@@ -35,6 +35,27 @@ app.engine('html', ejs.renderFile);
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, '..', 'public'));
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+  let dbStatusText = 'unknown';
+  switch(dbStatus) {
+    case 0: dbStatusText = 'disconnected'; break;
+    case 1: dbStatusText = 'connected'; break;
+    case 2: dbStatusText = 'connecting'; break;
+    case 3: dbStatusText = 'disconnecting'; break;
+  }
+  
+  res.json({
+    status: 'running',
+    dbStatus: dbStatusText,
+    mockMode: dbStatus !== 1,
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV
+  });
+});
+
 // Set up routes
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);

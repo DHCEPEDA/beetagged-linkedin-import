@@ -77,7 +77,7 @@ const SimpleAuthPage = () => (
               {/* Bee Logo Above Facebook Login */}
               <div className="bee-logo-container mb-3">
                 <img 
-                  src="/images/bee-logo.svg" 
+                  src="/images/diago-bee.svg" 
                   alt="BeeTagger Logo" 
                   className="bee-logo"
                   style={{ 
@@ -104,7 +104,7 @@ const SimpleAuthPage = () => (
           <div className="card-body p-4 d-flex flex-column justify-content-center">
             <div className="text-center mb-4">
               <img 
-                src="/images/bee-logo.svg" 
+                src="/images/diago-bee.svg" 
                 alt="BeeTagger" 
                 style={{ width: '100px', height: '100px' }} 
               />
@@ -135,7 +135,7 @@ const HomePage = () => (
   <div className="container mt-5">
     <div className="text-center mb-5">
       <img 
-        src="/images/bee-logo.svg" 
+        src="/images/diago-bee.svg" 
         alt="BeeTagger Logo" 
         style={{ width: '150px', height: '150px' }} 
         className="mb-4"
@@ -164,7 +164,7 @@ const App = () => {
         <div className="container">
           <a className="navbar-brand" href="/">
             <img 
-              src="/images/bee-logo.svg" 
+              src="/images/diago-bee.svg" 
               alt="BeeTagger" 
               style={{ width: '30px', height: '30px', marginRight: '10px' }} 
             />
