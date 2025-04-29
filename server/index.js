@@ -23,7 +23,8 @@ const connectDB = require('./config/db');
 
 // Initialize app
 const app = express();
-const PORT = process.env.PORT || 5000;
+// Force port 5000 which is the port Replit expects
+const PORT = 5000;
 
 // Connect to database
 connectDB();
@@ -197,24 +198,50 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/config', configRoutes);
 
-// Serve static assets
+// Serve static assets from public and dist
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'dist')));
+
+// Direct access route for app.html
+app.get('/app.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'app.html'));
+});
+
+// Route to serve the app-config.js file
+app.get('/app-config.js', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'app-config.js'));
+});
 
 // Direct access route
 app.get('/direct', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'direct-access.html'));
 });
 
+// Special route for Facebook diagnostic tools
+app.get('/facebook-diagnostic.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'facebook-diagnostic.html'));
+});
+
+app.get('/server-auth.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'server-auth.html'));
+});
+
 // Serve the React app - all other routes go to index.html
 app.get('*', (req, res) => {
-  res.render('index', { 
-    process: {
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID,
-        // Add other environment variables you want to expose to the client
-      }
-    } 
+  // First try to serve the index.html directly
+  const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+  res.sendFile(indexPath, err => {
+    if (err) {
+      // Fall back to rendering with EJS if direct file sending fails
+      res.render('index', { 
+        process: {
+          env: {
+            NODE_ENV: process.env.NODE_ENV,
+            FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID || '1222790436230433',
+          }
+        } 
+      });
+    }
   });
 });
 

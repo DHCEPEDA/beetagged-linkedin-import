@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimal React Test</title>
+</head>
+<body>
+  <div id="minimal-root"></div>
+
+  <!-- React and ReactDOM -->
+  <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Inline React component -->
+  <script type="text/babel">
+    const MinimalApp = () => {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h1 style={{ color: '#FD9E31' }}>BeeTagged Minimal Test</h1>
+          <p>This is a minimal React app to test rendering</p>
+          <img 
+            src="/images/beelogo-actual.svg" 
+            alt="BeeTagged Logo" 
+            style={{ width: '150px', height: '150px', margin: '20px auto' }}
+          />
+          <p>If you can see this, React is working correctly!</p>
+          <p><a href="/">Back to main app</a></p>
+        </div>
+      );
+    };
+
+    // Use React 18 createRoot API
+    const root = ReactDOM.createRoot(document.getElementById('minimal-root'));
+    root.render(<MinimalApp />);
+  </script>
+</body>
+</html>

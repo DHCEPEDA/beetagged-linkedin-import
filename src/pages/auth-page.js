@@ -77,8 +77,28 @@ const AuthPage = () => {
         </div>
       </div>
       
-      <div className="auth-container">
-        <div className="auth-form">
+      {/* Orange hero section at the top - for all screens */}
+      <div className="auth-hero-section" style={{
+        background: 'linear-gradient(135deg, var(--bee-gold), var(--bee-yellow))',
+        padding: '40px 20px',
+        color: 'white',
+        textAlign: 'center',
+        marginBottom: '20px'
+      }}>
+        <img 
+          src="/images/diago-bee.svg" 
+          alt="BeeTagged Mascot" 
+          style={{ maxWidth: '120px', marginBottom: '10px' }}
+        />
+        <h2>Organize Your Network</h2>
+        <p>
+          BeeTagged helps you manage your contacts with intelligent 
+          tagging and social network integration.
+        </p>
+      </div>
+      
+      <div className="auth-container" style={{ flexDirection: 'column' }}>
+        <div className="auth-form" style={{ maxWidth: '500px', margin: '0 auto', width: '100%' }}>
           <h2>{isLogin ? 'Login to Your Account' : 'Create an Account'}</h2>
           <p>Welcome to BeeTagged, your personal contact management platform.</p>
           
@@ -182,16 +202,6 @@ const AuthPage = () => {
               </button>
             </div>
           </div>
-        </div>
-        
-        <div className="auth-hero">
-          <img src="/images/diago-bee.svg" alt="BeeTagged Mascot" />
-          <h2>Organize Your Network</h2>
-          <p>
-            BeeTagged helps you manage your professional contacts with intelligent 
-            tagging and social network integration. Connect with the right people 
-            at the right time.
-          </p>
         </div>
       </div>
     </div>
