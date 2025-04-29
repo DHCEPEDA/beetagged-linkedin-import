@@ -1,24 +1,24 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import MinimalApp from './MinimalApp';
+import ContactsOverlayPage from './pages/ContactsOverlayPage';
 
 // For debugging
-console.log("Minimal React app is loading...");
+console.log("BeeTagged app is loading...");
 console.log("Root element exists:", document.getElementById('root') !== null);
 
 // Create root using the React 18 API
 const container = document.getElementById('root');
 if (container) {
-  console.log("Root container found, rendering minimal app");
+  console.log("Root container found, rendering app");
   const root = createRoot(container);
 
-  // Render our minimal component without routing or other complexities
+  // Render directly with our contacts overlay component
   root.render(
     <React.StrictMode>
-      <MinimalApp />
+      <ContactsOverlayPage />
     </React.StrictMode>
   );
-  console.log("Minimal React app rendered");
+  console.log("BeeTagged app rendered");
 } else {
   console.error("Root element not found! Cannot mount React application.");
   // Create a backup element if root doesn't exist
