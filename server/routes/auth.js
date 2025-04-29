@@ -109,6 +109,64 @@ router.post('/logout', isAuthenticated, (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// Username/password login endpoint
+router.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  // In a real app, this would validate against a database
+  // For demo purposes, we're using a simple check
+  if (username === 'testuser' && password === 'password123') {
+    const authToken = uuidv4();
+    sessions[authToken] = {
+      user: {
+        id: 'test-user-id',
+        name: 'Test User',
+        email: 'test@example.com',
+        picture: {
+          data: {
+            url: 'https://via.placeholder.com/200'
+          }
+        }
+      },
+      created: new Date()
+    };
+    
+    res.json({
+      user: sessions[authToken].user,
+      token: authToken
+    });
+  } else {
+    res.status(401).json({ message: 'Invalid username or password' });
+  }
+});
+
+// Registration endpoint
+router.post('/register', (req, res) => {
+  const { username, password, email } = req.body;
+  
+  // In a real app, this would create a new user in the database
+  // For demo purposes, we'll always succeed and create a session
+  const authToken = uuidv4();
+  sessions[authToken] = {
+    user: {
+      id: `user-${authToken.substring(0, 8)}`,
+      name: username,
+      email: email || `${username}@example.com`,
+      picture: {
+        data: {
+          url: 'https://via.placeholder.com/200'
+        }
+      }
+    },
+    created: new Date()
+  };
+  
+  res.status(201).json({
+    user: sessions[authToken].user,
+    token: authToken
+  });
+});
+
 // For testing purposes only - in a real app, these endpoints would be properly secured
 if (process.env.NODE_ENV !== 'production') {
   // Debug endpoint to get all sessions

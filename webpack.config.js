@@ -4,6 +4,7 @@ const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
+  mode: 'development',
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -95,6 +96,10 @@ module.exports = {
         { 
           from: 'public/server-auth.html', 
           to: 'server-auth.html' 
+        },
+        { 
+          from: 'public/app.html', 
+          to: 'app.html' 
         }
       ],
     }),

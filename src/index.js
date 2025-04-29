@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import ContactsOverlayPage from './pages/ContactsOverlayPage';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App';
 
 // For debugging
 console.log("BeeTagged app is loading...");
@@ -12,10 +13,12 @@ if (container) {
   console.log("Root container found, rendering app");
   const root = createRoot(container);
 
-  // Render directly with our contacts overlay component
+  // Render the App with BrowserRouter
   root.render(
     <React.StrictMode>
-      <ContactsOverlayPage />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </React.StrictMode>
   );
   console.log("BeeTagged app rendered");

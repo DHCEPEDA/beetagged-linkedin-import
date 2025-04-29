@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Route, Routes, Navigate, Link } from 'react-router-dom';
 import TestPage from './TestPage';
 import LoginPage from './pages/LoginPage';
+import AuthPage from './pages/auth-page';
+import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 // Colors from UIColor+Bee.h
@@ -113,24 +115,20 @@ const NavBar = () => {
   );
 };
 
-// Protected route component
-const ProtectedRoute = ({ element }) => {
-  const authToken = localStorage.getItem('authToken');
-  
-  return authToken ? element : <Navigate to="/login" replace />;
-};
+// We're now using the imported ProtectedRoute component
 
 const App = () => {
   return (
     <div className="app">
       <NavBar />
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/test" element={<TestPage />} />
-        <Route path="/contacts" element={<ProtectedRoute element={<TestPage />} />} />
+        <Route path="/contacts" element={<ProtectedRoute element={<div>Contacts Page (Coming Soon)</div>} />} />
         <Route path="/facebook-diagnostic" element={<Navigate to="/server-auth.html" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     </div>
   );

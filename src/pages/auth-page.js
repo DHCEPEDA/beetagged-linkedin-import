@@ -1,126 +1,197 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import FacebookLoginButton from '../components/FacebookLoginButton';
+import axios from 'axios';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    email: ''
+  });
+  const [status, setStatus] = useState({
+    message: '',
+    type: '' // 'success' or 'error'
+  });
+  const [loading, setLoading] = useState(false);
   
+  const navigate = useNavigate();
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const endpoint = isLogin ? '/api/login' : '/api/register';
+      const response = await axios.post(endpoint, formData);
+      
+      setStatus({
+        message: isLogin ? 'Login successful!' : 'Registration successful!',
+        type: 'success'
+      });
+      
+      // On successful auth, redirect to contacts page
+      setTimeout(() => {
+        navigate('/contacts');
+      }, 1500);
+      
+    } catch (error) {
+      setStatus({
+        message: error.response?.data || 'An error occurred. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleAuthMode = () => {
+    setIsLogin(!isLogin);
+    setStatus({ message: '', type: '' });
+  };
+
+  // For testing purposes, create a function to use test data
+  const useTestCredentials = () => {
+    setFormData({
+      username: 'testuser',
+      password: 'password123',
+      email: 'test@example.com'
+    });
+  };
+
   return (
-    <div className="container py-5">
-      <div className="row">
-        <div className="col-md-6">
-          <div className="card shadow-sm">
-            <div className="card-body p-4">
-              <ul className="nav nav-tabs mb-4">
-                <li className="nav-item">
-                  <button 
-                    className={`nav-link ${isLogin ? 'active' : ''}`}
-                    onClick={() => setIsLogin(true)}
-                  >
-                    Login
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button 
-                    className={`nav-link ${!isLogin ? 'active' : ''}`}
-                    onClick={() => setIsLogin(false)}
-                  >
-                    Register
-                  </button>
-                </li>
-              </ul>
-              
-              <h2 className="mb-4">{isLogin ? 'Welcome Back!' : 'Create an Account'}</h2>
-              
-              <form>
-                {!isLogin && (
-                  <div className="mb-3">
-                    <label htmlFor="name" className="form-label">Name</label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      className="form-control"
-                      placeholder="Enter your name"
-                    />
-                  </div>
-                )}
-                
-                <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    className="form-control"
-                    placeholder="Enter your email"
-                  />
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="password" className="form-label">Password</label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    className="form-control"
-                    placeholder="Enter your password"
-                  />
-                </div>
-                
-                {!isLogin && (
-                  <div className="mb-3">
-                    <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      className="form-control"
-                      placeholder="Confirm your password"
-                    />
-                  </div>
-                )}
-                
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100 mb-3"
-                >
-                  {isLogin ? 'Login' : 'Register'}
-                </button>
-              </form>
-              
-              <div className="text-center mt-4">
-                <p className="text-muted mb-3">Or continue with</p>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary mb-3 w-100"
-                >
-                  <i className="fab fa-facebook me-2"></i> Continue with Facebook
-                </button>
+    <div className="auth-section">
+      <div className="app-header">
+        <div className="app-logo">
+          <img src="/images/beelogo-actual.svg" alt="BeeTagged Logo" />
+          <h1>BeeTagged</h1>
+        </div>
+      </div>
+      
+      <div className="auth-container">
+        <div className="auth-form">
+          <h2>{isLogin ? 'Login to Your Account' : 'Create an Account'}</h2>
+          <p>Welcome to BeeTagged, your personal contact management platform.</p>
+          
+          <FacebookLoginButton 
+            onSuccess={(userData) => {
+              setStatus({
+                message: `Welcome, ${userData.name}!`,
+                type: 'success'
+              });
+              setTimeout(() => navigate('/contacts'), 1500);
+            }} 
+            onError={(error) => {
+              setStatus({
+                message: error.message || 'Facebook login failed',
+                type: 'error'
+              });
+            }}
+          />
+          
+          <div className="mt-4">
+            <p className="text-center">Or use email and password</p>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="username">Username</label>
+                <input 
+                  type="text" 
+                  id="username" 
+                  name="username" 
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  required
+                />
               </div>
+              
+              {!isLogin && (
+                <div className="form-group">
+                  <label htmlFor="email">Email</label>
+                  <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required={!isLogin}
+                  />
+                </div>
+              )}
+              
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input 
+                  type="password" 
+                  id="password" 
+                  name="password" 
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                className="bee-btn"
+                style={{ width: '100%' }}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : isLogin ? 'Login' : 'Register'}
+              </button>
+              
+              {status.message && (
+                <div className={`status-box status-${status.type}`}>
+                  {status.message}
+                </div>
+              )}
+            </form>
+            
+            <div className="form-toggle">
+              <p>
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <button type="button" onClick={toggleAuthMode}>
+                  {isLogin ? 'Register' : 'Login'}
+                </button>
+              </p>
+            </div>
+            
+            {/* Test credentials button - for development only */}
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button 
+                type="button" 
+                onClick={useTestCredentials}
+                style={{ 
+                  background: '#f0f0f0', 
+                  border: '1px solid #ddd',
+                  padding: '5px 10px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+              >
+                Use Test User Data
+              </button>
             </div>
           </div>
         </div>
         
-        <div className="col-md-6">
-          <div className="card bg-primary text-white shadow-sm h-100">
-            <div className="card-body p-4 d-flex flex-column justify-content-center">
-              <h1 className="mb-4">BeeTagger</h1>
-              <p className="lead mb-4">
-                Organize your network intelligently by connecting your contacts across platforms
-              </p>
-              <div className="mb-4">
-                <h5 className="mb-3">With BeeTagger you can:</h5>
-                <ul className="list-unstyled">
-                  <li className="mb-2">✓ Tag contacts based on interests and skills</li>
-                  <li className="mb-2">✓ Create dynamic affinity groups</li>
-                  <li className="mb-2">✓ Search contacts by tags</li>
-                  <li className="mb-2">✓ Import contacts from social networks</li>
-                  <li className="mb-2">✓ Keep your network organized</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+        <div className="auth-hero">
+          <img src="/images/diago-bee.svg" alt="BeeTagged Mascot" />
+          <h2>Organize Your Network</h2>
+          <p>
+            BeeTagged helps you manage your professional contacts with intelligent 
+            tagging and social network integration. Connect with the right people 
+            at the right time.
+          </p>
         </div>
       </div>
     </div>

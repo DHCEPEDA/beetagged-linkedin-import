@@ -16,9 +16,7 @@ const groupRoutes = require('./routes/groups');
 const socialRoutes = require('./routes/social');
 const configRoutes = require('./routes/config');
 
-// Import the newly created routes
-const serverAuthRoutes = require('./routes/auth');
-const serverSocialRoutes = require('./routes/social');
+// Import the routes - no need to duplicate imports
 
 // Import database connection
 const connectDB = require('./config/db');
