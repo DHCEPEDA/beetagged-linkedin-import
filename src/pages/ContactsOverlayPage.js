@@ -1,142 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import ContactsOverlay from '../components/UI/ContactsOverlay';
-import '../components/FacebookLoginButton'; // Import just to make sure it's available
+
+// Facebook App ID
+const FB_APP_ID = '1222790436230433';
 
 const ContactsOverlayPage = () => {
   const [facebookData, setFacebookData] = useState(null);
   const [status, setStatus] = useState('initial'); // 'initial', 'loading', 'success', 'error'
   const [errorMessage, setErrorMessage] = useState('');
   
-  // Function to initialize Facebook SDK
-  const initFacebook = () => {
-    return new Promise((resolve, reject) => {
-      if (window.FB) {
-        resolve();
-        return;
-      }
-      
-      window.fbAsyncInit = function() {
-        window.FB.init({
-          appId: '1222790436230433',
-          cookie: true,
-          xfbml: true,
-          version: 'v18.0'
-        });
-        
-        window.FB.AppEvents.logPageView();
-        resolve();
-      };
-      
-      // Load the Facebook SDK
-      (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-      }(document, 'script', 'facebook-jssdk'));
-      
-      // If FB SDK fails to load in 10 seconds, reject
-      setTimeout(() => {
-        if (!window.FB) {
-          reject(new Error('Facebook SDK failed to load'));
-        }
-      }, 10000);
-    });
-  };
-  
-  // Function to check Facebook login status
-  const checkLoginStatus = () => {
-    return new Promise((resolve, reject) => {
-      window.FB.getLoginStatus(function(response) {
-        console.log('FB login status:', response);
-        if (response.status === 'connected') {
-          resolve(response.authResponse);
-        } else {
-          reject(new Error('Not logged in to Facebook'));
-        }
-      });
-    });
-  };
-  
-  // Function to log in to Facebook
-  const loginToFacebook = () => {
-    return new Promise((resolve, reject) => {
-      window.FB.login(function(response) {
-        console.log('FB login response:', response);
-        if (response.status === 'connected') {
-          resolve(response.authResponse);
-        } else {
-          reject(new Error('Facebook login failed or was cancelled'));
-        }
-      }, { scope: 'public_profile,email,user_friends' });
-    });
-  };
-  
-  // Function to get user data from Facebook
-  const getFacebookUserData = (authResponse) => {
-    return new Promise((resolve, reject) => {
-      window.FB.api(
-        '/me',
-        { fields: 'id,name,email,picture.width(200).height(200)' },
-        function(response) {
-          if (!response || response.error) {
-            reject(new Error('Failed to get user data from Facebook'));
-            return;
-          }
-          
-          // Get friends list
-          window.FB.api(
-            '/me/friends',
-            function(friendsResponse) {
-              if (!friendsResponse || friendsResponse.error) {
-                // Just resolve with user data if friends list fails
-                resolve({ ...response, friends: [] });
-                return;
-              }
-              
-              // Add friends list to user data
-              resolve({
-                ...response,
-                friends: friendsResponse.data || []
-              });
-            }
-          );
-        }
-      );
-    });
-  };
-  
-  // Handle Facebook login
-  const handleFacebookLogin = async () => {
-    setStatus('loading');
-    setErrorMessage('');
-    
+  // Function to get user data from Facebook Graph API using access token
+  const getFacebookUserData = async (accessToken) => {
     try {
-      // Initialize Facebook SDK
-      await initFacebook();
+      // Get user profile data
+      const userResponse = await fetch(
+        `https://graph.facebook.com/v18.0/me?fields=id,name,email,picture.width(200).height(200)&access_token=${accessToken}`
+      );
       
-      // Check if already logged in
-      try {
-        const authResponse = await checkLoginStatus();
-        const userData = await getFacebookUserData(authResponse);
-        setFacebookData(userData);
-        setStatus('success');
-      } catch (error) {
-        // Not logged in, try to login
-        const authResponse = await loginToFacebook();
-        const userData = await getFacebookUserData(authResponse);
-        setFacebookData(userData);
-        setStatus('success');
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch user data from Facebook');
       }
+      
+      const userData = await userResponse.json();
+      
+      // Get friends list (may be empty due to permissions)
+      const friendsResponse = await fetch(
+        `https://graph.facebook.com/v18.0/me/friends?access_token=${accessToken}`
+      );
+      
+      let friends = [];
+      if (friendsResponse.ok) {
+        const friendsData = await friendsResponse.json();
+        friends = friendsData.data || [];
+      }
+      
+      return {
+        ...userData,
+        friends
+      };
     } catch (error) {
-      console.error('Facebook login error:', error);
-      setErrorMessage(error.message);
-      setStatus('error');
+      console.error('Error fetching Facebook data:', error);
+      throw error;
     }
   };
   
-  // Handle permission denied
+  // Check for access token in URL hash on component mount
+  useEffect(() => {
+    const checkForAccessToken = async () => {
+      // Parse URL hash for access token
+      const params = {};
+      const hash = window.location.hash.substring(1);
+      
+      if (!hash) return;
+      
+      hash.split('&').forEach(part => {
+        const [key, value] = part.split('=');
+        params[key] = decodeURIComponent(value);
+      });
+      
+      if (params.access_token) {
+        setStatus('loading');
+        
+        try {
+          // Get user data with the access token
+          const userData = await getFacebookUserData(params.access_token);
+          setFacebookData(userData);
+          setStatus('success');
+          
+          // Clear the hash to clean up the URL
+          window.history.replaceState(null, null, ' ');
+        } catch (error) {
+          console.error('Error getting Facebook data:', error);
+          setErrorMessage('Error fetching Facebook data: ' + error.message);
+          setStatus('error');
+        }
+      }
+    };
+    
+    checkForAccessToken();
+  }, []);
+  
+  // Handle redirect to Facebook login
+  const handleFacebookLogin = () => {
+    setStatus('loading');
+    setErrorMessage('');
+    
+    // Construct OAuth URL for redirect
+    const redirectUri = window.location.href.split('#')[0]; // Remove any hash
+    const oauthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=public_profile,email,user_friends`;
+    
+    // Redirect to Facebook login
+    window.location.href = oauthUrl;
+  };
+  
+  // Handle permission denied for contacts
   const handlePermissionDenied = () => {
     setErrorMessage('Contact access permission denied. Please enable contact access to use BeeTagged.');
   };
@@ -166,6 +123,16 @@ const ContactsOverlayPage = () => {
             className="btn btn-primary btn-lg d-flex align-items-center mx-auto"
             onClick={handleFacebookLogin}
             disabled={status === 'loading'}
+            style={{
+              backgroundColor: '#1877F2',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '10px 15px',
+              fontWeight: 'bold'
+            }}
           >
             {status === 'loading' ? (
               <>Loading...</>
@@ -178,6 +145,11 @@ const ContactsOverlayPage = () => {
               </>
             )}
           </button>
+          
+          <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
+            <p>Current domain: {window.location.hostname}</p>
+            <p>App ID: {FB_APP_ID}</p>
+          </div>
         </div>
       ) : (
         <ContactsOverlay 
