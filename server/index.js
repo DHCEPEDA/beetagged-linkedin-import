@@ -16,6 +16,10 @@ const groupRoutes = require('./routes/groups');
 const socialRoutes = require('./routes/social');
 const configRoutes = require('./routes/config');
 
+// Import the newly created routes
+const serverAuthRoutes = require('./routes/auth');
+const serverSocialRoutes = require('./routes/social');
+
 // Import database connection
 const connectDB = require('./config/db');
 

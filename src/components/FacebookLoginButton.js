@@ -1,159 +1,196 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import PropTypes from 'prop-types';
 
-const FacebookLoginButton = ({ onLogin }) => {
-  const [appId, setAppId] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+/**
+ * Facebook Login Button component
+ * Supports both client-side and server-side authentication methods
+ */
+const FacebookLoginButton = ({ 
+  onSuccess, 
+  onError, 
+  buttonText = "Continue with Facebook",
+  className = "",
+  useServerAuth = true // Set to true to use server-side auth, false for client-side SDK
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Client-side SDK initialization
   useEffect(() => {
-    // Fetch the config from the server
-    const fetchConfig = async () => {
-      try {
-        const response = await fetch('/api/config');
-        if (!response.ok) {
-          throw new Error('Failed to fetch config');
-        }
-        const config = await response.json();
-        setAppId(config.socialNetworks.facebook.appId);
-        setIsLoading(false);
-        
-        initFacebook(config.socialNetworks.facebook.appId);
-      } catch (err) {
-        console.error('Error fetching config:', err);
-        setError(err.message);
-        setIsLoading(false);
-        
-        // Try to use the AppConfig fallback if available
-        if (window.AppConfig && window.AppConfig.socialNetworks && window.AppConfig.socialNetworks.facebook) {
-          initFacebook(window.AppConfig.socialNetworks.facebook.appId);
-        }
-      }
-    };
-    
-    fetchConfig();
-  }, [onLogin]);
-  
-  const initFacebook = (fbAppId) => {
-    if (!fbAppId) {
-      console.error('No Facebook App ID available');
-      return;
-    }
-    
-    // Load Facebook SDK
-    window.fbAsyncInit = function() {
-      window.FB.init({
-        appId: fbAppId,
-        cookie: true,
-        xfbml: true,
-        version: 'v18.0' // Use latest version
-      });
-      
-      window.FB.AppEvents.logPageView();
-      
-      // Check login status
-      window.FB.getLoginStatus(function(response) {
-        console.log('FB login status:', response);
-        if (response.status === 'connected') {
-          // Already logged in to Facebook and your app
-          if (onLogin) onLogin(response);
-        }
-      });
-    };
-    
-    // Make sure SDK is loaded
-    if (window.FB) {
-      window.fbAsyncInit();
-    }
-  };
+    if (!useServerAuth) {
+      // Load Facebook SDK
+      const loadFacebookSDK = () => {
+        window.fbAsyncInit = function() {
+          window.FB.init({
+            appId: process.env.FACEBOOK_APP_ID || '1222790436230433',
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+          });
+          
+          window.FB.getLoginStatus(function(response) {
+            console.log('FB login status:', response);
+          });
+        };
 
-  const handleFacebookLogin = () => {
+        // Load the SDK asynchronously
+        (function(d, s, id) {
+          var js, fjs = d.getElementsByTagName(s)[0];
+          if (d.getElementById(id)) return;
+          js = d.createElement(s); js.id = id;
+          js.src = "https://connect.facebook.net/en_US/sdk.js";
+          fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+      };
+      
+      loadFacebookSDK();
+    }
+  }, [useServerAuth]);
+
+  // Handle client-side login with Facebook SDK
+  const handleClientSideLogin = () => {
+    setIsLoading(true);
+    setError(null);
+
     if (!window.FB) {
-      console.error('Facebook SDK not loaded');
+      setError("Facebook SDK not loaded");
+      setIsLoading(false);
+      if (onError) onError("Facebook SDK not loaded");
       return;
     }
-    
+
     window.FB.login(function(response) {
-      console.log('FB login response:', response);
+      setIsLoading(false);
       if (response.status === 'connected') {
-        // Successfully logged in
-        if (onLogin) onLogin(response);
+        // Get user info
+        window.FB.api('/me', { fields: 'id,name,email,picture' }, function(userData) {
+          if (onSuccess) {
+            onSuccess({
+              ...userData,
+              accessToken: response.authResponse.accessToken,
+              authResponse: response.authResponse
+            });
+          }
+        });
       } else {
-        console.log('Facebook login failed or was cancelled');
+        const errorMsg = response.status === 'not_authorized' 
+          ? "App authorization denied" 
+          : "Facebook login failed";
+        setError(errorMsg);
+        if (onError) onError(errorMsg);
       }
-    }, { scope: 'public_profile,email' });
+    }, { scope: 'public_profile,email,user_friends' });
   };
 
-  if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        maxWidth: '300px',
-        margin: '0 auto',
-        padding: '10px 20px',
-        backgroundColor: '#f0f0f0',
-        borderRadius: '4px',
-        color: '#666'
-      }}>
-        <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        Loading Facebook integration...
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        maxWidth: '300px',
-        margin: '0 auto',
-        padding: '10px 20px',
-        backgroundColor: '#fff3f3',
-        borderRadius: '4px',
-        color: '#d32f2f',
-        border: '1px solid #ffcdd2'
-      }}>
-        <i className="fas fa-exclamation-circle me-2"></i>
-        Error loading Facebook. Please try again later.
-      </div>
-    );
-  }
-  
+  // Handle server-side authentication flow
+  const handleServerSideLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Get the Facebook authentication URL from our backend
+      const response = await axios.get('/api/auth/facebook/url');
+      
+      // Redirect to Facebook for authentication
+      window.location.href = response.data.url;
+    } catch (err) {
+      setIsLoading(false);
+      const errorMsg = err.response?.data?.message || "Failed to start Facebook login";
+      setError(errorMsg);
+      if (onError) onError(errorMsg);
+    }
+  };
+
+  // Handle login based on method
+  const handleLogin = () => {
+    useServerAuth ? handleServerSideLogin() : handleClientSideLogin();
+  };
+
   return (
-    <button 
-      onClick={handleFacebookLogin}
-      disabled={!appId}
-      style={{
-        backgroundColor: appId ? '#1877F2' : '#ccc',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        padding: '10px 20px',
-        fontSize: '16px',
-        fontWeight: 'bold',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: appId ? 'pointer' : 'not-allowed',
-        width: '100%',
-        maxWidth: '300px',
-        margin: '0 auto'
-      }}
-    >
-      <i 
-        className="fab fa-facebook-f" 
-        style={{ marginRight: '10px' }}
-      ></i>
-      Continue with Facebook
-    </button>
+    <div>
+      <button 
+        className={`facebook-login-button ${className}`}
+        onClick={handleLogin}
+        disabled={isLoading}
+        style={{
+          backgroundColor: '#1877F2',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          padding: '8px 16px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          cursor: isLoading ? 'default' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          opacity: isLoading ? 0.7 : 1,
+          width: '100%',
+          position: 'relative'
+        }}
+      >
+        {/* Facebook icon */}
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="20" 
+          height="20" 
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          style={{ marginRight: '8px' }}
+        >
+          <path d="M9.19795 21.5H13.198V13.4901H16.8021L17.198 9.50977H13.198V7.5C13.198 6.94772 13.6457 6.5 14.198 6.5H17.198V2.5H14.198C11.4365 2.5 9.19795 4.73858 9.19795 7.5V9.50977H7.19795L6.80206 13.4901H9.19795V21.5Z"/>
+        </svg>
+
+        {isLoading ? 'Connecting...' : buttonText}
+
+        {/* Loading spinner overlay */}
+        {isLoading && (
+          <span 
+            style={{
+              position: 'absolute',
+              right: '12px',
+              display: 'block',
+              width: '20px',
+              height: '20px',
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderRadius: '50%',
+              borderTopColor: 'white',
+              animation: 'spin 1s linear infinite'
+            }}
+          />
+        )}
+      </button>
+
+      {error && (
+        <div 
+          style={{
+            color: '#d32f2f',
+            fontSize: '14px',
+            marginTop: '8px'
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
   );
+};
+
+FacebookLoginButton.propTypes = {
+  onSuccess: PropTypes.func,
+  onError: PropTypes.func,
+  buttonText: PropTypes.string,
+  className: PropTypes.string,
+  useServerAuth: PropTypes.bool
 };
 
 export default FacebookLoginButton;

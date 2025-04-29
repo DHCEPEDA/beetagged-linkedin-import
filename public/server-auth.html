@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Server Auth Method</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bee-yellow: #FFEC16;
+      --bee-gold: #FD9E31;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin-top: 50px;
+    }
+    .header {
+      background: linear-gradient(to right, var(--bee-gold), var(--bee-yellow));
+      padding: 20px;
+      border-radius: 8px;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header img {
+      height: 50px;
+      margin-right: 15px;
+    }
+    .header h2 {
+      margin: 0;
+    }
+    .card {
+      margin-bottom: 20px;
+    }
+    .btn-facebook {
+      background-color: #1877F2;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px 15px;
+      font-weight: bold;
+    }
+    .btn-facebook:hover {
+      background-color: #166FE5;
+      color: white;
+    }
+    .btn-bee {
+      background: linear-gradient(to right, var(--bee-gold), var(--bee-yellow));
+      color: white;
+      font-weight: bold;
+    }
+    .btn-bee:hover {
+      opacity: 0.9;
+      color: white;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow: auto;
+      font-size: 14px;
+    }
+    .status-box {
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .loading {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+    .api-response {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="images/beelogo-actual.svg" alt="BeeTagged Logo">
+      <h2>BeeTagged Server-Side Auth</h2>
+    </div>
+    
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Server-Side Authentication Method</h5>
+        <p class="card-text">This approach uses the server to handle Facebook authentication, avoiding domain restrictions.</p>
+        
+        <div id="loginSection">
+          <p>Unlike client-side methods, this approach doesn't require domain whitelisting in Facebook's JavaScript SDK settings.</p>
+          
+          <button id="facebookLoginBtn" class="btn btn-facebook w-100 mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M9.19795 21.5H13.198V13.4901H16.8021L17.198 9.50977H13.198V7.5C13.198 6.94772 13.6457 6.5 14.198 6.5H17.198V2.5H14.198C11.4365 2.5 9.19795 4.73858 9.19795 7.5V9.50977H7.19795L6.80206 13.4901H9.19795V21.5Z"/>
+            </svg>
+            Continue with Facebook
+          </button>
+          
+          <div id="statusMessage" class="status-box loading" style="display: none;"></div>
+        </div>
+        
+        <div id="apiSection" style="display: none;">
+          <h5 class="mb-3">API Test Section</h5>
+          <p>Test different API endpoints to verify server-side integration with Facebook.</p>
+          
+          <div class="mb-3">
+            <button id="userProfileBtn" class="btn btn-primary w-100 mb-2">Get User Profile</button>
+            <button id="userFriendsBtn" class="btn btn-primary w-100 mb-2">Get User Friends</button>
+            <button id="logoutBtn" class="btn btn-secondary w-100">Logout</button>
+          </div>
+          
+          <div id="apiResponse" class="api-response">
+            <pre>API responses will appear here...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Contact-Social Integration</h5>
+        <p>This page demonstrates how BeeTagged will overlay phone contacts with Facebook data.</p>
+        
+        <div id="contactSection" style="display: none;">
+          <div class="list-group mb-3">
+            <div class="list-group-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">John Smith</h5>
+                <small>Friend</small>
+              </div>
+              <div class="d-flex align-items-center">
+                <div id="contactPhoto" style="width: 40px; height: 40px; border-radius: 50%; background-color: #e9ecef; display: flex; align-items: center; justify-content: center; margin-right: 10px;">J</div>
+                <div>
+                  <p class="mb-1">+1 (555) 123-4567</p>
+                  <small id="facebookMatch" style="color: #1877F2; display: none;"><i class="fab fa-facebook"></i> Facebook profile linked</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <button id="enhanceContactBtn" class="btn btn-bee w-100">Enhance Contact with Facebook Data</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card mt-3">
+      <div class="card-body">
+        <h5 class="card-title">Configuration Information</h5>
+        <p>Facebook App ID: <span id="fbAppIdDisplay">1222790436230433</span></p>
+        <p>Domain: <span id="currentDomain"></span></p>
+        <p>Auth Method: <span class="badge bg-info">Server-Side Authentication</span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const FB_APP_ID = '1222790436230433';
+    const API_BASE_URL = '/api';
+    
+    // UI Elements
+    const statusMessage = document.getElementById('statusMessage');
+    const loginSection = document.getElementById('loginSection');
+    const apiSection = document.getElementById('apiSection');
+    const apiResponse = document.getElementById('apiResponse').querySelector('pre');
+    const contactSection = document.getElementById('contactSection');
+    const facebookMatch = document.getElementById('facebookMatch');
+    const contactPhoto = document.getElementById('contactPhoto');
+    
+    // Update display elements
+    document.getElementById('fbAppIdDisplay').textContent = FB_APP_ID;
+    document.getElementById('currentDomain').textContent = window.location.hostname;
+    
+    // Helper function for status messages
+    function showStatus(message, type) {
+      statusMessage.className = `status-box ${type}`;
+      statusMessage.innerHTML = message;
+      statusMessage.style.display = 'block';
+    }
+    
+    // Helper function for API responses
+    function showApiResponse(data) {
+      apiResponse.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+    
+    // Check if user is already authenticated
+    async function checkAuthStatus() {
+      try {
+        showStatus('Checking authentication status...', 'loading');
+        
+        const response = await fetch(`${API_BASE_URL}/auth/me`);
+        
+        if (response.ok) {
+          const userData = await response.json();
+          showStatus('You are logged in!', 'success');
+          loginSection.style.display = 'none';
+          apiSection.style.display = 'block';
+          contactSection.style.display = 'block';
+          showApiResponse(userData);
+          return true;
+        } else {
+          showStatus('Please log in to continue', 'loading');
+          return false;
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+        showStatus(`Error: ${error.message}`, 'error');
+        return false;
+      }
+    }
+    
+    // Facebook login handler
+    document.getElementById('facebookLoginBtn').addEventListener('click', async function() {
+      showStatus('Preparing Facebook login...', 'loading');
+      
+      try {
+        // Start server-side auth flow
+        const response = await fetch(`${API_BASE_URL}/auth/facebook/url`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to get Facebook auth URL');
+        }
+        
+        const data = await response.json();
+        
+        showStatus('Redirecting to Facebook...', 'loading');
+        window.location.href = data.url;
+      } catch (error) {
+        console.error('Login error:', error);
+        showStatus(`Error: ${error.message}`, 'error');
+      }
+    });
+    
+    // Get user profile
+    document.getElementById('userProfileBtn').addEventListener('click', async function() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/me`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to get user profile');
+        }
+        
+        const data = await response.json();
+        showApiResponse(data);
+      } catch (error) {
+        console.error('Profile error:', error);
+        showApiResponse(`Error: ${error.message}`);
+      }
+    });
+    
+    // Get user friends
+    document.getElementById('userFriendsBtn').addEventListener('click', async function() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/social/facebook/friends`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to get user friends');
+        }
+        
+        const data = await response.json();
+        showApiResponse(data);
+      } catch (error) {
+        console.error('Friends error:', error);
+        showApiResponse(`Error: ${error.message}`);
+      }
+    });
+    
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async function() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to logout');
+        }
+        
+        showStatus('Successfully logged out', 'success');
+        loginSection.style.display = 'block';
+        apiSection.style.display = 'none';
+        contactSection.style.display = 'none';
+      } catch (error) {
+        console.error('Logout error:', error);
+        showApiResponse(`Error: ${error.message}`);
+      }
+    });
+    
+    // Enhance contact with Facebook data
+    document.getElementById('enhanceContactBtn').addEventListener('click', function() {
+      // In a real app, this would match the contact with Facebook friend data
+      // For this demo, we'll simulate finding a match
+      facebookMatch.style.display = 'inline';
+      
+      // Update the contact photo with a mock Facebook profile pic
+      contactPhoto.innerHTML = `<img src="https://picsum.photos/40/40" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%;">`;
+      
+      // Disable the button after enhancing
+      this.disabled = true;
+      this.textContent = 'Contact Enhanced with Facebook Data';
+    });
+    
+    // Check auth status on page load
+    window.addEventListener('load', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      
+      if (code) {
+        // This is a callback from Facebook OAuth
+        showStatus('Processing Facebook login...', 'loading');
+        
+        // Exchange code for token on the server
+        fetch(`${API_BASE_URL}/auth/facebook/callback?code=${code}`)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to authenticate with Facebook');
+            }
+            return response.json();
+          })
+          .then(data => {
+            showStatus('Facebook login successful!', 'success');
+            loginSection.style.display = 'none';
+            apiSection.style.display = 'block';
+            contactSection.style.display = 'block';
+            showApiResponse(data);
+            
+            // Remove the code from URL to prevent issues on refresh
+            window.history.replaceState({}, document.title, window.location.pathname);
+          })
+          .catch(error => {
+            console.error('Authentication error:', error);
+            showStatus(`Error: ${error.message}`, 'error');
+          });
+      } else {
+        // Normal page load, check if already authenticated
+        checkAuthStatus();
+      }
+    });
+  </script>
+</body>
+</html>

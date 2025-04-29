@@ -3,299 +3,668 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Facebook SDK Diagnostics</title>
+  <title>BeeTagged - Facebook Diagnostic</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
-    .card { margin-bottom: 20px; }
-    .success { color: green; }
-    .error { color: red; }
-    .warning { color: orange; }
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+    }
+    .section {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .test-btn {
+      margin-bottom: 10px;
+    }
+    .result-box {
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .status {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .status-success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .status-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .status-neutral {
+      background-color: #e2e3e5;
+      color: #383d41;
+    }
+    .fb-blue {
+      color: #1877F2;
+    }
+    h2 {
+      color: #555;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .nav-tabs {
+      margin-bottom: 20px;
+    }
+    .tab-content > .tab-pane {
+      display: none;
+    }
+    .tab-content > .active {
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <div class="container mt-4">
-    <h1>Facebook SDK Diagnostics</h1>
-    <p>This page will help diagnose issues with the Facebook JavaScript SDK integration.</p>
+  <div class="container">
+    <header class="mb-4">
+      <h1>
+        <img src="images/beelogo-actual.svg" alt="BeeTagged Logo" style="height: 40px; margin-right: 10px;">
+        BeeTagged Facebook Diagnostic
+      </h1>
+      <p class="lead">This page helps diagnose Facebook integration issues.</p>
+    </header>
     
-    <div class="card">
-      <div class="card-header">
-        Environment Information
-      </div>
-      <div class="card-body">
-        <div id="envInfo">Loading...</div>
-      </div>
-    </div>
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="sdk-tab" data-bs-toggle="tab" data-bs-target="#sdk" type="button" role="tab" aria-controls="sdk" aria-selected="true">JavaScript SDK</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="redirect-tab" data-bs-toggle="tab" data-bs-target="#redirect" type="button" role="tab" aria-controls="redirect" aria-selected="false">OAuth Redirect</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="debug-tab" data-bs-toggle="tab" data-bs-target="#debug" type="button" role="tab" aria-controls="debug" aria-selected="false">Debug Info</button>
+      </li>
+    </ul>
     
-    <div class="card">
-      <div class="card-header">
-        Facebook SDK Initialization
+    <div class="tab-content" id="myTabContent">
+      <!-- JavaScript SDK Tab -->
+      <div class="tab-pane fade show active" id="sdk" role="tabpanel" aria-labelledby="sdk-tab">
+        <div class="section">
+          <h2>
+            <i class="fab fa-js"></i> Facebook JavaScript SDK Tests
+            <span class="status status-neutral" id="sdkStatus">Not Started</span>
+          </h2>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <button id="loadSdkBtn" class="btn btn-primary test-btn w-100">
+                1. Load Facebook SDK
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button id="checkSdkBtn" class="btn btn-secondary test-btn w-100" disabled>
+                2. Check SDK Initialization
+              </button>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <button id="loginStatusBtn" class="btn btn-secondary test-btn w-100" disabled>
+                3. Check Login Status
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button id="loginBtn" class="btn btn-secondary test-btn w-100" disabled>
+                4. Login with Facebook
+              </button>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <button id="getUserInfoBtn" class="btn btn-secondary test-btn w-100" disabled>
+                5. Get User Info
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button id="getFriendsBtn" class="btn btn-secondary test-btn w-100" disabled>
+                6. Get Friends
+              </button>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button id="logoutBtn" class="btn btn-secondary test-btn w-100" disabled>
+                7. Logout
+              </button>
+            </div>
+          </div>
+          
+          <div class="result-box" id="sdkResultBox">Results will appear here...</div>
+        </div>
       </div>
-      <div class="card-body">
-        <div id="sdkStatus">Loading...</div>
-        <button id="initButton" class="btn btn-primary mt-3">Initialize Facebook SDK</button>
+      
+      <!-- OAuth Redirect Tab -->
+      <div class="tab-pane fade" id="redirect" role="tabpanel" aria-labelledby="redirect-tab">
+        <div class="section">
+          <h2>
+            <i class="fas fa-exchange-alt"></i> Facebook OAuth Redirect Tests
+            <span class="status status-neutral" id="redirectStatus">Not Started</span>
+          </h2>
+          
+          <div class="mb-3">
+            <p>This method uses direct OAuth redirection instead of the JavaScript SDK. It often works even when there are domain restrictions.</p>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <button id="checkTokenBtn" class="btn btn-primary test-btn w-100">
+                1. Check for Access Token
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button id="startAuthBtn" class="btn btn-primary test-btn w-100">
+                2. Start OAuth Flow
+              </button>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <button id="fetchUserBtn" class="btn btn-secondary test-btn w-100" disabled>
+                3. Fetch User Data
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button id="fetchFriendsBtn" class="btn btn-secondary test-btn w-100" disabled>
+                4. Fetch Friends
+              </button>
+            </div>
+          </div>
+          
+          <div class="result-box" id="redirectResultBox">Results will appear here...</div>
+        </div>
       </div>
-    </div>
-    
-    <div class="card">
-      <div class="card-header">
-        Login Status
-      </div>
-      <div class="card-body">
-        <div id="loginStatus">Not checked yet</div>
-        <button id="checkLoginButton" class="btn btn-primary mt-3" disabled>Check Login Status</button>
-      </div>
-    </div>
-    
-    <div class="card">
-      <div class="card-header">
-        Test Facebook Login
-      </div>
-      <div class="card-body">
-        <div id="testLoginStatus">Not attempted yet</div>
-        <button id="testLoginButton" class="btn btn-primary mt-3" disabled>Test Login</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        Domain Information
-      </div>
-      <div class="card-body">
-        <div id="domainInfo">Loading...</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        Troubleshooting Help
-      </div>
-      <div class="card-body">
-        <div id="troubleshootingTips"></div>
+      
+      <!-- Debug Info Tab -->
+      <div class="tab-pane fade" id="debug" role="tabpanel" aria-labelledby="debug-tab">
+        <div class="section">
+          <h2>
+            <i class="fas fa-bug"></i> Debug Information
+          </h2>
+          
+          <h5>Configuration:</h5>
+          <ul>
+            <li><strong>App ID:</strong> <span id="appIdDisplay">1222790436230433</span></li>
+            <li><strong>Current URL:</strong> <span id="currentUrlDisplay"></span></li>
+            <li><strong>Hostname:</strong> <span id="hostnameDisplay"></span></li>
+            <li><strong>Protocol:</strong> <span id="protocolDisplay"></span></li>
+            <li><strong>User Agent:</strong> <span id="userAgentDisplay"></span></li>
+          </ul>
+          
+          <h5>Common Issues:</h5>
+          <div class="accordion" id="issuesAccordion">
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingOne">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                  Unknown Host Domain Error
+                </button>
+              </h2>
+              <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#issuesAccordion">
+                <div class="accordion-body">
+                  <p>This error occurs when the domain you're hosting your app on is not whitelisted in your Facebook App settings.</p>
+                  <p><strong>Resolution:</strong></p>
+                  <ol>
+                    <li>Go to <a href="https://developers.facebook.com/" target="_blank">Facebook Developers</a></li>
+                    <li>Select your app (App ID: 1222790436230433)</li>
+                    <li>Navigate to Settings > Basic</li>
+                    <li>Add your domain (<span id="currentDomainForSettings"></span>) to the "App Domains" field</li>
+                    <li>Go to Products > Facebook Login > Settings</li>
+                    <li>Add <code><span id="oauthRedirectUriDisplay"></span></code> to "Valid OAuth Redirect URIs"</li>
+                    <li>Add your domain to "Allowed Domains for the JavaScript SDK"</li>
+                    <li>Save changes</li>
+                  </ol>
+                  <p>If you can't update the app settings, try using the OAuth Redirect method which sometimes works without domain restrictions.</p>
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingTwo">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                  Login Error: This app may not have permission for this login type
+                </button>
+              </h2>
+              <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#issuesAccordion">
+                <div class="accordion-body">
+                  <p>This error typically happens when the Facebook app doesn't have the proper configuration for Login.</p>
+                  <p><strong>Resolution:</strong></p>
+                  <ol>
+                    <li>Go to <a href="https://developers.facebook.com/" target="_blank">Facebook Developers</a></li>
+                    <li>Select your app</li>
+                    <li>Add the "Facebook Login" product if not already added</li>
+                    <li>Under Products > Facebook Login > Settings, ensure "Login with the JavaScript SDK" is enabled</li>
+                    <li>Make sure your app is set to "Live" mode, not "Development"</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingThree">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                  Cookies/Local Storage Issues
+                </button>
+              </h2>
+              <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#issuesAccordion">
+                <div class="accordion-body">
+                  <p>Facebook SDK relies on cookies and local storage. Browsers with strict privacy settings may block these.</p>
+                  <p><strong>Resolution:</strong></p>
+                  <ol>
+                    <li>Ensure your site is using HTTPS (Facebook requires this)</li>
+                    <li>Check if third-party cookies are enabled in your browser</li>
+                    <li>Try using a different browser</li>
+                    <li>Set <code>cookie: true</code> in the FB.init() call</li>
+                    <li>As a last resort, use the OAuth Redirect method which doesn't rely on cookies</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Display environment information
-    document.getElementById('envInfo').innerHTML = `
-      <p><strong>Current URL:</strong> ${window.location.href}</p>
-      <p><strong>Protocol:</strong> ${window.location.protocol}</p>
-      <p><strong>Host:</strong> ${window.location.host}</p>
-      <p><strong>Pathname:</strong> ${window.location.pathname}</p>
-      <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
-    `;
-
-    // Display domain information
-    document.getElementById('domainInfo').innerHTML = `
-      <p>Make sure the following domains are added to your Facebook App settings:</p>
-      <ul>
-        <li>App Domains: <code>${window.location.hostname}</code></li>
-        <li>Website URL: <code>${window.location.origin}/</code></li>
-        <li>Valid OAuth Redirect URIs: <code>${window.location.origin}/</code> and <code>${window.location.origin}/auth/facebook/callback</code></li>
-        <li>Allowed Domains for the JavaScript SDK: <code>${window.location.hostname}</code></li>
-      </ul>
-    `;
-
-    // Function to check if FB SDK is loaded
-    function checkFBSDKLoaded() {
-      return typeof FB !== 'undefined';
-    }
-
-    // Function to load the Facebook SDK
-    function loadFacebookSDK(appId) {
-      return new Promise((resolve, reject) => {
-        if (checkFBSDKLoaded()) {
-          resolve();
-          return;
-        }
-
-        // Prepare the async init function
-        window.fbAsyncInit = function() {
-          try {
-            FB.init({
-              appId: appId,
-              cookie: true,
-              xfbml: true,
-              version: 'v18.0'
-            });
-            
-            document.getElementById('sdkStatus').innerHTML = `
-              <p class="success">✅ Facebook SDK initialized successfully!</p>
-              <p><strong>App ID:</strong> ${appId}</p>
-              <p><strong>SDK Version:</strong> v18.0</p>
-            `;
-            
-            document.getElementById('checkLoginButton').disabled = false;
-            document.getElementById('testLoginButton').disabled = false;
-            
-            resolve();
-          } catch (error) {
-            document.getElementById('sdkStatus').innerHTML = `
-              <p class="error">❌ Facebook SDK initialization failed!</p>
-              <p><strong>Error:</strong> ${error.message}</p>
-            `;
-            reject(error);
-          }
-        };
-
-        // Load the SDK
-        (function(d, s, id) {
-          var js, fjs = d.getElementsByTagName(s)[0];
-          if (d.getElementById(id)) return;
-          js = d.createElement(s); js.id = id;
-          js.src = "https://connect.facebook.net/en_US/sdk.js";
-          js.onerror = function() {
-            document.getElementById('sdkStatus').innerHTML = `
-              <p class="error">❌ Failed to load Facebook SDK!</p>
-              <p>Check network connectivity and browser console for errors.</p>
-            `;
-            reject(new Error('Failed to load Facebook SDK'));
-          };
-          fjs.parentNode.insertBefore(js, fjs);
-        }(document, 'script', 'facebook-jssdk'));
+    // App configuration
+    const FB_APP_ID = '1222790436230433';
+    
+    // UI Elements
+    const sdkStatus = document.getElementById('sdkStatus');
+    const redirectStatus = document.getElementById('redirectStatus');
+    const sdkResultBox = document.getElementById('sdkResultBox');
+    const redirectResultBox = document.getElementById('redirectResultBox');
+    
+    // Debug info elements
+    document.getElementById('appIdDisplay').textContent = FB_APP_ID;
+    document.getElementById('currentUrlDisplay').textContent = window.location.href;
+    document.getElementById('hostnameDisplay').textContent = window.location.hostname;
+    document.getElementById('protocolDisplay').textContent = window.location.protocol;
+    document.getElementById('userAgentDisplay').textContent = navigator.userAgent;
+    document.getElementById('currentDomainForSettings').textContent = window.location.hostname;
+    document.getElementById('oauthRedirectUriDisplay').textContent = window.location.protocol + '//' + window.location.hostname + window.location.pathname;
+    
+    // Tab activation
+    const triggerTabList = [].slice.call(document.querySelectorAll('#myTab button'));
+    triggerTabList.forEach(function(triggerEl) {
+      triggerEl.addEventListener('click', function(event) {
+        event.preventDefault();
+        const targetId = this.getAttribute('data-bs-target');
+        
+        // Hide all tab panes
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('show', 'active');
+        });
+        
+        // Show the target tab pane
+        document.querySelector(targetId).classList.add('show', 'active');
+        
+        // Update active state on tabs
+        triggerTabList.forEach(el => {
+          el.classList.remove('active');
+          el.setAttribute('aria-selected', 'false');
+        });
+        this.classList.add('active');
+        this.setAttribute('aria-selected', 'true');
       });
-    }
-
-    // Fetch app config from server to get the app ID
-    async function fetchAppConfig() {
-      try {
-        const response = await fetch('/api/config');
-        if (!response.ok) {
-          throw new Error(`Server responded with ${response.status}`);
-        }
-        const config = await response.json();
-        return config.socialNetworks.facebook.appId;
-      } catch (error) {
-        console.error('Error fetching app config:', error);
-        return null;
+    });
+    
+    // Helper function for logging
+    function logResult(container, message, isError = false) {
+      const timestamp = new Date().toLocaleTimeString();
+      const formattedMessage = `[${timestamp}] ${message}`;
+      container.innerHTML = formattedMessage + '\n' + container.innerHTML;
+      
+      if (isError) {
+        console.error(message);
+      } else {
+        console.log(message);
       }
     }
-
-    // Initialize with app ID from server or fallback
-    document.getElementById('initButton').addEventListener('click', async function() {
-      this.disabled = true;
+    
+    // Helper function to update status
+    function updateStatus(element, text, type) {
+      element.textContent = text;
+      element.className = 'status status-' + type;
+    }
+    
+    // Helper function to update button states
+    function updateSdkButtons(loadedState = false, loggedInState = false) {
+      document.getElementById('loadSdkBtn').disabled = loadedState;
+      document.getElementById('checkSdkBtn').disabled = !loadedState;
+      document.getElementById('loginStatusBtn').disabled = !loadedState;
+      document.getElementById('loginBtn').disabled = !loadedState;
+      document.getElementById('getUserInfoBtn').disabled = !(loadedState && loggedInState);
+      document.getElementById('getFriendsBtn').disabled = !(loadedState && loggedInState);
+      document.getElementById('logoutBtn').disabled = !(loadedState && loggedInState);
+    }
+    
+    function updateRedirectButtons(hasToken = false) {
+      document.getElementById('fetchUserBtn').disabled = !hasToken;
+      document.getElementById('fetchFriendsBtn').disabled = !hasToken;
+    }
+    
+    // ===== JAVASCRIPT SDK METHODS =====
+    
+    // Load Facebook SDK
+    document.getElementById('loadSdkBtn').addEventListener('click', function() {
+      updateStatus(sdkStatus, 'Loading...', 'pending');
+      logResult(sdkResultBox, 'Attempting to load Facebook SDK...');
       
-      document.getElementById('sdkStatus').innerHTML = `<p>Fetching App ID from server...</p>`;
+      // Create script element
+      const script = document.createElement('script');
+      script.src = 'https://connect.facebook.net/en_US/sdk.js';
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = 'anonymous';
+      script.id = 'facebook-jssdk';
       
-      let appId = await fetchAppConfig();
+      // Callback when Facebook SDK is loaded
+      window.fbAsyncInit = function() {
+        logResult(sdkResultBox, 'Facebook SDK loaded, initializing...');
+        try {
+          FB.init({
+            appId: FB_APP_ID,
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+          });
+          
+          updateStatus(sdkStatus, 'SDK Loaded', 'success');
+          updateSdkButtons(true);
+          logResult(sdkResultBox, 'Facebook SDK initialized successfully');
+          
+          // Auto-check login status
+          checkLoginStatus();
+        } catch (error) {
+          updateStatus(sdkStatus, 'Init Error', 'error');
+          logResult(sdkResultBox, `Error initializing SDK: ${error.message}`, true);
+        }
+      };
       
-      if (!appId) {
-        document.getElementById('sdkStatus').innerHTML = `
-          <p class="warning">⚠️ Could not fetch App ID from server. Using hardcoded fallback.</p>
-          <p>Enter your Facebook App ID:</p>
-          <input type="text" id="appIdInput" class="form-control" value="1222790436230433">
-          <button id="useAppIdButton" class="btn btn-secondary mt-2">Use this App ID</button>
-        `;
-        
-        document.getElementById('useAppIdButton').addEventListener('click', function() {
-          const manualAppId = document.getElementById('appIdInput').value.trim();
-          if (manualAppId) {
-            document.getElementById('sdkStatus').innerHTML = `<p>Loading Facebook SDK with App ID: ${manualAppId}...</p>`;
-            loadFacebookSDK(manualAppId);
-          }
-        });
-      } else {
-        document.getElementById('sdkStatus').innerHTML = `<p>Loading Facebook SDK with App ID: ${appId}...</p>`;
-        loadFacebookSDK(appId);
+      // Check if SDK is already loaded
+      if (document.getElementById('facebook-jssdk')) {
+        logResult(sdkResultBox, 'SDK script already exists in DOM. Removing...');
+        document.getElementById('facebook-jssdk').remove();
+      }
+      
+      // Insert SDK script
+      const firstScript = document.getElementsByTagName('script')[0];
+      firstScript.parentNode.insertBefore(script, firstScript);
+      
+      // Set timeout for SDK loading
+      setTimeout(function() {
+        if (typeof FB === 'undefined') {
+          updateStatus(sdkStatus, 'Load Failed', 'error');
+          logResult(sdkResultBox, 'Facebook SDK failed to load within timeout period', true);
+        }
+      }, 5000);
+    });
+    
+    // Check SDK Initialization
+    document.getElementById('checkSdkBtn').addEventListener('click', function() {
+      try {
+        if (typeof FB !== 'undefined') {
+          logResult(sdkResultBox, 'Facebook SDK is loaded and available');
+          updateStatus(sdkStatus, 'SDK Available', 'success');
+        } else {
+          logResult(sdkResultBox, 'Facebook SDK is not available', true);
+          updateStatus(sdkStatus, 'SDK Missing', 'error');
+        }
+      } catch (error) {
+        logResult(sdkResultBox, `Error checking SDK: ${error.message}`, true);
+        updateStatus(sdkStatus, 'Check Error', 'error');
       }
     });
-
-    // Check login status
-    document.getElementById('checkLoginButton').addEventListener('click', function() {
-      this.disabled = true;
-      document.getElementById('loginStatus').innerHTML = `<p>Checking login status...</p>`;
+    
+    // Check Login Status
+    function checkLoginStatus() {
+      if (typeof FB === 'undefined') {
+        logResult(sdkResultBox, 'Cannot check login status: Facebook SDK not loaded', true);
+        return;
+      }
+      
+      logResult(sdkResultBox, 'Checking Facebook login status...');
       
       FB.getLoginStatus(function(response) {
-        document.getElementById('checkLoginButton').disabled = false;
+        logResult(sdkResultBox, `Login status: ${response.status}`);
+        console.log('FB login status:', response);
         
         if (response.status === 'connected') {
-          document.getElementById('loginStatus').innerHTML = `
-            <p class="success">✅ User is logged in and has authorized the app!</p>
-            <pre>${JSON.stringify(response, null, 2)}</pre>
-          `;
-        } else if (response.status === 'authorization_expired') {
-          document.getElementById('loginStatus').innerHTML = `
-            <p class="warning">⚠️ User was logged in, but the authorization has expired.</p>
-            <pre>${JSON.stringify(response, null, 2)}</pre>
-          `;
-        } else if (response.status === 'not_authorized') {
-          document.getElementById('loginStatus').innerHTML = `
-            <p class="warning">⚠️ User is logged into Facebook, but has not authorized the app.</p>
-            <pre>${JSON.stringify(response, null, 2)}</pre>
-          `;
+          updateStatus(sdkStatus, 'Logged In', 'success');
+          logResult(sdkResultBox, `User is logged in with auth token: ${response.authResponse.accessToken.substring(0, 10)}...`);
+          updateSdkButtons(true, true);
         } else {
-          // status is 'unknown'
-          document.getElementById('loginStatus').innerHTML = `
-            <p class="error">❓ User is not logged into Facebook or we can't tell.</p>
-            <pre>${JSON.stringify(response, null, 2)}</pre>
-          `;
+          updateStatus(sdkStatus, 'Not Logged In', 'neutral');
+          updateSdkButtons(true, false);
         }
       });
-    });
-
-    // Test login
-    document.getElementById('testLoginButton').addEventListener('click', function() {
-      this.disabled = true;
-      document.getElementById('testLoginStatus').innerHTML = `<p>Attempting login...</p>`;
+    }
+    
+    document.getElementById('loginStatusBtn').addEventListener('click', checkLoginStatus);
+    
+    // Login with Facebook
+    document.getElementById('loginBtn').addEventListener('click', function() {
+      if (typeof FB === 'undefined') {
+        logResult(sdkResultBox, 'Cannot login: Facebook SDK not loaded', true);
+        return;
+      }
+      
+      logResult(sdkResultBox, 'Attempting Facebook login...');
       
       FB.login(function(response) {
-        document.getElementById('testLoginButton').disabled = false;
+        console.log('FB login response:', response);
         
         if (response.status === 'connected') {
-          document.getElementById('testLoginStatus').innerHTML = `
-            <p class="success">✅ Login successful!</p>
-            <pre>${JSON.stringify(response, null, 2)}</pre>
-          `;
-          
-          // Fetch user info
-          FB.api('/me', {fields: 'name,email,picture'}, function(userData) {
-            document.getElementById('testLoginStatus').innerHTML += `
-              <p><strong>User Name:</strong> ${userData.name}</p>
-              <p><strong>User Email:</strong> ${userData.email || 'Not provided'}</p>
-              ${userData.picture ? `<p><strong>Picture:</strong> <img src="${userData.picture.data.url}" alt="Profile" style="border-radius: 50%;"></p>` : ''}
-              <pre>${JSON.stringify(userData, null, 2)}</pre>
-            `;
-          });
+          updateStatus(sdkStatus, 'Logged In', 'success');
+          logResult(sdkResultBox, 'Facebook login successful');
+          updateSdkButtons(true, true);
+        } else if (response.status === 'not_authorized') {
+          updateStatus(sdkStatus, 'Not Authorized', 'error');
+          logResult(sdkResultBox, 'User denied app authorization', true);
         } else {
-          document.getElementById('testLoginStatus').innerHTML = `
-            <p class="error">❌ Login failed or was canceled by user.</p>
-            <pre>${JSON.stringify(response, null, 2)}</pre>
-          `;
+          updateStatus(sdkStatus, 'Login Failed', 'error');
+          logResult(sdkResultBox, 'Facebook login failed or was cancelled', true);
         }
-      }, {scope: 'public_profile,email'});
+      }, { scope: 'public_profile,email,user_friends' });
     });
-
-    // Add troubleshooting tips
-    document.getElementById('troubleshootingTips').innerHTML = `
-      <h5>Common Issues and Solutions:</h5>
-      <ol>
-        <li>
-          <strong>Unknown Host Domain Error</strong>
-          <p>Make sure your domain is properly configured in your Facebook App settings. Add both the exact domain and wildcard patterns if needed.</p>
-        </li>
-        <li>
-          <strong>App Not Live</strong>
-          <p>For public access, your Facebook App needs to be in "Live" mode, not "Development" mode.</p>
-        </li>
-        <li>
-          <strong>Incorrect App ID</strong>
-          <p>Verify that you're using the correct App ID. Check both server configuration and client-side code.</p>
-        </li>
-        <li>
-          <strong>Missing Permissions</strong>
-          <p>Make sure your app requests the necessary permissions during login.</p>
-        </li>
-        <li>
-          <strong>Cookie Issues</strong>
-          <p>Facebook SDK requires cookies to work properly. Check browser settings and privacy tools.</p>
-        </li>
-        <li>
-          <strong>HTTPS Required</strong>
-          <p>Facebook requires HTTPS for most features. Make sure your site is served over HTTPS.</p>
-        </li>
-      </ol>
-    `;
+    
+    // Get User Info
+    document.getElementById('getUserInfoBtn').addEventListener('click', function() {
+      if (typeof FB === 'undefined') {
+        logResult(sdkResultBox, 'Cannot get user info: Facebook SDK not loaded', true);
+        return;
+      }
+      
+      logResult(sdkResultBox, 'Fetching user information...');
+      
+      FB.api('/me', { fields: 'id,name,email,picture' }, function(response) {
+        if (!response || response.error) {
+          updateStatus(sdkStatus, 'API Error', 'error');
+          logResult(sdkResultBox, `Error fetching user data: ${response?.error?.message || 'Unknown error'}`, true);
+          return;
+        }
+        
+        logResult(sdkResultBox, `User info: ${JSON.stringify(response, null, 2)}`);
+      });
+    });
+    
+    // Get Friends
+    document.getElementById('getFriendsBtn').addEventListener('click', function() {
+      if (typeof FB === 'undefined') {
+        logResult(sdkResultBox, 'Cannot get friends: Facebook SDK not loaded', true);
+        return;
+      }
+      
+      logResult(sdkResultBox, 'Fetching friends list...');
+      
+      FB.api('/me/friends', function(response) {
+        if (!response || response.error) {
+          updateStatus(sdkStatus, 'API Error', 'error');
+          logResult(sdkResultBox, `Error fetching friends: ${response?.error?.message || 'Unknown error'}`, true);
+          return;
+        }
+        
+        const friendCount = response.data ? response.data.length : 0;
+        logResult(sdkResultBox, `Found ${friendCount} friends that also use this app`);
+        logResult(sdkResultBox, `Friends data: ${JSON.stringify(response, null, 2)}`);
+      });
+    });
+    
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+      if (typeof FB === 'undefined') {
+        logResult(sdkResultBox, 'Cannot logout: Facebook SDK not loaded', true);
+        return;
+      }
+      
+      logResult(sdkResultBox, 'Logging out from Facebook...');
+      
+      FB.logout(function(response) {
+        updateStatus(sdkStatus, 'Logged Out', 'neutral');
+        logResult(sdkResultBox, 'Successfully logged out from Facebook');
+        updateSdkButtons(true, false);
+      });
+    });
+    
+    // ===== OAUTH REDIRECT METHODS =====
+    
+    // Parse URL hash for access token
+    function parseAccessToken() {
+      const hash = window.location.hash.substring(1);
+      const params = {};
+      
+      if (!hash) return null;
+      
+      hash.split('&').forEach(part => {
+        const [key, value] = part.split('=');
+        params[decodeURIComponent(key)] = decodeURIComponent(value);
+      });
+      
+      return params.access_token || null;
+    }
+    
+    // Check for access token
+    let accessToken = null;
+    
+    document.getElementById('checkTokenBtn').addEventListener('click', function() {
+      logResult(redirectResultBox, 'Checking for access token in URL...');
+      accessToken = parseAccessToken();
+      
+      if (accessToken) {
+        updateStatus(redirectStatus, 'Token Found', 'success');
+        logResult(redirectResultBox, `Found access token: ${accessToken.substring(0, 10)}...`);
+        updateRedirectButtons(true);
+      } else {
+        updateStatus(redirectStatus, 'No Token', 'neutral');
+        logResult(redirectResultBox, 'No access token found in URL');
+        updateRedirectButtons(false);
+      }
+    });
+    
+    // Start OAuth flow
+    document.getElementById('startAuthBtn').addEventListener('click', function() {
+      const redirectUri = window.location.href.split('#')[0];
+      const oauthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=public_profile,email,user_friends`;
+      
+      logResult(redirectResultBox, `Starting OAuth flow with redirect URI: ${redirectUri}`);
+      updateStatus(redirectStatus, 'Redirecting...', 'pending');
+      
+      window.location.href = oauthUrl;
+    });
+    
+    // Fetch user data with token
+    document.getElementById('fetchUserBtn').addEventListener('click', function() {
+      if (!accessToken) {
+        logResult(redirectResultBox, 'Cannot fetch user data: No access token', true);
+        return;
+      }
+      
+      logResult(redirectResultBox, 'Fetching user data with access token...');
+      updateStatus(redirectStatus, 'Fetching...', 'pending');
+      
+      fetch(`https://graph.facebook.com/v18.0/me?fields=id,name,email,picture&access_token=${accessToken}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          updateStatus(redirectStatus, 'Data Fetched', 'success');
+          logResult(redirectResultBox, `User data: ${JSON.stringify(data, null, 2)}`);
+        })
+        .catch(error => {
+          updateStatus(redirectStatus, 'Fetch Error', 'error');
+          logResult(redirectResultBox, `Error fetching user data: ${error.message}`, true);
+        });
+    });
+    
+    // Fetch friends with token
+    document.getElementById('fetchFriendsBtn').addEventListener('click', function() {
+      if (!accessToken) {
+        logResult(redirectResultBox, 'Cannot fetch friends: No access token', true);
+        return;
+      }
+      
+      logResult(redirectResultBox, 'Fetching friends with access token...');
+      updateStatus(redirectStatus, 'Fetching...', 'pending');
+      
+      fetch(`https://graph.facebook.com/v18.0/me/friends?access_token=${accessToken}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          const friendCount = data.data ? data.data.length : 0;
+          updateStatus(redirectStatus, 'Data Fetched', 'success');
+          logResult(redirectResultBox, `Found ${friendCount} friends that also use this app`);
+          logResult(redirectResultBox, `Friends data: ${JSON.stringify(data, null, 2)}`);
+        })
+        .catch(error => {
+          updateStatus(redirectStatus, 'Fetch Error', 'error');
+          logResult(redirectResultBox, `Error fetching friends: ${error.message}`, true);
+        });
+    });
+    
+    // Check for access token on page load
+    window.addEventListener('load', function() {
+      // Auto-switch to redirect tab if we have a token in the URL
+      if (window.location.hash.includes('access_token=')) {
+        document.getElementById('redirect-tab').click();
+        
+        // Auto-trigger token check
+        setTimeout(() => {
+          document.getElementById('checkTokenBtn').click();
+        }, 500);
+      }
+    });
   </script>
 </body>
 </html>

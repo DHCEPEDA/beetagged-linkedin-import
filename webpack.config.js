@@ -87,6 +87,14 @@ module.exports = {
         { 
           from: 'public/facebook-test.html', 
           to: 'facebook-test.html' 
+        },
+        { 
+          from: 'public/facebook-diagnostic.html', 
+          to: 'facebook-diagnostic.html' 
+        },
+        { 
+          from: 'public/server-auth.html', 
+          to: 'server-auth.html' 
         }
       ],
     }),
