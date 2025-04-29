@@ -262,6 +262,8 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Server accessible at: http://0.0.0.0:${PORT}`);
+  console.log(`Health check endpoint: http://0.0.0.0:${PORT}/api/health`);
 });
 
 // Handle unhandled promise rejections

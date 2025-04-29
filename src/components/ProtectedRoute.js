@@ -1,32 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 // ProtectedRoute component to protect routes that require authentication
-const ProtectedRoute = ({ element }) => {
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
+const ProtectedRoute = ({ children }) => {
+  const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Check if user is authenticated
-        const response = await axios.get('/api/user');
-        if (response.data) {
-          setAuthenticated(true);
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        setAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="loading-container">
         <div className="spinner"></div>
@@ -34,9 +14,9 @@ const ProtectedRoute = ({ element }) => {
     );
   }
 
-  // If user is authenticated, render the protected component
+  // If user is authenticated, render the children
   // Otherwise, redirect to login page
-  return authenticated ? element : <Navigate to="/auth" />;
+  return user ? children : <Navigate to="/auth" />;
 };
 
 export default ProtectedRoute;

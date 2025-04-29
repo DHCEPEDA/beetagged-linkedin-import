@@ -100,6 +100,10 @@ module.exports = {
         { 
           from: 'public/app.html', 
           to: 'app.html' 
+        },
+        { 
+          from: 'public/server-test.html', 
+          to: 'server-test.html' 
         }
       ],
     }),

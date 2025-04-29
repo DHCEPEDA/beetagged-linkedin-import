@@ -11,7 +11,7 @@ const FacebookLoginButton = ({
   onError, 
   buttonText = "Continue with Facebook",
   className = "",
-  useServerAuth = true // Set to true to use server-side auth, false for client-side SDK
+  useServerAuth = false // Use client-side SDK by default as server-side auth needs additional setup
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);

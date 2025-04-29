@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      text-align: center;
+    }
+    .test-container {
+      max-width: 600px;
+      margin: 0 auto;
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      color: #FD9E31;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>Server Test Page</h1>
+    <p>This page confirms that the server is correctly serving static HTML files.</p>
+    
+    <div class="status success">
+      <strong>Success!</strong> The server is working correctly.
+    </div>
+    
+    <div style="margin-top: 30px;">
+      <p>Server time: <span id="server-time"></span></p>
+      <button id="check-api" style="padding: 8px 16px; background-color: #FD9E31; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        Check API Status
+      </button>
+      <div id="api-result" style="margin-top: 15px;"></div>
+    </div>
+  </div>
+
+  <script>
+    // Display current time
+    document.getElementById('server-time').textContent = new Date().toLocaleTimeString();
+    
+    // Add API check functionality
+    document.getElementById('check-api').addEventListener('click', async () => {
+      const resultDiv = document.getElementById('api-result');
+      resultDiv.textContent = 'Checking API...';
+      
+      try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        
+        resultDiv.innerHTML = `
+          <div class="status success">
+            <strong>API Status:</strong> ${data.status}<br>
+            <strong>Database:</strong> ${data.dbStatus}<br>
+            <strong>Mode:</strong> ${data.mockMode ? 'Mock' : 'Production'}<br>
+            <strong>Timestamp:</strong> ${data.timestamp}
+          </div>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="status" style="background-color: #f8d7da; color: #721c24;">
+            <strong>Error:</strong> ${error.message}
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

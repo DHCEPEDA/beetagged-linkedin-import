@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FacebookLoginButton from '../components/FacebookLoginButton';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,6 +18,20 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
+  const { login, register, user, error: authError, loginWithSocial } = useAuth();
+  
+  // Facebook login function
+  const loginWithFacebook = async (userData) => {
+    console.log('Processing Facebook login with:', userData);
+    return await loginWithSocial(userData, 'facebook');
+  };
+  
+  // Redirect to contacts page if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/contacts');
+    }
+  }, [user, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -31,22 +46,40 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
-      const endpoint = isLogin ? '/api/login' : '/api/register';
-      const response = await axios.post(endpoint, formData);
+      let success;
       
-      setStatus({
-        message: isLogin ? 'Login successful!' : 'Registration successful!',
-        type: 'success'
-      });
+      if (isLogin) {
+        // Login
+        console.log('Logging in with:', formData);
+        success = await login(formData);
+      } else {
+        // Register
+        console.log('Registering with:', formData);
+        success = await register(formData);
+      }
       
-      // On successful auth, redirect to contacts page
-      setTimeout(() => {
-        navigate('/contacts');
-      }, 1500);
-      
+      if (success) {
+        setStatus({
+          message: isLogin ? 'Login successful!' : 'Registration successful!',
+          type: 'success'
+        });
+        
+        // On successful auth, redirect to contacts page
+        setTimeout(() => {
+          navigate('/contacts');
+        }, 1500);
+      } else {
+        // If login/register return false but no error was thrown
+        setStatus({
+          message: authError || 'Authentication failed. Please try again.',
+          type: 'error'
+        });
+      }
     } catch (error) {
+      console.error('Auth error:', error);
+      
       setStatus({
-        message: error.response?.data || 'An error occurred. Please try again.',
+        message: error.message || 'An error occurred. Please try again.',
         type: 'error'
       });
     } finally {
@@ -103,14 +136,27 @@ const AuthPage = () => {
           <p>Welcome to BeeTagged, your personal contact management platform.</p>
           
           <FacebookLoginButton 
-            onSuccess={(userData) => {
-              setStatus({
-                message: `Welcome, ${userData.name}!`,
-                type: 'success'
-              });
-              setTimeout(() => navigate('/contacts'), 1500);
+            onSuccess={async (userData) => {
+              try {
+                setLoading(true);
+                await loginWithFacebook(userData);
+                setStatus({
+                  message: `Welcome, ${userData.name}!`,
+                  type: 'success'
+                });
+                setTimeout(() => navigate('/contacts'), 1500);
+              } catch (error) {
+                console.error('Facebook login error:', error);
+                setStatus({
+                  message: error.message || 'Facebook login failed',
+                  type: 'error'
+                });
+              } finally {
+                setLoading(false);
+              }
             }} 
             onError={(error) => {
+              console.error('Facebook SDK error:', error);
               setStatus({
                 message: error.message || 'Facebook login failed',
                 type: 'error'

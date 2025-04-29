@@ -22,22 +22,18 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Set auth token header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        axios.defaults.headers.common['x-auth-token'] = token;
         
         // Get current user
         const res = await axios.get('/api/auth/me');
         
-        if (res.data.success) {
-          setUser(res.data.data);
-        } else {
-          // Clear token if invalid
-          localStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
-        }
+        // If we get a user response, set it
+        setUser(res.data);
       } catch (error) {
         console.error('Auth check error:', error);
+        // Clear token if invalid
         localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization'];
+        delete axios.defaults.headers.common['x-auth-token'];
         setError('Authentication failed. Please log in again.');
       } finally {
         setIsLoading(false);
@@ -51,17 +47,19 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setIsLoading(true);
+      console.log('Registering with data:', userData);
       const res = await axios.post('/api/auth/register', userData);
       
-      if (res.data.success) {
-        // Save token and set user data
-        localStorage.setItem('token', res.data.token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-        setUser(res.data.user);
-        setError(null);
-        return true;
-      }
+      console.log('Register response:', res.data);
+      
+      // Save token and set user data
+      localStorage.setItem('token', res.data.token);
+      axios.defaults.headers.common['x-auth-token'] = res.data.token;
+      setUser(res.data.user);
+      setError(null);
+      return true;
     } catch (error) {
+      console.error('Registration error:', error);
       setError(error.response?.data?.message || 'Registration failed. Please try again.');
       return false;
     } finally {
@@ -70,20 +68,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login user
-  const login = async (email, password) => {
+  const login = async (userData) => {
     try {
       setIsLoading(true);
-      const res = await axios.post('/api/auth/login', { email, password });
+      console.log('Logging in with:', userData);
       
-      if (res.data.success) {
-        // Save token and set user data
-        localStorage.setItem('token', res.data.token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-        setUser(res.data.user);
-        setError(null);
-        return true;
-      }
+      const res = await axios.post('/api/auth/login', userData);
+      console.log('Login response:', res.data);
+      
+      // Save token and set user data
+      localStorage.setItem('token', res.data.token);
+      axios.defaults.headers.common['x-auth-token'] = res.data.token;
+      setUser(res.data.user);
+      setError(null);
+      return true;
     } catch (error) {
+      console.error('Login error:', error);
       setError(error.response?.data?.message || 'Login failed. Please check your credentials.');
       return false;
     } finally {
@@ -92,57 +92,89 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout user
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-    setUser(null);
+  const logout = async () => {
+    try {
+      // Call the logout API
+      await axios.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clean up local state regardless of API success
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['x-auth-token'];
+      setUser(null);
+    }
   };
 
   // Facebook login
-  const loginWithFacebook = async () => {
+  const loginWithFacebook = async (userData) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      return new Promise((resolve, reject) => {
-        if (!window.FB) {
-          reject(new Error('Facebook SDK not loaded'));
-          setError('Facebook SDK not loaded. Please refresh and try again.');
-          setIsLoading(false);
-          return;
-        }
-        
-        window.FB.login(async (response) => {
-          if (response.authResponse) {
-            try {
-              // Get Facebook access token
-              const accessToken = response.authResponse.accessToken;
-              
-              // Send token to the backend
-              const res = await axios.post('/api/auth/facebook', { accessToken });
-              
-              if (res.data.success) {
-                // Save token and set user data
-                localStorage.setItem('token', res.data.token);
-                axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-                setUser(res.data.user);
-                resolve(res.data.user);
-              } else {
-                reject(new Error(res.data.message || 'Facebook authentication failed'));
-                setError(res.data.message || 'Facebook authentication failed');
-              }
-            } catch (error) {
-              reject(error);
-              setError(error.response?.data?.message || 'Facebook authentication failed');
-            }
-          } else {
-            reject(new Error('User cancelled login or did not fully authorize'));
-            setError('Facebook login was cancelled or not authorized');
+      if (!userData) {
+        return new Promise((resolve, reject) => {
+          if (!window.FB) {
+            reject(new Error('Facebook SDK not loaded'));
+            setError('Facebook SDK not loaded. Please refresh and try again.');
+            setIsLoading(false);
+            return;
           }
           
+          window.FB.login(async (response) => {
+            if (response.authResponse) {
+              try {
+                // Get user info
+                window.FB.api('/me', { fields: 'id,name,email,picture' }, async function(userData) {
+                  try {
+                    // Send userData and token to backend
+                    const res = await axios.post('/api/auth/facebook', {
+                      userData,
+                      accessToken: response.authResponse.accessToken
+                    });
+                    
+                    // Save token and set user data
+                    localStorage.setItem('token', res.data.token);
+                    axios.defaults.headers.common['x-auth-token'] = res.data.token;
+                    setUser(res.data.user);
+                    resolve(res.data.user);
+                  } catch (error) {
+                    reject(error);
+                    setError(error.response?.data?.message || 'Facebook authentication failed on server');
+                  }
+                });
+              } catch (error) {
+                reject(error);
+                setError('Failed to get user data from Facebook');
+              }
+            } else {
+              reject(new Error('User cancelled login or did not fully authorize'));
+              setError('Facebook login was cancelled or not authorized');
+            }
+            
+            setIsLoading(false);
+          }, { scope: 'email,public_profile,user_friends' });
+        });
+      } else {
+        // User data was provided directly, use it
+        try {
+          const res = await axios.post('/api/auth/facebook', {
+            userData,
+            accessToken: userData.accessToken
+          });
+          
+          // Save token and set user data
+          localStorage.setItem('token', res.data.token);
+          axios.defaults.headers.common['x-auth-token'] = res.data.token;
+          setUser(res.data.user);
+          return res.data.user;
+        } catch (error) {
+          setError(error.response?.data?.message || 'Facebook authentication failed on server');
+          throw error;
+        } finally {
           setIsLoading(false);
-        }, { scope: 'email,public_profile,user_friends' });
-      });
+        }
+      }
     } catch (error) {
       setIsLoading(false);
       setError(error.message || 'Facebook login failed');
@@ -151,6 +183,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   // LinkedIn login - to be implemented later
+  
+  // Generic social login function that routes to appropriate handler
+  const loginWithSocial = async (userData, provider) => {
+    if (provider === 'facebook') {
+      return await loginWithFacebook(userData);
+    }
+    // Add other social providers here in the future
+    throw new Error(`Unsupported social provider: ${provider}`);
+  };
 
   return (
     <AuthContext.Provider
@@ -161,7 +202,8 @@ export const AuthProvider = ({ children }) => {
         register,
         login,
         logout,
-        loginWithFacebook
+        loginWithFacebook,
+        loginWithSocial
       }}
     >
       {children}

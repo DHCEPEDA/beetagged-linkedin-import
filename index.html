@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Contact Management Platform</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 800px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 {
+      color: #FD9E31;
+      margin-bottom: 10px;
+    }
+    p {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 30px;
+    }
+    .link-button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #FD9E31;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .link-button:hover {
+      background-color: #e08b1e;
+    }
+    .test-button {
+      background-color: #6c757d;
+    }
+    .test-button:hover {
+      background-color: #5a6268;
+    }
+    .logo {
+      max-width: 120px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/images/diago-bee.svg" alt="BeeTagged Logo" class="logo">
+    <h1>BeeTagged</h1>
+    <p>Welcome to BeeTagged - Your Personal Contact Management Platform</p>
+    
+    <div class="links">
+      <a href="/auth" class="link-button">Go to Login</a>
+      <a href="/server-test.html" class="link-button test-button">Server Test Page</a>
+      <a href="/facebook-diagnostic.html" class="link-button test-button">Facebook Diagnostic</a>
+    </div>
+  </div>
+</body>
+</html>

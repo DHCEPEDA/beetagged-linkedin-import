@@ -4,6 +4,7 @@ import TestPage from './TestPage';
 import LoginPage from './pages/LoginPage';
 import AuthPage from './pages/auth-page';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
 
 // Colors from UIColor+Bee.h
@@ -12,17 +13,7 @@ const beeGold = '#FD9E31';
 
 // Simple component for navigation with BeeTagged styling
 const NavBar = () => {
-  const [authToken, setAuthToken] = useState(localStorage.getItem('authToken'));
-
-  // Check for token changes
-  useEffect(() => {
-    const checkAuth = () => {
-      setAuthToken(localStorage.getItem('authToken'));
-    };
-
-    window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
-  }, []);
+  const { user, logout } = useAuth();
 
   return (
     <div style={{ 
@@ -64,7 +55,7 @@ const NavBar = () => {
           Home
         </Link>
         
-        {authToken ? (
+        {user ? (
           <>
             <Link 
               to="/contacts" 
@@ -78,10 +69,9 @@ const NavBar = () => {
               Contacts
             </Link>
             <button 
-              onClick={() => {
-                localStorage.removeItem('authToken');
-                setAuthToken(null);
-                window.location.href = '/login';
+              onClick={async () => {
+                await logout();
+                window.location.href = '/auth';
               }}
               style={{
                 backgroundColor: '#f8f9fa',
@@ -97,7 +87,7 @@ const NavBar = () => {
           </>
         ) : (
           <Link 
-            to="/login" 
+            to="/auth" 
             style={{ 
               textDecoration: 'none', 
               color: 'white',
@@ -117,7 +107,8 @@ const NavBar = () => {
 
 // We're now using the imported ProtectedRoute component
 
-const App = () => {
+// AppContent component that uses the AuthContext
+const AppContent = () => {
   return (
     <div className="app">
       <NavBar />
@@ -126,11 +117,27 @@ const App = () => {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/test" element={<TestPage />} />
-        <Route path="/contacts" element={<ProtectedRoute element={<div>Contacts Page (Coming Soon)</div>} />} />
+        <Route 
+          path="/contacts" 
+          element={
+            <ProtectedRoute>
+              <div>Contacts Page (Coming Soon)</div>
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/facebook-diagnostic" element={<Navigate to="/server-auth.html" replace />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     </div>
+  );
+};
+
+// Wrap the app with AuthProvider
+const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
