@@ -3,14 +3,16 @@ const router = express.Router();
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
-// OAuth Configuration with fallback values
+// Configuration
 const FB_APP_ID = process.env.FACEBOOK_APP_ID || '1222790436230433';
 const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
-const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g';
-const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'WPL_AP1.j4ipPY9wll4iqDt7.w0yMCA==';
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g'; // Client ID provided by user
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'WPL_AP1.j4ipPY9wll4iqDt7.w0yMCA=='; // Client secret provided by user
 
 // Use the Replit domain or localhost for redirect URI
 const HOSTNAME = 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000';
+
+// Update redirect URIs to use the correct Replit domain
 
 // For Facebook
 const FB_REDIRECT_URI = process.env.FB_REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
@@ -385,50 +387,58 @@ router.post('/reset-password', async (req, res) => {
   
   try {
     // In a real application, we would:
-    // 1. Find the user by reset token
-    // 2. Check if the token is valid and not expired
-    // 3. Update the user's password in the database
+    // 1. Validate the token and check if it's expired
+    // 2. Find the user associated with the token
+    // 3. Update the user's password
+    // 4. Invalidate the token
     
-    // For demo purposes, we'll simulate success and log the request
-    console.log(`Password reset completed for token: ${token.substring(0, 6)}...`);
+    // For demo purposes, we'll simulate success
+    console.log(`Password reset with token: ${token}`);
     
     res.json({ 
       success: true, 
-      message: 'Your password has been reset successfully. You can now log in with your new password.'
+      message: 'Password has been reset successfully. You can now log in with your new password.'
     });
   } catch (error) {
     console.error('Password reset error:', error);
-    res.status(500).json({ message: 'An error occurred while processing your request' });
+    res.status(500).json({ message: 'An error occurred while resetting your password' });
   }
 });
 
-// Handle direct client-side authentication for Facebook
-router.post('/facebook', async (req, res) => {
-  try {
-    const { accessToken, userData } = req.body;
-    
-    if (!accessToken || !userData) {
-      return res.status(400).json({ message: 'Missing required data' });
+// For testing purposes only - in a real app, these endpoints would be properly secured
+if (process.env.NODE_ENV !== 'production') {
+  // Debug endpoint to get all sessions
+  router.get('/debug/sessions', (req, res) => {
+    const sanitizedSessions = {};
+    for (const [key, session] of Object.entries(sessions)) {
+      sanitizedSessions[key] = {
+        ...session,
+        facebook: session.facebook ? {
+          ...session.facebook,
+          access_token: session.facebook.access_token ? `${session.facebook.access_token.substring(0, 10)}...` : null
+        } : null,
+        linkedin: session.linkedin ? {
+          ...session.linkedin,
+          access_token: session.linkedin.access_token ? `${session.linkedin.access_token.substring(0, 10)}...` : null
+        } : null
+      };
     }
-    
-    // In a production environment, we would validate the token with Facebook
-    
-    // Create authenticated session
+    res.json(sanitizedSessions);
+  });
+  
+  // Test login endpoint for development
+  router.get('/test/login', (req, res) => {
     const authToken = uuidv4();
     sessions[authToken] = {
       user: {
-        id: userData.id,
-        name: userData.name,
-        email: userData.email || '',
-        picture: userData.picture || {
+        id: 'test-user-id',
+        name: 'Test User',
+        email: 'test@example.com',
+        picture: {
           data: {
             url: 'https://via.placeholder.com/200'
           }
-        },
-        provider: 'facebook'
-      },
-      facebook: {
-        access_token: accessToken
+        }
       },
       created: new Date()
     };
@@ -437,13 +447,7 @@ router.post('/facebook', async (req, res) => {
       user: sessions[authToken].user,
       token: authToken
     });
-  } catch (error) {
-    console.error('Facebook client auth error:', error);
-    res.status(500).json({
-      message: 'Authentication failed',
-      error: error.message
-    });
-  }
-});
+  });
+}
 
 module.exports = router;
