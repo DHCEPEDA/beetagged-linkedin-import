@@ -227,6 +227,268 @@ app.get('/li-test', (req, res) => {
   `);
 });
 
+// Direct LinkedIn test endpoint
+app.get('/linkedin-test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>BeeTagged - LinkedIn Test</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+        body {
+          background-color: #f8f9fa;
+          font-family: Arial, sans-serif;
+          padding: 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          padding: 20px;
+        }
+        .linkedin-button {
+          background-color: #0A66C2;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 10px 20px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          width: 100%;
+          margin: 20px 0;
+        }
+        .status {
+          margin-top: 20px;
+          padding: 15px;
+          border-radius: 4px;
+          display: none;
+        }
+        .success {
+          background-color: #d4edda;
+          color: #155724;
+        }
+        .error {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+        .test-section {
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #eee;
+        }
+        pre {
+          background-color: #f5f5f5;
+          padding: 10px;
+          border-radius: 4px;
+          overflow-x: auto;
+          font-size: 12px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1 style="color: #FD9E31;" class="text-center">BeeTagged</h1>
+        <p class="text-center">LinkedIn Login Test</p>
+        
+        <div class="test-section">
+          <h4>Method 1: Server-Side Authentication</h4>
+          <p>This uses your server route to initiate the LinkedIn OAuth flow:</p>
+          
+          <div class="text-center">
+            <a href="/api/auth/linkedin/url" class="btn btn-primary linkedin-button" id="serverAuthBtn">
+              Continue with LinkedIn (Server Auth)
+            </a>
+            
+            <div id="serverStatus" class="status"></div>
+          </div>
+        </div>
+        
+        <div class="test-section">
+          <h4>Method 2: Client-Side SDK</h4>
+          <p>This uses the LinkedIn JavaScript SDK:</p>
+          
+          <div class="text-center">
+            <button id="sdkAuthBtn" class="linkedin-button">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px">
+                <path d="M20.47,2H3.53A1.45,1.45,0,0,0,2.06,3.43V20.57A1.45,1.45,0,0,0,3.53,22H20.47a1.45,1.45,0,0,0,1.47-1.43V3.43A1.45,1.45,0,0,0,20.47,2ZM8.09,18.74h-3v-9h3ZM6.59,8.48h0a1.56,1.56,0,1,1,0-3.12,1.57,1.57,0,1,1,0,3.12ZM18.91,18.74h-3V13.91c0-1.21-.43-2-1.52-2A1.65,1.65,0,0,0,12.85,13a2,2,0,0,0-.1.73v5h-3s0-8.18,0-9h3V11A3,3,0,0,1,15.46,9.5c2,0,3.45,1.29,3.45,4.06Z" />
+              </svg>
+              Continue with LinkedIn (SDK)
+            </button>
+            
+            <div id="sdkStatus" class="status"></div>
+          </div>
+        </div>
+        
+        <div class="test-section">
+          <h4>Server Configuration</h4>
+          <p>Current server settings for LinkedIn authentication:</p>
+          <pre>
+LINKEDIN_CLIENT_ID: ${process.env.LINKEDIN_CLIENT_ID || '86y7xx9vw9lslc'} (${process.env.LINKEDIN_CLIENT_ID ? 'From Env' : 'Default Demo ID'})
+LINKEDIN_REDIRECT_URI: ${process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`}
+          </pre>
+          <p class="text-muted">Note: Make sure these match your LinkedIn App configuration.</p>
+        </div>
+      </div>
+
+      <script>
+        // LinkedIn Client ID directly from server
+        const LINKEDIN_CLIENT_ID = '${process.env.LINKEDIN_CLIENT_ID || "86y7xx9vw9lslc"}';
+        const HOSTNAME = '${HOSTNAME}';
+        
+        // Handle server-side authentication
+        document.getElementById('serverAuthBtn').addEventListener('click', async function(e) {
+          e.preventDefault();
+          
+          try {
+            // Get auth URL from server
+            const response = await fetch('/api/auth/linkedin/url');
+            const data = await response.json();
+            
+            // Log info and redirect
+            console.log('LinkedIn auth URL received:', data.url);
+            window.location.href = data.url;
+          } catch (error) {
+            console.error('Error getting LinkedIn auth URL:', error);
+            showError('serverStatus', 'Failed to get authentication URL. Check console for details.');
+          }
+        });
+        
+        // Load LinkedIn SDK
+        function loadLinkedInSDK() {
+          window.linkedInInit = function() {
+            if (window.IN) {
+              console.log('LinkedIn SDK initialized');
+            }
+          };
+          
+          // Load the SDK asynchronously
+          (function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            js.src = "https://platform.linkedin.com/in.js?apiKey=" + LINKEDIN_CLIENT_ID + "&onLoad=linkedInInit";
+            js.async = true;
+            js.defer = true;
+            js.text = "api_key: " + LINKEDIN_CLIENT_ID + "\nonLoad: linkedInInit";
+            fjs.parentNode.insertBefore(js, fjs);
+          }(document, 'script', 'linkedin-jssdk'));
+        }
+        
+        // Handle SDK authentication
+        document.getElementById('sdkAuthBtn').addEventListener('click', function() {
+          const statusBox = document.getElementById('sdkStatus');
+          statusBox.className = 'status info';
+          statusBox.style.display = 'block';
+          statusBox.innerHTML = '<p>Initializing LinkedIn SDK...</p>';
+          
+          if (!window.IN) {
+            loadLinkedInSDK();
+            
+            // Check periodically if SDK is loaded
+            const sdkCheckInterval = setInterval(() => {
+              if (window.IN) {
+                clearInterval(sdkCheckInterval);
+                proceedWithLinkedInAuth();
+              }
+            }, 500);
+            
+            // Timeout after 10 seconds
+            setTimeout(() => {
+              clearInterval(sdkCheckInterval);
+              if (!window.IN) {
+                showError('sdkStatus', 'LinkedIn SDK failed to load after 10 seconds');
+              }
+            }, 10000);
+          } else {
+            proceedWithLinkedInAuth();
+          }
+        });
+        
+        function proceedWithLinkedInAuth() {
+          const statusBox = document.getElementById('sdkStatus');
+          statusBox.innerHTML = '<p>Authorizing with LinkedIn...</p>';
+          
+          // Initiate login
+          window.IN.User.authorize(function() {
+            statusBox.innerHTML = '<p>Authorized! Fetching profile...</p>';
+            
+            // Fetch profile data
+            window.IN.API.Profile("me")
+              .fields(["id", "firstName", "lastName", "profilePicture", "emailAddress"])
+              .result(function(result) {
+                console.log('LinkedIn profile data:', result);
+                
+                if (result && result.values && result.values[0]) {
+                  const profile = result.values[0];
+                  
+                  // Format the user data
+                  const userData = {
+                    id: profile.id,
+                    name: profile.firstName.localized.en_US + ' ' + profile.lastName.localized.en_US,
+                    email: profile.emailAddress || 'Email not available',
+                    picture: profile.profilePicture?.displayImage || null,
+                    provider: 'linkedin'
+                  };
+                  
+                  showSuccess('sdkStatus', userData);
+                } else {
+                  showError('sdkStatus', 'Could not retrieve profile data');
+                }
+              })
+              .error(function(error) {
+                console.error('LinkedIn API error:', error);
+                showError('sdkStatus', 'Error fetching profile: ' + (error.message || 'Unknown error'));
+              });
+          });
+        }
+        
+        // Show success message
+        function showSuccess(elementId, userData) {
+          const statusBox = document.getElementById(elementId);
+          statusBox.className = 'status success';
+          statusBox.style.display = 'block';
+          
+          statusBox.innerHTML = '<h5>LinkedIn Login Successful!</h5>' +
+            '<p><strong>Welcome, ' + userData.name + '!</strong></p>' +
+            '<p>User ID: ' + userData.id + '</p>' +
+            '<p>Email: ' + userData.email + '</p>';
+            
+          if (userData.picture) {
+            statusBox.innerHTML += '<p>Picture URL available</p>';
+          }
+        }
+        
+        // Show error message
+        function showError(elementId, message) {
+          const statusBox = document.getElementById(elementId);
+          statusBox.className = 'status error';
+          statusBox.style.display = 'block';
+          statusBox.innerHTML = '<h5>Error</h5><p>' + message + '</p>';
+        }
+        
+        // Check for authentication response in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('code') && urlParams.has('state')) {
+          const statusBox = document.getElementById('serverStatus');
+          statusBox.className = 'status info';
+          statusBox.style.display = 'block';
+          statusBox.innerHTML = '<p>Processing authentication response...</p>';
+          
+          console.log('Auth code detected in URL. This should be handled by the server callback endpoint.');
+          statusBox.innerHTML = '<p>Auth code detected in URL. If you see this, the callback endpoint might not be configured correctly.</p>';
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Direct Facebook test endpoint
 app.get('/fb-test', (req, res) => {
   res.send(`
@@ -251,7 +513,7 @@ app.get('/fb-test', (req, res) => {
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           padding: 20px;
         }
-        .fb-button {
+        .custom-fb-button {
           background-color: #1877F2;
           color: white;
           border: none;
@@ -277,19 +539,50 @@ app.get('/fb-test', (req, res) => {
           background-color: #f8d7da;
           color: #721c24;
         }
+        .test-section {
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #eee;
+        }
       </style>
     </head>
     <body>
-      <div class="container text-center">
-        <h1 style="color: #FD9E31;">BeeTagged</h1>
-        <p>Facebook Login Test</p>
+      <div class="container">
+        <h1 style="color: #FD9E31;" class="text-center">BeeTagged</h1>
+        <p class="text-center">Facebook Login Test</p>
         
-        <div>
-          <button id="loginBtn" class="fb-button">
-            Continue with Facebook
-          </button>
+        <div class="test-section">
+          <h4>Method 1: Official Facebook Login Button</h4>
+          <p>This uses the official &lt;fb:login-button&gt; component as recommended by Facebook:</p>
           
-          <div id="statusBox" class="status"></div>
+          <div class="text-center">
+            <div id="fb-root"></div>
+            <div class="fb-login-button" 
+                data-width="" 
+                data-size="large" 
+                data-button-type="continue_with" 
+                data-layout="default" 
+                data-auto-logout-link="false" 
+                data-use-continue-as="false"
+                data-scope="public_profile,email"
+                data-onlogin="checkLoginState();">
+            </div>
+            
+            <div id="officialStatus" class="status mt-3"></div>
+          </div>
+        </div>
+        
+        <div class="test-section">
+          <h4>Method 2: Custom Button with FB.login()</h4>
+          <p>This uses a custom button that calls FB.login() directly:</p>
+          
+          <div class="text-center">
+            <button id="customLoginBtn" class="custom-fb-button">
+              Continue with Facebook
+            </button>
+            
+            <div id="customStatus" class="status"></div>
+          </div>
         </div>
       </div>
 
@@ -297,6 +590,7 @@ app.get('/fb-test', (req, res) => {
         // Facebook App ID directly from server environment
         const FACEBOOK_APP_ID = '${process.env.FACEBOOK_APP_ID || "1222790436230433"}';
         
+        // Initialize the Facebook SDK
         window.fbAsyncInit = function() {
           FB.init({
             appId: FACEBOOK_APP_ID,
@@ -305,14 +599,19 @@ app.get('/fb-test', (req, res) => {
             version: 'v18.0'
           });
           
+          FB.AppEvents.logPageView();
+          
+          // Check if already logged in
           FB.getLoginStatus(function(response) {
-            console.log('FB status:', response);
+            console.log('Initial FB status:', response);
             if (response.status === 'connected') {
-              showSuccess(response);
+              showSuccess('officialStatus', response);
+              showSuccess('customStatus', response);
             }
           });
         };
         
+        // Load the SDK asynchronously
         (function(d, s, id) {
           var js, fjs = d.getElementsByTagName(s)[0];
           if (d.getElementById(id)) return;
@@ -321,35 +620,52 @@ app.get('/fb-test', (req, res) => {
           fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'facebook-jssdk'));
         
-        document.getElementById('loginBtn').addEventListener('click', function() {
-          FB.login(function(response) {
-            console.log('Login response:', response);
+        // Callback for the official login button
+        function checkLoginState() {
+          FB.getLoginStatus(function(response) {
+            console.log('Official login button response:', response);
             if (response.status === 'connected') {
-              showSuccess(response);
+              showSuccess('officialStatus', response);
             } else {
-              showError('Login cancelled or failed');
+              showError('officialStatus', 'Login cancelled or failed');
+            }
+          });
+        }
+        
+        // Handler for the custom button
+        document.getElementById('customLoginBtn').addEventListener('click', function() {
+          FB.login(function(response) {
+            console.log('Custom login button response:', response);
+            if (response.status === 'connected') {
+              showSuccess('customStatus', response);
+            } else {
+              showError('customStatus', 'Login cancelled or failed');
             }
           }, {scope: 'public_profile,email'});
         });
         
-        function showSuccess(response) {
-          const statusBox = document.getElementById('statusBox');
+        // Show success message and user info
+        function showSuccess(elementId, response) {
+          const statusBox = document.getElementById(elementId);
           statusBox.className = 'status success';
           statusBox.style.display = 'block';
+          statusBox.innerHTML = '<p>Loading user data...</p>';
           
           FB.api('/me', {fields: 'name,email'}, function(userData) {
-            statusBox.innerHTML = '<h4>Login Successful!</h4>' +
-              '<p>Welcome, ' + userData.name + '!</p>' +
+            statusBox.innerHTML = '<h5>Login Successful!</h5>' +
+              '<p><strong>Welcome, ' + userData.name + '!</strong></p>' +
               '<p>User ID: ' + userData.id + '</p>' +
-              '<p>Email: ' + (userData.email || 'Not available') + '</p>';
+              '<p>Email: ' + (userData.email || 'Not available') + '</p>' +
+              '<p>Access Token: ' + response.authResponse.accessToken.substring(0, 15) + '...</p>';
           });
         }
         
-        function showError(message) {
-          const statusBox = document.getElementById('statusBox');
+        // Show error message
+        function showError(elementId, message) {
+          const statusBox = document.getElementById(elementId);
           statusBox.className = 'status error';
           statusBox.style.display = 'block';
-          statusBox.innerHTML = '<h4>Error</h4><p>' + message + '</p>';
+          statusBox.innerHTML = '<h5>Error</h5><p>' + message + '</p>';
         }
       </script>
     </body>
