@@ -44,13 +44,22 @@ const isAuthenticated = (req, res, next) => {
 router.get('/facebook/url', (req, res) => {
   // Create a session token
   const state = uuidv4();
-  sessions[state] = { created: new Date() };
+  
+  // Extract return URL from query parameter or header
+  const returnUrl = req.query.returnUrl || req.get('Referer') || '/';
+  
+  // Store state with the return URL for redirecting back after auth
+  sessions[state] = { 
+    created: new Date(),
+    returnUrl: returnUrl 
+  };
   
   // Make sure we strip any port numbers from the redirect URI
   const cleanRedirectUri = FB_REDIRECT_URI.replace(':5000', '');
   
   // Log for debugging
   console.log('Facebook auth URL using redirect:', cleanRedirectUri);
+  console.log('Return URL after auth will be:', returnUrl);
   
   // Build Facebook OAuth URL using the Facebook-specific redirect URI
   const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=public_profile,email,user_friends`;
@@ -106,20 +115,52 @@ router.get('/facebook/callback', async (req, res) => {
       created: new Date()
     };
     
+    // Check if we have a custom return URL from the client
+    // This value could be stored in the session when the state token is created
+    const returnUrl = sessions[state].returnUrl || '/';
+    
     // Remove the state session
     delete sessions[state];
     
-    // Return user data and token
-    res.json({
-      user: userResponse.data,
-      token: authToken
-    });
+    // Check if this is a test page redirect
+    if (returnUrl.includes('fb-real-test')) {
+      // For testing page, redirect with data in URL parameters
+      const userData = encodeURIComponent(JSON.stringify(userResponse.data));
+      return res.redirect(`${returnUrl}?token=${authToken}&userData=${userData}`);
+    } else if (returnUrl.includes('wizard')) {
+      // For wizard page, redirect with token
+      return res.redirect(`${returnUrl}?token=${authToken}`);
+    } else if (req.xhr) {
+      // For XHR/AJAX requests, return JSON
+      return res.json({
+        user: userResponse.data,
+        token: authToken
+      });
+    } else {
+      // For regular requests, redirect to the main app with token
+      return res.redirect(`/?token=${authToken}`);
+    }
   } catch (error) {
     console.error('Facebook auth error:', error.response?.data || error.message);
-    res.status(500).json({
-      message: 'Authentication failed',
-      error: error.response?.data || error.message
-    });
+    const errorMessage = encodeURIComponent(error.response?.data?.error?.message || error.message);
+    
+    // Check if we have a returnUrl to redirect errors to
+    const returnUrl = sessions[state]?.returnUrl || '/';
+    delete sessions[state]; // Clean up the session
+    
+    if (returnUrl.includes('fb-real-test') || returnUrl.includes('wizard')) {
+      // For test pages, redirect with error in URL
+      return res.redirect(`${returnUrl}?error=${errorMessage}`);
+    } else if (req.xhr) {
+      // For XHR/AJAX requests, return JSON error
+      return res.status(500).json({
+        message: 'Authentication failed',
+        error: error.response?.data || error.message
+      });
+    } else {
+      // For regular requests, redirect to the main app with error
+      return res.redirect(`/?error=${errorMessage}`);
+    }
   }
 });
 

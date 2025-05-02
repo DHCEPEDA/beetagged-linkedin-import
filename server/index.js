@@ -771,6 +771,11 @@ app.get('/fb-simple', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'fb-simple.html'));
 });
 
+// Facebook real credentials test page
+app.get('/fb-real-test', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'fb-real-test.html'));
+});
+
 // Social connection wizard
 app.get('/wizard', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'social-connect-wizard.html'));
