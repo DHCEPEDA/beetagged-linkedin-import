@@ -122,8 +122,8 @@ router.get('/facebook/callback', async (req, res) => {
     // Remove the state session
     delete sessions[state];
     
-    // Check if this is a test page redirect
-    if (returnUrl.includes('fb-real-test')) {
+    // Check if this is a test page redirect - look for any of our test pages
+    if (returnUrl.includes('fb-real-test') || returnUrl.includes('simple-fb-test') || returnUrl.includes('direct-fb-login')) {
       // For testing page, redirect with data in URL parameters
       const userData = encodeURIComponent(JSON.stringify(userResponse.data));
       return res.redirect(`${returnUrl}?token=${authToken}&userData=${userData}`);
@@ -148,7 +148,7 @@ router.get('/facebook/callback', async (req, res) => {
     const returnUrl = sessions[state]?.returnUrl || '/';
     delete sessions[state]; // Clean up the session
     
-    if (returnUrl.includes('fb-real-test') || returnUrl.includes('wizard')) {
+    if (returnUrl.includes('fb-real-test') || returnUrl.includes('simple-fb-test') || returnUrl.includes('direct-fb-login') || returnUrl.includes('wizard')) {
       // For test pages, redirect with error in URL
       return res.redirect(`${returnUrl}?error=${errorMessage}`);
     } else if (req.xhr) {

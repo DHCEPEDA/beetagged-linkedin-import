@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Facebook Login</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 600px; 
+      margin: 30px auto; 
+      padding: 20px;
+      line-height: 1.6;
+    }
+    button {
+      background: #1877F2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    #output {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Direct Facebook Login</h1>
+  <p>This page bypasses all complexity and directly authenticates with Facebook.</p>
+  
+  <button id="loginBtn">Login with Facebook</button>
+  <div id="status"></div>
+  <pre id="output"></pre>
+
+  <script>
+    // We'll use a direct approach here
+    const loginBtn = document.getElementById('loginBtn');
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+    
+    // Check for URL parameters after redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const userData = urlParams.get('userData');
+    const error = urlParams.get('error');
+    
+    if (token && userData) {
+      // Show success message
+      status.innerHTML = '<div style="color: green; font-weight: bold">Login successful!</div>';
+      output.textContent = JSON.stringify(JSON.parse(decodeURIComponent(userData)), null, 2);
+      
+      // Clean up URL
+      history.replaceState(null, '', '/direct-fb-login.html');
+    } else if (error) {
+      // Show error message
+      status.innerHTML = `<div style="color: red; font-weight: bold">Error: ${decodeURIComponent(error)}</div>`;
+      
+      // Clean up URL
+      history.replaceState(null, '', '/direct-fb-login.html');
+    }
+    
+    // Handle login button click
+    loginBtn.addEventListener('click', () => {
+      // Simple approach - call the auth URL endpoint with current page as return URL
+      status.textContent = 'Connecting to Facebook...';
+      
+      // Get auth URL from server
+      fetch('/api/auth/facebook/url?returnUrl=/direct-fb-login.html')
+        .then(response => response.json())
+        .then(data => {
+          if (data.url) {
+            // Redirect to Facebook
+            window.location.href = data.url;
+          } else {
+            throw new Error('Failed to get authentication URL');
+          }
+        })
+        .catch(err => {
+          status.innerHTML = `<div style="color: red; font-weight: bold">Error: ${err.message}</div>`;
+        });
+    });
+  </script>
+</body>
+</html>

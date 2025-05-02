@@ -798,6 +798,16 @@ app.get('/test', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'test.html'));
 });
 
+// Simple Facebook login test page
+app.get('/simple-fb-test', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'simple-fb-test.html'));
+});
+
+// Direct Facebook login page - super simple approach
+app.get('/direct-fb-login', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'direct-fb-login.html'));
+});
+
 // Health check for browser testing
 app.get('/api/ping', (req, res) => {
   res.json({

@@ -3,130 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BeeTagged - Simple Facebook Test</title>
+  <title>Facebook Login Test</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f0f2f5;
-    }
-    .container {
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       padding: 20px;
-      text-align: center;
     }
-    .title {
-      color: #FD9E31;
-      margin-bottom: 10px;
-    }
-    .subtitle {
-      margin-bottom: 20px;
-      color: #666;
-    }
-    .login-button {
-      background-color: #1877F2;
+    .button {
+      display: inline-block;
+      background-color: #1877f2;
       color: white;
-      border: none;
-      border-radius: 4px;
       padding: 10px 20px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;
-      margin: 20px 0;
-    }
-    .status-box {
-      margin-top: 20px;
-      padding: 15px;
       border-radius: 4px;
-      display: none;
+      text-decoration: none;
+      margin: 10px 0;
+      cursor: pointer;
     }
-    .success {
-      background-color: #d4edda;
-      color: #155724;
+    .status {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f5f5f5;
     }
-    .error {
-      background-color: #f8d7da;
-      color: #721c24;
+    pre {
+      background-color: #f1f1f1;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1 class="title">BeeTagged</h1>
-    <p class="subtitle">Simple Facebook Login Test</p>
-    
-    <div>
-      <button id="loginBtn" class="login-button">
-        Continue with Facebook
-      </button>
-      
-      <div id="statusBox" class="status-box"></div>
-    </div>
+  <h1>Simple Facebook Login Test</h1>
+  
+  <p>This is a simplified test page for Facebook login with your real credentials.</p>
+  
+  <div id="login-button">
+    <button class="button" id="facebook-login">Login with Facebook</button>
   </div>
-
+  
+  <div class="status" id="status">
+    <p>Status: Not logged in</p>
+  </div>
+  
+  <div id="result" style="display: none;">
+    <h2>User Data</h2>
+    <pre id="user-data"></pre>
+    
+    <h2>Access Token</h2>
+    <pre id="access-token"></pre>
+  </div>
+  
   <script>
-    // Facebook App ID
-    const FACEBOOK_APP_ID = '1222790436230433';
+    document.getElementById('facebook-login').addEventListener('click', startFacebookLogin);
     
-    window.fbAsyncInit = function() {
-      FB.init({
-        appId: FACEBOOK_APP_ID,
-        cookie: true,
-        xfbml: true,
-        version: 'v18.0'
-      });
+    // Check for token in URL parameters (after redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const userData = urlParams.get('userData');
+    const error = urlParams.get('error');
+    
+    if (token && userData) {
+      showSuccess(token, JSON.parse(decodeURIComponent(userData)));
+    } else if (error) {
+      showError(decodeURIComponent(error));
+    }
+    
+    function startFacebookLogin() {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = '<p>Status: Initiating Facebook login...</p>';
       
-      FB.getLoginStatus(function(response) {
-        console.log('FB status:', response);
-        if (response.status === 'connected') {
-          showSuccess(response);
-        }
-      });
-    };
+      // Get Facebook authentication URL from the server
+      fetch('/api/auth/facebook/url?returnUrl=/simple-fb-test.html')
+        .then(response => response.json())
+        .then(data => {
+          if (data.url) {
+            statusDiv.innerHTML = '<p>Status: Redirecting to Facebook...</p>';
+            // Redirect to Facebook for authentication
+            window.location.href = data.url;
+          } else {
+            showError('Failed to get Facebook authorization URL');
+          }
+        })
+        .catch(error => {
+          showError('Error: ' + error.message);
+        });
+    }
     
-    (function(d, s, id) {
-      var js, fjs = d.getElementsByTagName(s)[0];
-      if (d.getElementById(id)) return;
-      js = d.createElement(s); js.id = id;
-      js.src = "https://connect.facebook.net/en_US/sdk.js";
-      fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-    
-    document.getElementById('loginBtn').addEventListener('click', function() {
-      FB.login(function(response) {
-        console.log('Login response:', response);
-        if (response.status === 'connected') {
-          showSuccess(response);
-        } else {
-          showError('Login cancelled or failed');
-        }
-      }, {scope: 'public_profile,email'});
-    });
-    
-    function showSuccess(response) {
-      const statusBox = document.getElementById('statusBox');
-      statusBox.className = 'status-box success';
-      statusBox.style.display = 'block';
+    function showSuccess(token, userData) {
+      // Update status
+      document.getElementById('status').innerHTML = 
+        '<p>Status: <strong>Logged in successfully</strong></p>';
       
-      FB.api('/me', {fields: 'name,email'}, function(userData) {
-        statusBox.innerHTML = '<h4>Login Successful!</h4>' +
-          '<p>Welcome, ' + userData.name + '!</p>' +
-          '<p>User ID: ' + userData.id + '</p>' +
-          '<p>Email: ' + (userData.email || 'Not available') + '</p>';
-      });
+      // Display user data
+      document.getElementById('user-data').textContent = JSON.stringify(userData, null, 2);
+      document.getElementById('access-token').textContent = token;
+      document.getElementById('result').style.display = 'block';
+      
+      // Hide login button
+      document.getElementById('login-button').style.display = 'none';
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, '/simple-fb-test.html');
     }
     
     function showError(message) {
-      const statusBox = document.getElementById('statusBox');
-      statusBox.className = 'status-box error';
-      statusBox.style.display = 'block';
-      statusBox.innerHTML = '<h4>Error</h4><p>' + message + '</p>';
+      document.getElementById('status').innerHTML = 
+        '<p>Status: <strong>Error</strong></p>' +
+        '<p>' + message + '</p>';
+        
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, '/simple-fb-test.html');
     }
   </script>
 </body>
