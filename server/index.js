@@ -679,19 +679,17 @@ app.get('/fb-test', (req, res) => {
                 .then(data => {
                     console.log('Server authentication response:', data);
                     const statusBox = document.getElementById('customStatus');
-                    statusBox.innerHTML += `
-                      <h4>Server Authentication</h4>
-                      <p>Success: ${data.success ? 'Yes' : 'No'}</p>
-                      <p>Token: ${data.token ? data.token.substring(0, 10) + '...' : 'None'}</p>
-                    `;
+                    statusBox.innerHTML += 
+                      '<h4>Server Authentication</h4>' +
+                      '<p>Success: ' + (data.success ? 'Yes' : 'No') + '</p>' +
+                      '<p>Token: ' + (data.token ? data.token.substring(0, 10) + '...' : 'None') + '</p>';
                 })
                 .catch(error => {
                     console.error('Server authentication error:', error);
                     const statusBox = document.getElementById('customStatus');
-                    statusBox.innerHTML += `
-                      <h4>Server Error</h4>
-                      <p>${error.message}</p>
-                    `;
+                    statusBox.innerHTML += 
+                      '<h4>Server Error</h4>' +
+                      '<p>' + error.message + '</p>';
                 });
               });
             } else {

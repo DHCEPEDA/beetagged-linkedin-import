@@ -339,6 +339,88 @@ router.post('/linkedin', async (req, res) => {
   }
 });
 
+// LinkedIn token exchange endpoint (client-side flow)
+router.post('/linkedin/token', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body;
+    
+    if (!code || !redirectUri) {
+      return res.status(400).json({ message: 'Missing required parameters' });
+    }
+    
+    console.log('LinkedIn token exchange with code:', code.substring(0, 10) + '...');
+    console.log('Using redirect URI:', redirectUri);
+    
+    // Exchange authorization code for access token
+    const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
+      params: {
+        grant_type: 'authorization_code',
+        client_id: LINKEDIN_CLIENT_ID,
+        client_secret: LINKEDIN_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        code
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    
+    const { access_token, expires_in } = tokenResponse.data;
+    
+    // Get user profile data from LinkedIn
+    const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+    
+    // Get user email from LinkedIn
+    const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+    
+    // Format the profile data
+    const profileData = {
+      id: profileResponse.data.id,
+      name: `${profileResponse.data.localizedFirstName} ${profileResponse.data.localizedLastName}`,
+      email: emailResponse.data.elements?.[0]?.['handle~']?.emailAddress || '',
+      picture: {
+        data: {
+          url: 'https://via.placeholder.com/200'  // LinkedIn doesn't provide picture in basic scope
+        }
+      },
+      provider: 'linkedin'
+    };
+    
+    // Create authenticated session
+    const authToken = uuidv4();
+    sessions[authToken] = {
+      user: profileData,
+      linkedin: {
+        access_token,
+        expires_in
+      },
+      created: new Date()
+    };
+    
+    // Return user data and token
+    res.json({
+      success: true,
+      user: profileData,
+      token: authToken
+    });
+  } catch (error) {
+    console.error('LinkedIn token exchange error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Authentication failed',
+      error: error.response?.data || error.message
+    });
+  }
+});
+
 // Forgot password endpoint
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
