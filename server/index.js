@@ -655,12 +655,49 @@ app.get('/fb-test', (req, res) => {
         document.getElementById('customLoginBtn').addEventListener('click', function() {
           FB.login(function(response) {
             console.log('Custom login button response:', response);
-            if (response.status === 'connected') {
-              showSuccess('customStatus', response);
+            if (response.authResponse) {
+              // Get user information
+              FB.api('/me', { fields: 'name,email,picture' }, function(userData) {
+                // Display success message with user info
+                showSuccess('customStatus', response);
+                
+                // Send to backend for authentication
+                fetch('/api/auth/facebook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accessToken: response.authResponse.accessToken,
+                        userData: {
+                            id: userData.id,
+                            name: userData.name,
+                            email: userData.email,
+                            picture: userData.picture?.data?.url
+                        }
+                    }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Server authentication response:', data);
+                    const statusBox = document.getElementById('customStatus');
+                    statusBox.innerHTML += `
+                      <h4>Server Authentication</h4>
+                      <p>Success: ${data.success ? 'Yes' : 'No'}</p>
+                      <p>Token: ${data.token ? data.token.substring(0, 10) + '...' : 'None'}</p>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Server authentication error:', error);
+                    const statusBox = document.getElementById('customStatus');
+                    statusBox.innerHTML += `
+                      <h4>Server Error</h4>
+                      <p>${error.message}</p>
+                    `;
+                });
+              });
             } else {
               showError('customStatus', 'Login cancelled or failed');
             }
-          }, {scope: 'public_profile,email'});
+          }, {scope: 'public_profile,email'}); // Removed user_friends permission
         });
         
         // Show success message and user info

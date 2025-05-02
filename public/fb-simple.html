@@ -96,6 +96,8 @@
           // Get user information
           FB.api('/me', {fields: 'name,email,picture'}, function(userData) {
             const resultDiv = document.getElementById('result');
+            
+            // Display the user info
             resultDiv.innerHTML += `
               <h3>Welcome, ${userData.name}!</h3>
               <p>User ID: ${userData.id}</p>
@@ -103,11 +105,44 @@
               ${userData.picture ? `<img src="${userData.picture.data.url}" alt="Profile picture">` : ''}
               <pre>${JSON.stringify(userData, null, 2)}</pre>
             `;
+            
+            // Send to backend (optional backend integration)
+            fetch('/api/auth/facebook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    accessToken: response.authResponse.accessToken,
+                    userData: {
+                        id: userData.id,
+                        name: userData.name,
+                        email: userData.email,
+                        picture: userData.picture?.data?.url
+                    }
+                }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                resultDiv.innerHTML += `
+                  <div style="margin-top: 20px; padding: 10px; background-color: #e8f5e9; border-radius: 4px;">
+                    <h4>Server Authentication</h4>
+                    <p>Status: ${data.success ? 'Success' : 'Failed'}</p>
+                    <p>Token: ${data.token ? data.token.substring(0, 10) + '...' : 'None'}</p>
+                  </div>
+                `;
+            })
+            .catch(error => {
+                resultDiv.innerHTML += `
+                  <div style="margin-top: 20px; padding: 10px; background-color: #ffebee; border-radius: 4px;">
+                    <h4>Server Error</h4>
+                    <p>${error.message}</p>
+                  </div>
+                `;
+            });
           });
         } else {
           updateStatus('Login cancelled or failed', response);
         }
-      }, {scope: 'public_profile,email'});
+      }, {scope: 'public_profile,email'}); // Removed user_friends permission
     });
     
     // Update status display
