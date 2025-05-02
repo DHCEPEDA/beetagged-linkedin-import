@@ -29,7 +29,24 @@ const connectDB = async () => {
     }
     
     // Real MongoDB connection
-    const conn = await mongoose.connect(dbUri);
+    // Ensure we have the database name in the URI
+    let connectionUri = dbUri;
+    if (!connectionUri.includes('/beetagger') && !connectionUri.includes('dbName=')) {
+      // If URI doesn't contain the database name, add it
+      connectionUri = connectionUri.includes('?') 
+        ? `${connectionUri}&dbName=beetagger` 
+        : `${connectionUri}?dbName=beetagger`;
+    }
+    
+    // Set mongoose options for more reliable connections
+    const mongooseOptions = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      heartbeatFrequencyMS: 1000,     // Check connection more frequently
+    };
+    
+    const conn = await mongoose.connect(connectionUri, mongooseOptions);
     
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {

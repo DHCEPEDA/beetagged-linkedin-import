@@ -1,0 +1,26 @@
+# MongoDB Atlas IP Whitelist Instructions
+
+To ensure your Replit application can connect to MongoDB Atlas, you need to add Replit's 
+IP address to your MongoDB Atlas IP whitelist:
+
+1. Log in to your MongoDB Atlas account at https://cloud.mongodb.com
+2. Navigate to your "ClusterBeeTagged" cluster
+3. Click on "Network Access" in the left sidebar menu
+4. Click the green "Add IP Address" button
+5. Add the following IP address: 34.9.111.200
+6. Add a comment like "Replit IP" for future reference
+7. Click "Confirm"
+
+IMPORTANT: You may also want to consider adding 0.0.0.0/0 to allow access from anywhere temporarily for testing. 
+You can always remove this open access later and only keep the specific Replit IP.
+
+To add open access:
+1. Click "Add IP Address" again
+2. Click "Allow Access from Anywhere" (this adds 0.0.0.0/0)
+3. Add comment like "Temporary open access for testing"
+4. Click "Confirm"
+
+After adding this IP address, your Replit application will be able to connect to your MongoDB Atlas cluster.
+
+Note: Replit IP addresses may change occasionally. If you encounter connection errors in the future,
+you may need to check for updated IP ranges.
