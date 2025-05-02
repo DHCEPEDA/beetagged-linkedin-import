@@ -46,8 +46,14 @@ router.get('/facebook/url', (req, res) => {
   const state = uuidv4();
   sessions[state] = { created: new Date() };
   
+  // Make sure we strip any port numbers from the redirect URI
+  const cleanRedirectUri = FB_REDIRECT_URI.replace(':5000', '');
+  
   // Build Facebook OAuth URL
-  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=public_profile,email,user_friends`;
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=public_profile,email,user_friends`;
+  
+  // Log information for debugging
+  console.log(`Facebook auth URL generated with redirect: ${cleanRedirectUri}`);
   
   res.json({ url: authUrl, state });
 });
@@ -117,10 +123,13 @@ router.get('/linkedin/url', (req, res) => {
   sessions[state] = { created: new Date() };
   
   // Build LinkedIn OAuth URL using LinkedIn-specific redirect URI
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  // Make sure we strip any port numbers from the redirect URI
+  const cleanRedirectUri = LINKEDIN_REDIRECT_URI.replace(':5000', '');
+  
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
   
   // Log information for debugging
-  console.log(`LinkedIn auth URL generated with redirect: ${LINKEDIN_REDIRECT_URI}`);
+  console.log(`LinkedIn auth URL generated with redirect: ${cleanRedirectUri}`);
   
   res.json({ url: authUrl, state });
 });
