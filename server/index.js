@@ -23,8 +23,9 @@ const connectDB = require('./config/db');
 
 // Initialize app
 const app = express();
-// Force port 5000 which is the port Replit expects
-const PORT = 5000;
+// Use the PORT environment variable or default to 5000
+// Replit prefers using port 5000 for exposed services
+const PORT = process.env.PORT || 5000;
 
 // Connect to database
 connectDB();
@@ -430,6 +431,12 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Server accessible at: http://0.0.0.0:${PORT}`);
   console.log(`Health check endpoint: http://0.0.0.0:${PORT}/api/health`);
+  
+  // Log Replit domain information for debugging
+  const replitDomain = process.env.REPL_SLUG && process.env.REPL_OWNER 
+    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
+    : 'Not in Replit environment';
+  console.log(`Replit domain: ${replitDomain}`);
 });
 
 // Handle unhandled promise rejections

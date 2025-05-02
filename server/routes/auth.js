@@ -8,7 +8,19 @@ const FB_APP_ID = process.env.FACEBOOK_APP_ID || '1222790436230433';
 const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '86y7xx9vw9lslc'; // Default demo client ID
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI || 'https://workspace.dhcepeda.repl.co/login';
+
+// Use the Replit domain or localhost for redirect URI
+const HOSTNAME = process.env.REPL_SLUG && process.env.REPL_OWNER 
+  ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
+  : 'localhost:5000';
+
+// For Facebook
+const FB_REDIRECT_URI = process.env.FB_REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
+// For LinkedIn
+const LINKEDIN_REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`;
+
+// For backward compatibility
+const REDIRECT_URI = process.env.REDIRECT_URI || `https://${HOSTNAME}/api/auth/callback`;
 
 // In-memory session store for demo (in production, use Redis or a database)
 // This simulates server-side sessions without cookies for the demo
@@ -106,8 +118,11 @@ router.get('/linkedin/url', (req, res) => {
   const state = uuidv4();
   sessions[state] = { created: new Date() };
   
-  // Build LinkedIn OAuth URL
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  // Build LinkedIn OAuth URL using LinkedIn-specific redirect URI
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  
+  // Log information for debugging
+  console.log(`LinkedIn auth URL generated with redirect: ${LINKEDIN_REDIRECT_URI}`);
   
   res.json({ url: authUrl, state });
 });
@@ -128,7 +143,7 @@ router.get('/linkedin/callback', async (req, res) => {
         grant_type: 'authorization_code',
         client_id: LINKEDIN_CLIENT_ID,
         client_secret: LINKEDIN_CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: LINKEDIN_REDIRECT_URI,
         code
       },
       headers: {
@@ -303,6 +318,90 @@ router.post('/linkedin', async (req, res) => {
       message: 'Authentication failed',
       error: error.message
     });
+  }
+});
+
+// Forgot password endpoint
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required' });
+  }
+  
+  try {
+    // In a real application, we would:
+    // 1. Check if the email exists in the database
+    // 2. Generate a reset token and store it with expiration
+    // 3. Send an email with a reset link
+    
+    // For demo purposes, we'll simulate success and log the request
+    console.log(`Password reset requested for: ${email}`);
+    
+    // Check if we have SendGrid configured for sending emails
+    const sendGridApiKey = process.env.SENDGRID_API_KEY;
+    
+    if (sendGridApiKey) {
+      // If SendGrid is configured, we would send an actual email
+      // This is simulated for now, but the code is ready to use with SendGrid
+      try {
+        // Simulate sending email
+        console.log(`Would send password reset email to ${email} using SendGrid`);
+        
+        // In a real app with proper SendGrid setup:
+        // const sgMail = require('@sendgrid/mail');
+        // sgMail.setApiKey(sendGridApiKey);
+        // const msg = {
+        //   to: email,
+        //   from: 'support@beetagged.com',
+        //   subject: 'Reset Your BeeTagged Password',
+        //   text: `Click the link to reset your password: https://${HOSTNAME}/reset-password?token=${resetToken}`,
+        //   html: `<p>Click the link to reset your password: <a href="https://${HOSTNAME}/reset-password?token=${resetToken}">Reset Password</a></p>`,
+        // };
+        // await sgMail.send(msg);
+      } catch (emailError) {
+        console.error('Error sending password reset email:', emailError);
+        // Continue with success response even if email fails
+      }
+    }
+    
+    // Return success response regardless of email status
+    // This prevents email enumeration attacks
+    res.json({ 
+      success: true, 
+      message: 'If this email is registered, you will receive password reset instructions.'
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'An error occurred while processing your request' });
+  }
+});
+
+// Reset password endpoint
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Token and password are required' });
+  }
+  
+  try {
+    // In a real application, we would:
+    // 1. Validate the token and check if it's expired
+    // 2. Find the user associated with the token
+    // 3. Update the user's password
+    // 4. Invalidate the token
+    
+    // For demo purposes, we'll simulate success
+    console.log(`Password reset with token: ${token}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Password has been reset successfully. You can now log in with your new password.'
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'An error occurred while resetting your password' });
   }
 });
 
