@@ -23,7 +23,7 @@ const LinkedInLoginButton = ({
       const loadLinkedInSDK = () => {
         window.linkedInInit = function() {
           window.IN.init({
-            api_key: process.env.LINKEDIN_CLIENT_ID || '86y7xx9vw9lslc', // Default demo client ID
+            api_key: process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g', // User's client ID
             authorize: true,
             scope: 'r_emailaddress r_liteprofile',
             cookie_name: 'li_at'
@@ -35,10 +35,10 @@ const LinkedInLoginButton = ({
           var js, fjs = d.getElementsByTagName(s)[0];
           if (d.getElementById(id)) return;
           js = d.createElement(s); js.id = id;
-          js.src = "https://platform.linkedin.com/in.js?apiKey=86y7xx9vw9lslc&onLoad=linkedInInit";
+          js.src = "https://platform.linkedin.com/in.js?apiKey=867adep5adc22g&onLoad=linkedInInit";
           js.async = true;
           js.defer = true;
-          js.text = "api_key: 86y7xx9vw9lslc\nonLoad: linkedInInit";
+          js.text = "api_key: 867adep5adc22g\nonLoad: linkedInInit";
           fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'linkedin-jssdk'));
       };

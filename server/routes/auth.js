@@ -6,8 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 // Configuration
 const FB_APP_ID = process.env.FACEBOOK_APP_ID || '1222790436230433';
 const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
-const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '86y7xx9vw9lslc'; // Default demo client ID
-const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g'; // Client ID provided by user
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'WPL_AP1.j4ipPY9wll4iqDt7.w0yMCA=='; // Client secret provided by user
 
 // Use the Replit domain or localhost for redirect URI
 const HOSTNAME = process.env.REPL_SLUG && process.env.REPL_OWNER 

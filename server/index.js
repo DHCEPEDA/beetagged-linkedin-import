@@ -329,16 +329,21 @@ app.get('/linkedin-test', (req, res) => {
           <h4>Server Configuration</h4>
           <p>Current server settings for LinkedIn authentication:</p>
           <pre>
-LINKEDIN_CLIENT_ID: ${process.env.LINKEDIN_CLIENT_ID || '86y7xx9vw9lslc'} (${process.env.LINKEDIN_CLIENT_ID ? 'From Env' : 'Default Demo ID'})
+LINKEDIN_CLIENT_ID: ${process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g'} (${process.env.LINKEDIN_CLIENT_ID ? 'From Env' : 'User Provided ID'})
+LINKEDIN_CLIENT_SECRET: ${process.env.LINKEDIN_CLIENT_SECRET ? '************' : 'WPL_AP1.j4ip****'} (${process.env.LINKEDIN_CLIENT_SECRET ? 'From Env' : 'User Provided Secret'})
 LINKEDIN_REDIRECT_URI: ${process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`}
           </pre>
-          <p class="text-muted">Note: Make sure these match your LinkedIn App configuration.</p>
+          <p class="text-muted"><strong>Important:</strong> Make sure to add this exact Authorized Redirect URL to your LinkedIn App:</p>
+          <div class="alert alert-info">
+            <code>${process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`}</code>
+          </div>
+          <p>If you're still getting "page not found" errors, verify that this URL is added to your LinkedIn Developer Console under Auth → OAuth 2.0 settings.</p>
         </div>
       </div>
 
       <script>
         // LinkedIn Client ID directly from server
-        const LINKEDIN_CLIENT_ID = '${process.env.LINKEDIN_CLIENT_ID || "86y7xx9vw9lslc"}';
+        const LINKEDIN_CLIENT_ID = '${process.env.LINKEDIN_CLIENT_ID || "867adep5adc22g"}';
         const HOSTNAME = '${HOSTNAME}';
         
         // Handle server-side authentication
