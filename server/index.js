@@ -229,6 +229,11 @@ app.get('/li-test', (req, res) => {
 
 // Direct LinkedIn test endpoint
 app.get('/linkedin-test', (req, res) => {
+  // Define HOSTNAME for this endpoint
+  const HOSTNAME = process.env.REPL_SLUG && process.env.REPL_OWNER 
+    ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
+    : 'localhost:5000';
+    
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -496,6 +501,9 @@ LINKEDIN_REDIRECT_URI: ${process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAM
 
 // Direct Facebook test endpoint
 app.get('/fb-test', (req, res) => {
+  // Define HOSTNAME for this endpoint
+  const HOSTNAME = 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000';
+    
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -753,11 +761,11 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server accessible at: http://0.0.0.0:${PORT}`);
   console.log(`Health check endpoint: http://0.0.0.0:${PORT}/api/health`);
   
-  // Log Replit domain information for debugging
-  const replitDomain = process.env.REPL_SLUG && process.env.REPL_OWNER 
-    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
-    : 'Not in Replit environment';
-  console.log(`Replit domain: ${replitDomain}`);
+  // Get the actual Replit URL from the header when needed
+  console.log('To access test pages, use these URLs:');
+  console.log(`Facebook test: https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000/fb-test`);
+  console.log(`LinkedIn test: https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000/linkedin-test`);
+  console.log(`Main app: https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000/`);
 });
 
 // Handle unhandled promise rejections
