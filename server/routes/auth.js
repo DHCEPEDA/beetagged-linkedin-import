@@ -17,8 +17,8 @@ const FB_REDIRECT_URI = process.env.FB_REDIRECT_URI || `https://${HOSTNAME}/api/
 // For LinkedIn
 const LINKEDIN_REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`;
 
-// For backward compatibility
-const REDIRECT_URI = process.env.REDIRECT_URI || `https://${HOSTNAME}/api/auth/callback`;
+// For backward compatibility - use Facebook-specific callback by default
+const REDIRECT_URI = process.env.REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
 
 // In-memory session store for demo (in production, use Redis or a database)
 // This simulates server-side sessions without cookies for the demo
@@ -49,7 +49,10 @@ router.get('/facebook/url', (req, res) => {
   // Make sure we strip any port numbers from the redirect URI
   const cleanRedirectUri = FB_REDIRECT_URI.replace(':5000', '');
   
-  // Build Facebook OAuth URL
+  // Log for debugging
+  console.log('Facebook auth URL using redirect:', cleanRedirectUri);
+  
+  // Build Facebook OAuth URL using the Facebook-specific redirect URI
   const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=public_profile,email,user_friends`;
   
   // Log information for debugging
@@ -68,12 +71,16 @@ router.get('/facebook/callback', async (req, res) => {
   }
   
   try {
+    // Make sure we strip any port numbers from the redirect URI for token exchange
+    const cleanRedirectUri = FB_REDIRECT_URI.replace(':5000', '');
+    console.log('Facebook token exchange using redirect:', cleanRedirectUri);
+    
     // Exchange authorization code for access token
     const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
       params: {
         client_id: FB_APP_ID,
         client_secret: FB_APP_SECRET,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: cleanRedirectUri,
         code
       }
     });
@@ -144,13 +151,17 @@ router.get('/linkedin/callback', async (req, res) => {
   }
   
   try {
+    // Make sure we strip any port numbers from the redirect URI for token exchange
+    const cleanRedirectUri = LINKEDIN_REDIRECT_URI.replace(':5000', '');
+    console.log('LinkedIn token exchange using redirect:', cleanRedirectUri);
+    
     // Exchange authorization code for access token
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
       params: {
         grant_type: 'authorization_code',
         client_id: LINKEDIN_CLIENT_ID,
         client_secret: LINKEDIN_CLIENT_SECRET,
-        redirect_uri: LINKEDIN_REDIRECT_URI,
+        redirect_uri: cleanRedirectUri,
         code
       },
       headers: {
