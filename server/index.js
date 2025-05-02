@@ -828,11 +828,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server - make sure we're binding to all interfaces to work with Replit
-const server = app.listen(PORT, () => {
+// Start server - make sure we're binding to 0.0.0.0 to work with Replit
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Server accessible at: http://localhost:${PORT}`);
-  console.log(`Health check endpoint: http://localhost:${PORT}/api/health`);
+  console.log(`Server accessible at: http://0.0.0.0:${PORT}`);
+  console.log(`Health check endpoint: http://0.0.0.0:${PORT}/api/health`);
   
   // Get the actual Replit URL from environment variable
   const REPLIT_DOMAIN = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';

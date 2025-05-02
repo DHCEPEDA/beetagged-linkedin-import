@@ -1,11 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Simple Test Page</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Test Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      text-align: center;
+    }
+    h1 {
+      color: #FD9E31;
+    }
+    .status {
+      margin: 30px auto;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 600px;
+      background-color: #f5f5f5;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello World!</h1>
-  <p>This is a simple test page to verify the web server is accessible externally.</p>
-  <p>Current time: <script>document.write(new Date().toLocaleString())</script></p>
+  <h1>BeeTagged Server Test</h1>
+  <p>If you can see this page, the web server is working correctly!</p>
+  
+  <div class="status">
+    <h2>Server Status</h2>
+    <div id="status">Click the button to check server status</div>
+    <button id="checkStatus">Check Server Status</button>
+  </div>
+  
+  <div class="status">
+    <h2>API Test</h2>
+    <div id="apiStatus">Click the button to test API endpoint</div>
+    <button id="testApi">Test API Endpoint</button>
+  </div>
+  
+  <script>
+    document.getElementById('checkStatus').addEventListener('click', function() {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = 'Checking server status...';
+      
+      fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+          statusDiv.innerHTML = `
+            <p>Server is running!</p>
+            <p>Mock Mode: ${data.mockMode ? 'Enabled' : 'Disabled'}</p>
+            <p>Database: ${data.database ? 'Connected' : 'Disconnected'}</p>
+            <p>Environment: ${data.environment}</p>
+          `;
+        })
+        .catch(error => {
+          statusDiv.innerHTML = `<p style="color: red;">Error checking server status: ${error.message}</p>`;
+        });
+    });
+    
+    document.getElementById('testApi').addEventListener('click', function() {
+      const apiStatusDiv = document.getElementById('apiStatus');
+      apiStatusDiv.innerHTML = 'Testing API...';
+      
+      fetch('/api/ping')
+        .then(response => response.json())
+        .then(data => {
+          apiStatusDiv.innerHTML = `
+            <p>API responded successfully!</p>
+            <p>Message: ${data.message}</p>
+            <p>Timestamp: ${data.timestamp}</p>
+          `;
+        })
+        .catch(error => {
+          apiStatusDiv.innerHTML = `<p style="color: red;">Error testing API: ${error.message}</p>`;
+        });
+    });
+  </script>
 </body>
 </html>
