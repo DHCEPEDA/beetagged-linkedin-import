@@ -746,6 +746,20 @@ app.get('/auth-test', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'auth-test.html'));
 });
 
+// Very simple test page for debugging
+app.get('/test', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'test.html'));
+});
+
+// Health check for browser testing
+app.get('/api/ping', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Serve the React app - all other routes go to index.html
 app.get('*', (req, res) => {
   // First try to serve the index.html directly
@@ -779,11 +793,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
+// Start server - make sure we're binding to all interfaces to work with Replit
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Server accessible at: http://0.0.0.0:${PORT}`);
-  console.log(`Health check endpoint: http://0.0.0.0:${PORT}/api/health`);
+  console.log(`Server accessible at: http://localhost:${PORT}`);
+  console.log(`Health check endpoint: http://localhost:${PORT}/api/health`);
   
   // Get the actual Replit URL from environment variable
   const REPLIT_DOMAIN = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
