@@ -23,7 +23,7 @@ const FacebookLoginButton = ({
       const loadFacebookSDK = () => {
         window.fbAsyncInit = function() {
           window.FB.init({
-            appId: process.env.FACEBOOK_APP_ID || '1222790436230433',
+            appId: process.env.FACEBOOK_APP_ID,
             cookie: true,
             xfbml: true,
             version: 'v18.0'
