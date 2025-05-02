@@ -39,7 +39,9 @@ module.exports = {
       "stream": false,
       "http": false,
       "https": false,
-      "zlib": false
+      "zlib": false,
+      // Add the process fallback
+      "process": require.resolve("process/browser")
     }
   },
   plugins: [
@@ -50,6 +52,11 @@ module.exports = {
     new webpack.DefinePlugin({
       // Define environment variables for client-side access
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    }),
+    // Fixed: The process polyfill needs to be handled differently
+    // This properly handles the process global in a way compatible with webpack 5
+    new webpack.ProvidePlugin({
+      process: require.resolve('process/browser')
     }),
     new CopyPlugin({
       patterns: [

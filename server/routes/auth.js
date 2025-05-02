@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 // Configuration
 const FB_APP_ID = process.env.FACEBOOK_APP_ID || '1222790436230433';
 const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '86y7xx9vw9lslc'; // Default demo client ID
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI || 'https://workspace.dhcepeda.repl.co/login';
 
 // In-memory session store for demo (in production, use Redis or a database)
@@ -98,6 +100,99 @@ router.get('/facebook/callback', async (req, res) => {
   }
 });
 
+// Get LinkedIn auth URL
+router.get('/linkedin/url', (req, res) => {
+  // Create a session token
+  const state = uuidv4();
+  sessions[state] = { created: new Date() };
+  
+  // Build LinkedIn OAuth URL
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  
+  res.json({ url: authUrl, state });
+});
+
+// LinkedIn OAuth callback
+router.get('/linkedin/callback', async (req, res) => {
+  const { code, state } = req.query;
+  
+  // Validate state to prevent CSRF
+  if (!state || !sessions[state]) {
+    return res.status(400).json({ message: 'Invalid state parameter' });
+  }
+  
+  try {
+    // Exchange authorization code for access token
+    const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
+      params: {
+        grant_type: 'authorization_code',
+        client_id: LINKEDIN_CLIENT_ID,
+        client_secret: LINKEDIN_CLIENT_SECRET,
+        redirect_uri: REDIRECT_URI,
+        code
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    
+    const { access_token, expires_in } = tokenResponse.data;
+    
+    // Get user profile data from LinkedIn
+    const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+    
+    // Get user email from LinkedIn
+    const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+    
+    // Format the profile data
+    const profileData = {
+      id: profileResponse.data.id,
+      name: `${profileResponse.data.localizedFirstName} ${profileResponse.data.localizedLastName}`,
+      email: emailResponse.data.elements?.[0]?.['handle~']?.emailAddress || '',
+      picture: {
+        data: {
+          url: 'https://via.placeholder.com/200'  // LinkedIn doesn't provide picture in basic scope
+        }
+      },
+      provider: 'linkedin'
+    };
+    
+    // Create authenticated session
+    const authToken = uuidv4();
+    sessions[authToken] = {
+      user: profileData,
+      linkedin: {
+        access_token,
+        expires_in
+      },
+      created: new Date()
+    };
+    
+    // Remove the state session
+    delete sessions[state];
+    
+    // Return user data and token
+    res.json({
+      user: profileData,
+      token: authToken
+    });
+  } catch (error) {
+    console.error('LinkedIn auth error:', error.response?.data || error.message);
+    res.status(500).json({
+      message: 'Authentication failed',
+      error: error.response?.data || error.message
+    });
+  }
+});
+
 // Get current user
 router.get('/me', isAuthenticated, (req, res) => {
   res.json(req.user);
@@ -167,6 +262,50 @@ router.post('/register', (req, res) => {
   });
 });
 
+// Handle direct client-side authentication for LinkedIn
+router.post('/linkedin', async (req, res) => {
+  try {
+    const { accessToken, userData } = req.body;
+    
+    if (!accessToken || !userData) {
+      return res.status(400).json({ message: 'Missing required data' });
+    }
+    
+    // In a production environment, we would validate the token with LinkedIn
+    
+    // Create authenticated session
+    const authToken = uuidv4();
+    sessions[authToken] = {
+      user: {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email || '',
+        picture: {
+          data: {
+            url: userData.picture || 'https://via.placeholder.com/200'
+          }
+        },
+        provider: 'linkedin'
+      },
+      linkedin: {
+        access_token: accessToken
+      },
+      created: new Date()
+    };
+    
+    res.json({
+      user: sessions[authToken].user,
+      token: authToken
+    });
+  } catch (error) {
+    console.error('LinkedIn client auth error:', error);
+    res.status(500).json({
+      message: 'Authentication failed',
+      error: error.message
+    });
+  }
+});
+
 // For testing purposes only - in a real app, these endpoints would be properly secured
 if (process.env.NODE_ENV !== 'production') {
   // Debug endpoint to get all sessions
@@ -178,6 +317,10 @@ if (process.env.NODE_ENV !== 'production') {
         facebook: session.facebook ? {
           ...session.facebook,
           access_token: session.facebook.access_token ? `${session.facebook.access_token.substring(0, 10)}...` : null
+        } : null,
+        linkedin: session.linkedin ? {
+          ...session.linkedin,
+          access_token: session.linkedin.access_token ? `${session.linkedin.access_token.substring(0, 10)}...` : null
         } : null
       };
     }

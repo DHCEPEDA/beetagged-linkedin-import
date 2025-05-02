@@ -60,6 +60,172 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Direct LinkedIn test endpoint
+app.get('/li-test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>BeeTagged - LinkedIn Test</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+        body {
+          background-color: #f8f9fa;
+          font-family: Arial, sans-serif;
+          padding: 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          padding: 20px;
+        }
+        .li-button {
+          background-color: #0A66C2;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 10px 20px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          width: 100%;
+          margin: 20px 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .li-button svg {
+          margin-right: 8px;
+        }
+        .status {
+          margin-top: 20px;
+          padding: 15px;
+          border-radius: 4px;
+          display: none;
+        }
+        .success {
+          background-color: #d4edda;
+          color: #155724;
+        }
+        .error {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container text-center">
+        <h1 style="color: #FD9E31;">BeeTagged</h1>
+        <p>LinkedIn Login Test</p>
+        
+        <div>
+          <button id="loginBtn" class="li-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.47,2H3.53A1.45,1.45,0,0,0,2.06,3.43V20.57A1.45,1.45,0,0,0,3.53,22H20.47a1.45,1.45,0,0,0,1.47-1.43V3.43A1.45,1.45,0,0,0,20.47,2ZM8.09,18.74h-3v-9h3ZM6.59,8.48h0a1.56,1.56,0,1,1,0-3.12,1.57,1.57,0,1,1,0,3.12ZM18.91,18.74h-3V13.91c0-1.21-.43-2-1.52-2A1.65,1.65,0,0,0,12.85,13a2,2,0,0,0-.1.73v5h-3s0-8.18,0-9h3V11A3,3,0,0,1,15.46,9.5c2,0,3.45,1.29,3.45,4.06Z" />
+            </svg>
+            Continue with LinkedIn
+          </button>
+          
+          <div id="statusBox" class="status"></div>
+        </div>
+      </div>
+
+      <script>
+        // LinkedIn Client ID from server environment
+        const LINKEDIN_CLIENT_ID = '${process.env.LINKEDIN_CLIENT_ID || "86y7xx9vw9lslc"}';
+        
+        // Load the LinkedIn SDK
+        function loadLinkedInSDK() {
+          const script = document.createElement('script');
+          script.type = 'text/javascript';
+          script.src = "https://platform.linkedin.com/in.js";
+          script.innerHTML = \`
+            api_key: \${LINKEDIN_CLIENT_ID}
+            authorize: true
+            onLoad: onLinkedInLoad
+            scope: r_emailaddress r_liteprofile
+          \`;
+          document.getElementsByTagName('head')[0].appendChild(script);
+        }
+        
+        // Called when LinkedIn SDK is loaded
+        function onLinkedInLoad() {
+          console.log('LinkedIn SDK loaded');
+          
+          // Check if already logged in
+          IN.User.isAuthorized(function(isAuthorized) {
+            console.log('Is authorized:', isAuthorized);
+            if (isAuthorized) {
+              showSuccess();
+            }
+          });
+        }
+        
+        // Set up the login button
+        document.getElementById('loginBtn').addEventListener('click', function() {
+          // Initialize LinkedIn SDK if not already done
+          if (typeof IN === 'undefined') {
+            loadLinkedInSDK();
+            showError('LinkedIn SDK loading... Please try again in a moment.');
+            return;
+          }
+          
+          // Trigger LinkedIn login
+          IN.User.authorize(function() {
+            showSuccess();
+          });
+        });
+        
+        function showSuccess() {
+          const statusBox = document.getElementById('statusBox');
+          statusBox.className = 'status success';
+          statusBox.style.display = 'block';
+          
+          // Get user profile data
+          IN.API.Profile("me")
+            .fields(["id", "firstName", "lastName", "profilePicture", "emailAddress"])
+            .result(function(result) {
+              console.log('Profile data:', result);
+              
+              if (result && result.values && result.values[0]) {
+                const profile = result.values[0];
+                const firstName = profile.firstName?.localized?.en_US || '';
+                const lastName = profile.lastName?.localized?.en_US || '';
+                
+                statusBox.innerHTML = '<h4>Login Successful!</h4>' +
+                  '<p>Welcome, ' + firstName + ' ' + lastName + '!</p>' +
+                  '<p>User ID: ' + profile.id + '</p>' +
+                  '<p>Email: ' + (profile.emailAddress || 'Not available') + '</p>';
+              } else {
+                statusBox.innerHTML = '<h4>Login Successful!</h4><p>Could not retrieve profile details.</p>';
+              }
+            })
+            .error(function(error) {
+              console.error('LinkedIn API error:', error);
+              statusBox.innerHTML = '<h4>Login Successful!</h4><p>Connected to LinkedIn, but could not fetch profile data.</p>';
+            });
+        }
+        
+        function showError(message) {
+          const statusBox = document.getElementById('statusBox');
+          statusBox.className = 'status error';
+          statusBox.style.display = 'block';
+          statusBox.innerHTML = '<h4>Error</h4><p>' + message + '</p>';
+        }
+        
+        // Load the LinkedIn SDK on page load
+        loadLinkedInSDK();
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Direct Facebook test endpoint
 app.get('/fb-test', (req, res) => {
   res.send(`

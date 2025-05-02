@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FacebookLoginButton from '../components/FacebookLoginButton';
+import LinkedInLoginButton from '../components/LinkedInLoginButton';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +25,12 @@ const AuthPage = () => {
   const loginWithFacebook = async (userData) => {
     console.log('Processing Facebook login with:', userData);
     return await loginWithSocial(userData, 'facebook');
+  };
+  
+  // LinkedIn login function
+  const loginWithLinkedIn = async (userData) => {
+    console.log('Processing LinkedIn login with:', userData);
+    return await loginWithSocial(userData, 'linkedin');
   };
   
   // Redirect to contacts page if already logged in
@@ -159,6 +166,35 @@ const AuthPage = () => {
               console.error('Facebook SDK error:', error);
               setStatus({
                 message: error.message || 'Facebook login failed',
+                type: 'error'
+              });
+            }}
+          />
+          
+          <LinkedInLoginButton 
+            onSuccess={async (userData) => {
+              try {
+                setLoading(true);
+                await loginWithLinkedIn(userData);
+                setStatus({
+                  message: `Welcome, ${userData.name}!`,
+                  type: 'success'
+                });
+                setTimeout(() => navigate('/contacts'), 1500);
+              } catch (error) {
+                console.error('LinkedIn login error:', error);
+                setStatus({
+                  message: error.message || 'LinkedIn login failed',
+                  type: 'error'
+                });
+              } finally {
+                setLoading(false);
+              }
+            }} 
+            onError={(error) => {
+              console.error('LinkedIn SDK error:', error);
+              setStatus({
+                message: error.message || 'LinkedIn login failed',
                 type: 'error'
               });
             }}
