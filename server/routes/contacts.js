@@ -11,6 +11,11 @@ router.use(auth);
 // @access  Private
 router.get('/', contactController.getContacts);
 
+// @route   GET /api/contacts/search
+// @desc    Search contacts by tags, metadata, or text
+// @access  Private
+router.get('/search', contactController.searchContacts);
+
 // @route   GET /api/contacts/:id
 // @desc    Get contact by ID
 // @access  Private

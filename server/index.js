@@ -15,6 +15,7 @@ const tagRoutes = require('./routes/tags');
 const groupRoutes = require('./routes/groups');
 const socialRoutes = require('./routes/social');
 const configRoutes = require('./routes/config');
+const wizardRoutes = require('./routes/wizard');
 
 // Import the routes - no need to duplicate imports
 
@@ -734,6 +735,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/wizard', wizardRoutes);
 
 // Serve static assets from public and dist
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -767,6 +769,11 @@ app.get('/fb-diagnostic', (req, res) => {
 // Simple Facebook test page
 app.get('/fb-simple', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'fb-simple.html'));
+});
+
+// Social connection wizard
+app.get('/wizard', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'social-connect-wizard.html'));
 });
 
 app.get('/server-auth.html', (req, res) => {
@@ -845,6 +852,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`LinkedIn test: https://${REPLIT_DOMAIN}/linkedin-test`);
   console.log(`Auth Test: https://${REPLIT_DOMAIN}/auth-test`);
   console.log(`Simple Test: https://${REPLIT_DOMAIN}/simple-test.html`);
+  console.log(`Social Connection Wizard: https://${REPLIT_DOMAIN}/wizard`);
+  console.log(`Tag Search Test: https://${REPLIT_DOMAIN}/tag-search-test.html`);
   console.log(`Main app: https://${REPLIT_DOMAIN}/`);
 });
 

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - LinkedIn Updated Test</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .logo {
+      width: 120px;
+      height: 120px;
+      margin: 20px auto;
+      display: block;
+    }
+    .login-button {
+      background-color: #0A66C2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      width: 100%;
+      max-width: 300px;
+      margin: 20px auto;
+    }
+    .login-icon {
+      margin-right: 10px;
+    }
+    #loginStatus, #tokenStatus {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      display: none;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-height: 200px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center" style="color: #FD9E31;">BeeTagged</h1>
+    <p class="text-center">Contact Management Simplified</p>
+    
+    <img src="/images/beelogo-actual.svg" alt="BeeTagged Logo" class="logo">
+    
+    <div class="row justify-content-center">
+      <div class="col-md-10">
+        <h2 class="text-center">LinkedIn Authentication Test</h2>
+        <p class="text-center">This page tests the LinkedIn OAuth flow with the updated implementation</p>
+        
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+          <button id="clientAuthBtn" class="login-button" style="max-width: 250px;">
+            <i class="fab fa-linkedin login-icon"></i>
+            Client-side Auth
+          </button>
+          
+          <button id="serverAuthBtn" class="login-button" style="max-width: 250px;">
+            <i class="fab fa-linkedin login-icon"></i>
+            Server-side Auth
+          </button>
+        </div>
+
+        <div id="loginStatus"></div>
+        <div id="tokenStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Main LinkedIn authentication function
+    function authenticateWithLinkedIn() {
+      const clientId = '86wzmqnv2bqqv7'; // LinkedIn client ID
+      const redirectUri = window.location.origin + '/api/auth/linkedin/callback'; // LinkedIn callback URL
+      
+      // Generate a secure random state
+      const stateArray = new Uint8Array(16);
+      crypto.getRandomValues(stateArray);
+      const state = Array.from(stateArray, byte => byte.toString(36)).join('');
+      localStorage.setItem('linkedin_auth_state', state);
+      
+      const scope = 'r_liteprofile r_emailaddress';
+      
+      // Build the authorization URL
+      const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=${encodeURIComponent(scope)}`;
+      
+      console.log('Redirecting to LinkedIn authorization URL:', authUrl);
+      
+      // Redirect to LinkedIn login
+      window.location.href = authUrl;
+    }
+    
+    // Server-side auth
+    async function serverSideAuth() {
+      try {
+        showStatus('loginStatus', 'Connecting to LinkedIn via server...', null);
+        
+        // Get the auth URL from the server
+        const response = await fetch('/api/auth/linkedin/url');
+        const data = await response.json();
+        
+        if (data && data.url) {
+          console.log('Redirecting to LinkedIn OAuth URL (server):', data.url);
+          window.location.href = data.url;
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      } catch (error) {
+        console.error('Error with server auth:', error);
+        showStatus('loginStatus', null, `Server auth error: ${error.message}`);
+      }
+    }
+    
+    // Handle LinkedIn OAuth callback
+    async function handleCallbackParams() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const error = params.get('error');
+      
+      if (error) {
+        showStatus('loginStatus', null, `LinkedIn error: ${error}`);
+        window.history.replaceState({}, document.title, '/linkedin-new-test.html');
+        return;
+      }
+      
+      if (code && state) {
+        // Verify state parameter
+        const storedState = localStorage.getItem('linkedin_auth_state');
+        if (state !== storedState) {
+          showStatus('loginStatus', null, 'LinkedIn auth state mismatch! Possible CSRF attack.');
+          window.history.replaceState({}, document.title, '/linkedin-new-test.html');
+          return;
+        }
+        
+        showStatus('loginStatus', 'Authorization code received, exchanging for token...', null);
+        
+        try {
+          // Send the code to backend for token exchange
+          const redirectUri = window.location.origin + '/api/auth/linkedin/callback';
+          const tokenResponse = await fetch('/api/auth/linkedin/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, redirectUri })
+          });
+          
+          const tokenData = await tokenResponse.json();
+          console.log('LinkedIn token exchange response:', tokenData);
+          
+          if (tokenResponse.ok) {
+            showStatus('tokenStatus', 'LinkedIn authentication successful!', null);
+            document.getElementById('tokenStatus').innerHTML += `
+              <h4>Authentication Success</h4>
+              <p>You are now logged in with LinkedIn.</p>
+              <pre>${JSON.stringify(tokenData, null, 2)}</pre>
+            `;
+          } else {
+            throw new Error(tokenData.message || 'Token exchange failed');
+          }
+        } catch (error) {
+          console.error('Error exchanging LinkedIn token:', error);
+          showStatus('tokenStatus', null, `Token exchange error: ${error.message}`);
+        }
+        
+        localStorage.removeItem('linkedin_auth_state'); // Cleanup stored state
+        window.history.replaceState({}, document.title, '/linkedin-new-test.html');
+      }
+    }
+    
+    // Helper to show status messages
+    function showStatus(elementId, successMsg, errorMsg) {
+      const element = document.getElementById(elementId);
+      element.style.display = 'block';
+      
+      if (successMsg) {
+        element.className = 'success';
+        element.innerHTML = `<p>${successMsg}</p>`;
+      } else if (errorMsg) {
+        element.className = 'error';
+        element.innerHTML = `<p>${errorMsg}</p>`;
+      }
+    }
+    
+    // Set up event listeners
+    document.getElementById('clientAuthBtn').addEventListener('click', authenticateWithLinkedIn);
+    document.getElementById('serverAuthBtn').addEventListener('click', serverSideAuth);
+    
+    // Check for callback parameters on load
+    document.addEventListener('DOMContentLoaded', handleCallbackParams);
+  </script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -11,7 +11,36 @@ const FacebookService = require('../services/facebookService');
  */
 exports.getContacts = async (req, res, next) => {
   try {
-    const contacts = await Contact.find({ user: req.user.id })
+    // Check for query parameters
+    const { tags, query, source } = req.query;
+    
+    // Build filter based on query parameters
+    const filter = { user: req.user.id };
+    
+    // Filter by source if provided
+    if (source) {
+      filter.source = source;
+    }
+    
+    // Filter by tags if provided
+    if (tags) {
+      const tagIds = tags.split(',');
+      filter.tags = { $in: tagIds };
+    }
+    
+    // Text search if query parameter is provided
+    if (query) {
+      // Create a $or filter for multiple fields
+      filter.$or = [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } },
+        { company: { $regex: query, $options: 'i' } },
+        { title: { $regex: query, $options: 'i' } },
+        { notes: { $regex: query, $options: 'i' } }
+      ];
+    }
+    
+    const contacts = await Contact.find(filter)
       .populate('tags')
       .sort({ name: 1 });
     
@@ -296,7 +325,8 @@ exports.importSocialContacts = async (req, res, next) => {
       total: 0,
       added: 0,
       updated: 0,
-      failed: 0
+      failed: 0,
+      tagsCreated: 0
     };
     
     // Get social network contacts
@@ -333,6 +363,9 @@ exports.importSocialContacts = async (req, res, next) => {
           lastSynced: Date.now()
         };
         
+        // Extract all metadata for tagging
+        const metadataForTags = {};
+        
         if (provider === 'linkedin') {
           contactData.linkedinId = socialContact.id;
           contactData.linkedinConnected = true;
@@ -340,11 +373,46 @@ exports.importSocialContacts = async (req, res, next) => {
           contactData.company = socialContact.company;
           contactData.title = socialContact.title;
           contactData.profilePicture = socialContact.pictureUrl;
+          
+          // Collect LinkedIn metadata for tags
+          if (socialContact.company) metadataForTags.company = socialContact.company;
+          if (socialContact.title) metadataForTags.title = socialContact.title;
+          if (socialContact.industry) metadataForTags.industry = socialContact.industry;
+          if (socialContact.location) metadataForTags.location = socialContact.location;
+          if (socialContact.education) {
+            socialContact.education.forEach((edu, index) => {
+              if (edu.school) metadataForTags[`education_${index}`] = edu.school;
+              if (edu.degree) metadataForTags[`degree_${index}`] = edu.degree;
+              if (edu.fieldOfStudy) metadataForTags[`field_${index}`] = edu.fieldOfStudy;
+            });
+          }
+          if (socialContact.skills) {
+            socialContact.skills.forEach((skill, index) => {
+              metadataForTags[`skill_${index}`] = skill;
+            });
+          }
         } else if (provider === 'facebook') {
           contactData.facebookId = socialContact.id;
           contactData.facebookConnected = true;
           contactData.facebookProfileUrl = socialContact.profileUrl;
           contactData.profilePicture = socialContact.picture;
+          
+          // Collect Facebook metadata for tags
+          if (socialContact.work) {
+            socialContact.work.forEach((work, index) => {
+              if (work.employer) metadataForTags[`employer_${index}`] = work.employer.name;
+              if (work.position) metadataForTags[`position_${index}`] = work.position.name;
+              if (work.location) metadataForTags[`workplace_${index}`] = work.location.name;
+            });
+          }
+          if (socialContact.education) {
+            socialContact.education.forEach((edu, index) => {
+              if (edu.school) metadataForTags[`school_${index}`] = edu.school.name;
+              if (edu.type) metadataForTags[`education_type_${index}`] = edu.type;
+            });
+          }
+          if (socialContact.location) metadataForTags.location = socialContact.location.name;
+          if (socialContact.hometown) metadataForTags.hometown = socialContact.hometown.name;
         }
         
         // Check if contact already exists
@@ -356,23 +424,95 @@ exports.importSocialContacts = async (req, res, next) => {
           ]
         });
         
+        let contactId;
+        
         if (existingContact) {
           // Update existing contact
-          await Contact.findByIdAndUpdate(
+          const updatedContact = await Contact.findByIdAndUpdate(
             existingContact._id,
             {
               ...contactData,
               user: req.user.id
-            }
+            },
+            { new: true }
           );
+          contactId = updatedContact._id;
           results.updated++;
         } else {
           // Create new contact
-          await Contact.create({
+          const newContact = await Contact.create({
             ...contactData,
             user: req.user.id
           });
+          contactId = newContact._id;
           results.added++;
+        }
+        
+        // Create tags from metadata and link to contact
+        for (const [key, value] of Object.entries(metadataForTags)) {
+          if (value && typeof value === 'string' && value.trim()) {
+            // Prepare tag name with prefix to categorize metadata type
+            let tagPrefix = '';
+            
+            if (key.startsWith('skill_')) {
+              tagPrefix = 'Skill: ';
+            } else if (key.startsWith('education_') || key.startsWith('school_')) {
+              tagPrefix = 'Education: ';
+            } else if (key.startsWith('employer_') || key === 'company') {
+              tagPrefix = 'Company: ';
+            } else if (key.startsWith('position_') || key === 'title') {
+              tagPrefix = 'Title: ';
+            } else if (key === 'location' || key === 'hometown') {
+              tagPrefix = 'Location: ';
+            } else if (key === 'industry') {
+              tagPrefix = 'Industry: ';
+            } else {
+              tagPrefix = key.charAt(0).toUpperCase() + key.slice(1) + ': ';
+            }
+            
+            const tagName = `${tagPrefix}${value.trim()}`;
+            
+            // Check if tag exists or create it
+            let tag = await Tag.findOne({
+              user: req.user.id,
+              name: tagName
+            });
+            
+            if (!tag) {
+              // Create new tag - assign a color based on category
+              let tagColor = '#2196f3'; // Default blue
+              
+              if (tagName.startsWith('Company:')) {
+                tagColor = '#4CAF50'; // Green for companies
+              } else if (tagName.startsWith('Title:')) {
+                tagColor = '#9C27B0'; // Purple for titles
+              } else if (tagName.startsWith('Location:')) {
+                tagColor = '#FF9800'; // Orange for locations
+              } else if (tagName.startsWith('Skill:')) {
+                tagColor = '#03A9F4'; // Light blue for skills
+              } else if (tagName.startsWith('Education:')) {
+                tagColor = '#F44336'; // Red for education
+              } else if (tagName.startsWith('Industry:')) {
+                tagColor = '#795548'; // Brown for industry
+              }
+              
+              tag = await Tag.create({
+                name: tagName,
+                color: tagColor,
+                description: `Auto-created from ${provider} metadata`,
+                user: req.user.id
+              });
+              
+              results.tagsCreated++;
+            }
+            
+            // Add tag to contact if not already there
+            const contact = await Contact.findById(contactId);
+            if (!contact.tags.includes(tag._id)) {
+              contact.tags.push(tag._id);
+              await contact.save();
+            }
+          }
         }
       } catch (err) {
         console.error(`Import error for contact: ${socialContact.name || socialContact.id}`, err);
@@ -514,6 +654,200 @@ exports.removeTagFromContact = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: updatedContact
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Search contacts by tags, metadata, or text
+ * @route GET /api/contacts/search
+ * @access Private
+ */
+exports.searchContacts = async (req, res, next) => {
+  try {
+    const { tags, text, metadata, source } = req.query;
+    
+    // Build the search filter
+    const filter = { user: req.user.id };
+    
+    // Add tag filtering if provided
+    if (tags) {
+      const tagNames = tags.split(',').map(tag => tag.trim());
+      
+      // First, find tags by name
+      const tagObjects = await Tag.find({
+        user: req.user.id,
+        name: { $in: tagNames }
+      });
+      
+      if (tagObjects.length > 0) {
+        const tagIds = tagObjects.map(tag => tag._id);
+        filter.tags = { $in: tagIds };
+      } else {
+        // If no tags found, return empty result early
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          data: []
+        });
+      }
+    }
+    
+    // Add source filtering if provided
+    if (source) {
+      filter.source = source;
+    }
+    
+    // Add metadata filtering if provided
+    if (metadata) {
+      const metadataFields = metadata.split(',').map(field => field.trim());
+      const metadataConditions = [];
+      
+      // For each metadata field, add a condition
+      for (const field of metadataFields) {
+        // Match field:value pattern if present
+        const [fieldName, fieldValue] = field.includes(':') 
+          ? field.split(':') 
+          : [field, null];
+        
+        if (fieldValue) {
+          // If value is specified, search exact match
+          switch (fieldName.toLowerCase()) {
+            case 'company':
+              metadataConditions.push({ company: { $regex: fieldValue, $options: 'i' } });
+              break;
+            case 'title':
+              metadataConditions.push({ title: { $regex: fieldValue, $options: 'i' } });
+              break;
+            case 'location':
+              // Find tags with this location name and get contacts with those tags
+              const locationTags = await Tag.find({
+                user: req.user.id,
+                name: { $regex: `Location: ${fieldValue}`, $options: 'i' }
+              });
+              if (locationTags.length > 0) {
+                const locationTagIds = locationTags.map(tag => tag._id);
+                metadataConditions.push({ tags: { $in: locationTagIds } });
+              }
+              break;
+            case 'education':
+              // Find tags with education info and get contacts with those tags
+              const educationTags = await Tag.find({
+                user: req.user.id,
+                name: { $regex: `Education: ${fieldValue}`, $options: 'i' }
+              });
+              if (educationTags.length > 0) {
+                const educationTagIds = educationTags.map(tag => tag._id);
+                metadataConditions.push({ tags: { $in: educationTagIds } });
+              }
+              break;
+            case 'skill':
+              // Find tags with skill info and get contacts with those tags
+              const skillTags = await Tag.find({
+                user: req.user.id,
+                name: { $regex: `Skill: ${fieldValue}`, $options: 'i' }
+              });
+              if (skillTags.length > 0) {
+                const skillTagIds = skillTags.map(tag => tag._id);
+                metadataConditions.push({ tags: { $in: skillTagIds } });
+              }
+              break;
+            case 'industry':
+              // Find tags with industry info and get contacts with those tags
+              const industryTags = await Tag.find({
+                user: req.user.id,
+                name: { $regex: `Industry: ${fieldValue}`, $options: 'i' }
+              });
+              if (industryTags.length > 0) {
+                const industryTagIds = industryTags.map(tag => tag._id);
+                metadataConditions.push({ tags: { $in: industryTagIds } });
+              }
+              break;
+            default:
+              // For any other field, search in tags
+              const otherTags = await Tag.find({
+                user: req.user.id,
+                name: { $regex: `${fieldName}: ${fieldValue}`, $options: 'i' }
+              });
+              if (otherTags.length > 0) {
+                const otherTagIds = otherTags.map(tag => tag._id);
+                metadataConditions.push({ tags: { $in: otherTagIds } });
+              }
+          }
+        } else {
+          // If just a field name is provided, find any tags related to that field
+          // For example, "company" would match any company tag
+          const relatedTags = await Tag.find({
+            user: req.user.id,
+            name: { $regex: `${fieldName}:`, $options: 'i' }
+          });
+          if (relatedTags.length > 0) {
+            const relatedTagIds = relatedTags.map(tag => tag._id);
+            metadataConditions.push({ tags: { $in: relatedTagIds } });
+          }
+        }
+      }
+      
+      // Add metadata conditions to filter if any exist
+      if (metadataConditions.length > 0) {
+        if (metadataConditions.length === 1) {
+          // If just one condition, use it directly
+          Object.assign(filter, metadataConditions[0]);
+        } else {
+          // If multiple conditions, use $and to combine them
+          filter.$and = metadataConditions;
+        }
+      }
+    }
+    
+    // Add free text search if provided
+    if (text) {
+      // First check if this might be part of a tag name (e.g. company or skill)
+      const textTags = await Tag.find({
+        user: req.user.id,
+        name: { $regex: text, $options: 'i' }
+      });
+      
+      const textTagIds = textTags.map(tag => tag._id);
+      
+      // Now build a full text search filter across multiple fields
+      const textFilter = {
+        $or: [
+          { name: { $regex: text, $options: 'i' } },
+          { email: { $regex: text, $options: 'i' } },
+          { company: { $regex: text, $options: 'i' } },
+          { title: { $regex: text, $options: 'i' } },
+          { notes: { $regex: text, $options: 'i' } }
+        ]
+      };
+      
+      // Add tag search if we found matching tags
+      if (textTagIds.length > 0) {
+        textFilter.$or.push({ tags: { $in: textTagIds } });
+      }
+      
+      // Add the text filter to the main filter
+      if (Object.keys(filter).length > 1) {
+        // If we already have other filters, use $and to combine them
+        filter.$and = filter.$and || [];
+        filter.$and.push(textFilter);
+      } else {
+        // Otherwise, just add the $or conditions directly
+        filter.$or = textFilter.$or;
+      }
+    }
+    
+    // Execute the search
+    const contacts = await Contact.find(filter)
+      .populate('tags')
+      .sort({ name: 1 });
+    
+    res.status(200).json({
+      success: true,
+      count: contacts.length,
+      data: contacts
     });
   } catch (error) {
     next(error);
