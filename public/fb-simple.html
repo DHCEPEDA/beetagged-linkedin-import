@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Facebook Simple Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .login-button {
+      background-color: #1877F2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 20px 0;
+    }
+    .result-box {
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    h1 {
+      color: #FD9E31;
+    }
+    pre {
+      background-color: #eee;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>BeeTagged Facebook Login</h1>
+  <p>Simple implementation using Facebook JavaScript SDK</p>
+  
+  <button id="fbLoginBtn" class="login-button">Continue with Facebook</button>
+  
+  <div id="result" class="result-box">
+    <p>Status: Not logged in</p>
+  </div>
+
+  <script>
+    // Facebook App ID
+    const FACEBOOK_APP_ID = '1222790436230433';
+    
+    // Initialize the Facebook SDK
+    window.fbAsyncInit = function() {
+      console.log("FB SDK initializing...");
+      FB.init({
+        appId: FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0'
+      });
+      console.log("FB SDK initialized");
+      
+      // Check login status on page load
+      FB.getLoginStatus(function(response) {
+        console.log("FB login status:", response);
+        updateStatus('Initial status check', response);
+      });
+    };
+    
+    // Load the Facebook SDK asynchronously
+    (function(d, s, id) {
+      console.log("Loading Facebook SDK...");
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); 
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      js.async = true;
+      js.defer = true;
+      fjs.parentNode.insertBefore(js, fjs);
+      console.log("Facebook SDK script added to page");
+    }(document, 'script', 'facebook-jssdk'));
+    
+    // Add event listener to the login button
+    document.getElementById('fbLoginBtn').addEventListener('click', function() {
+      FB.login(function(response) {
+        if (response.authResponse) {
+          updateStatus('Login successful', response);
+          
+          // Get user information
+          FB.api('/me', {fields: 'name,email,picture'}, function(userData) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML += `
+              <h3>Welcome, ${userData.name}!</h3>
+              <p>User ID: ${userData.id}</p>
+              <p>Email: ${userData.email || 'Not available'}</p>
+              ${userData.picture ? `<img src="${userData.picture.data.url}" alt="Profile picture">` : ''}
+              <pre>${JSON.stringify(userData, null, 2)}</pre>
+            `;
+          });
+        } else {
+          updateStatus('Login cancelled or failed', response);
+        }
+      }, {scope: 'public_profile,email'});
+    });
+    
+    // Update status display
+    function updateStatus(message, response) {
+      console.log(message, response);
+      
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = `
+        <h3>${message}</h3>
+        <p>Status: ${response.status}</p>
+        <pre>${JSON.stringify(response, null, 2)}</pre>
+      `;
+    }
+  </script>
+</body>
+</html>

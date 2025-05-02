@@ -237,10 +237,8 @@ app.get('/li-test', (req, res) => {
 
 // Direct LinkedIn test endpoint
 app.get('/linkedin-test', (req, res) => {
-  // Define HOSTNAME for this endpoint
-  const HOSTNAME = process.env.REPL_SLUG && process.env.REPL_OWNER 
-    ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
-    : 'localhost:5000';
+  // Define HOSTNAME for this endpoint - using Replit domain
+  const HOSTNAME = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
     
   res.send(`
     <!DOCTYPE html>
@@ -509,8 +507,8 @@ LINKEDIN_REDIRECT_URI: ${process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAM
 
 // Direct Facebook test endpoint
 app.get('/fb-test', (req, res) => {
-  // Define HOSTNAME for this endpoint
-  const HOSTNAME = 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000';
+  // Define HOSTNAME for this endpoint - no port number for correct OAuth redirects
+  const HOSTNAME = 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
     
   res.send(`
     <!DOCTYPE html>
@@ -726,6 +724,16 @@ app.get('/facebook-diagnostic.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'facebook-diagnostic.html'));
 });
 
+// New, simpler FB diagnostic page
+app.get('/fb-diagnostic', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'fb-diagnostic.html'));
+});
+
+// Simple Facebook test page
+app.get('/fb-simple', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'fb-simple.html'));
+});
+
 app.get('/server-auth.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'server-auth.html'));
 });
@@ -783,8 +791,11 @@ app.listen(PORT, '0.0.0.0', () => {
   
   console.log('To access test pages, use these URLs:');
   console.log(`Facebook test: https://${REPLIT_DOMAIN}/fb-test`);
+  console.log(`Facebook diagnostic: https://${REPLIT_DOMAIN}/fb-diagnostic`);
+  console.log(`Facebook simple: https://${REPLIT_DOMAIN}/fb-simple`);
   console.log(`LinkedIn test: https://${REPLIT_DOMAIN}/linkedin-test`);
   console.log(`Auth Test: https://${REPLIT_DOMAIN}/auth-test`);
+  console.log(`Simple Test: https://${REPLIT_DOMAIN}/simple-test.html`);
   console.log(`Main app: https://${REPLIT_DOMAIN}/`);
 });
 

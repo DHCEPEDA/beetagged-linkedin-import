@@ -212,8 +212,14 @@
                 xfbml: true,
                 version: 'v18.0'
             });
+            
+            // Check login status on initialization
+            FB.getLoginStatus(function(response) {
+                console.log("Initial FB status:", response);
+            });
         };
 
+        // Proper way to load Facebook SDK asynchronously
         (function(d, s, id) {
             var js, fjs = d.getElementsByTagName(s)[0];
             if (d.getElementById(id)) return;
@@ -264,29 +270,53 @@
         });
 
         // Load LinkedIn SDK for client-side auth
-        function loadLinkedInSDK() {
-            window.linkedInInit = function() {
-                console.log('LinkedIn SDK initialized');
-            };
+        // Define the initialization function first
+        window.linkedInInit = function() {
+            console.log('LinkedIn SDK initialized');
+        };
             
-            (function(d, s, id) {
-                var js, fjs = d.getElementsByTagName(s)[0];
-                if (d.getElementById(id)) return;
-                js = d.createElement(s); js.id = id;
-                js.src = "https://platform.linkedin.com/in.js?apiKey=867adep5adc22g";
-                js.text = "api_key: 867adep5adc22g\nonLoad: linkedInInit";
-                fjs.parentNode.insertBefore(js, fjs);
-            }(document, 'script', 'linkedin-jssdk'));
+        function loadLinkedInSDK() {
+            console.log("Loading LinkedIn SDK...");
+            
+            // Use the simpler approach with direct script insertion
+            const liRoot = document.createElement('div');
+            liRoot.id = 'linkedin-root';
+            document.body.appendChild(liRoot);
+            
+            // Create script element
+            const script = document.createElement('script');
+            script.src = "https://platform.linkedin.com/in.js";
+            script.type = "text/javascript";
+            // Set script attributes instead of innerHTML
+            script.setAttribute("api_key", "867adep5adc22g");
+            script.setAttribute("authorize", "true");
+            script.setAttribute("onLoad", "linkedInInit");
+            script.async = true;
+            script.defer = true;
+            
+            document.head.appendChild(script);
+            
+            console.log("LinkedIn SDK loading script added to page");
+            
+            // Add a fake button that the SDK will transform
+            const btn = document.createElement('script');
+            btn.type = "IN/Login";
+            btn.setAttribute("data-onAuth", "onLinkedInAuth");
+            liRoot.appendChild(btn);
         }
         
-        loadLinkedInSDK();
-
+        // Handle LinkedIn auth
+        window.onLinkedInAuth = function() {
+            console.log("LinkedIn auth triggered via SDK button");
+        }
+        
         // LinkedIn Client-Side Auth
         document.getElementById('linkedin-client-auth').addEventListener('click', () => {
             displayResult('linkedin-result', 'Connecting to LinkedIn...');
             
             if (typeof IN === 'undefined') {
-                displayResult('linkedin-result', 'LinkedIn SDK not loaded yet. Please try again in a moment.', true);
+                loadLinkedInSDK();
+                displayResult('linkedin-result', 'LinkedIn SDK loading, please try again in a moment...', true);
                 return;
             }
             
