@@ -21,27 +21,31 @@ const FacebookLoginButton = ({
     if (!useServerAuth) {
       // Load Facebook SDK
       const loadFacebookSDK = () => {
+        // Using the exact code pattern Facebook provides
         window.fbAsyncInit = function() {
-          window.FB.init({
+          FB.init({
             appId: process.env.FACEBOOK_APP_ID,
             cookie: true,
             xfbml: true,
             version: 'v18.0'
           });
           
-          window.FB.getLoginStatus(function(response) {
+          FB.AppEvents.logPageView();
+          
+          // Check login status
+          FB.getLoginStatus(function(response) {
             console.log('FB login status:', response);
           });
         };
 
-        // Load the SDK asynchronously
-        (function(d, s, id) {
-          var js, fjs = d.getElementsByTagName(s)[0];
-          if (d.getElementById(id)) return;
-          js = d.createElement(s); js.id = id;
-          js.src = "https://connect.facebook.net/en_US/sdk.js";
-          fjs.parentNode.insertBefore(js, fjs);
-        }(document, 'script', 'facebook-jssdk'));
+        // Load the SDK asynchronously, using Facebook's exact code
+        (function(d, s, id){
+           var js, fjs = d.getElementsByTagName(s)[0];
+           if (d.getElementById(id)) {return;}
+           js = d.createElement(s); js.id = id;
+           js.src = "https://connect.facebook.net/en_US/sdk.js";
+           fjs.parentNode.insertBefore(js, fjs);
+         }(document, 'script', 'facebook-jssdk'));
       };
       
       loadFacebookSDK();
@@ -53,18 +57,18 @@ const FacebookLoginButton = ({
     setIsLoading(true);
     setError(null);
 
-    if (!window.FB) {
+    if (typeof FB === 'undefined') {
       setError("Facebook SDK not loaded");
       setIsLoading(false);
       if (onError) onError("Facebook SDK not loaded");
       return;
     }
 
-    window.FB.login(function(response) {
+    FB.login(function(response) {
       setIsLoading(false);
       if (response.status === 'connected') {
         // Get user info
-        window.FB.api('/me', { fields: 'id,name,email,picture' }, function(userData) {
+        FB.api('/me', { fields: 'id,name,email,picture' }, function(userData) {
           if (onSuccess) {
             onSuccess({
               ...userData,
