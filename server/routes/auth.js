@@ -10,7 +10,7 @@ const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g';
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'WPL_AP1.j4ipPY9wll4iqDt7.w0yMCA==';
 
 // Use the Replit domain or localhost for redirect URI
-const HOSTNAME = 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000';
+const HOSTNAME = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
 
 // For Facebook
 const FB_REDIRECT_URI = process.env.FB_REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;

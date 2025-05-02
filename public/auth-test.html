@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged Authentication Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .card {
+            flex: 1;
+            min-width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1d3557;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #457b9d;
+            border-bottom: 2px solid #f1faee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        button {
+            background-color: #1877F2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button.linkedin {
+            background-color: #0A66C2;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #4361ee;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .error {
+            border-left-color: #e63946;
+            color: #e63946;
+        }
+        #bee-logo {
+            width: 80px;
+            margin-bottom: 10px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .code-example {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img id="bee-logo" src="/images/beelogo-actual.svg" alt="BeeTagged Logo">
+        <h1>BeeTagged Authentication Test</h1>
+    </div>
+
+    <p>This page allows you to test social authentication with both LinkedIn and Facebook for the BeeTagged application.</p>
+    
+    <div class="container">
+        <div class="card">
+            <h2>LinkedIn Authentication</h2>
+            <p>Test LinkedIn authentication using both client-side and server-side methods.</p>
+            
+            <button id="linkedin-server-auth" class="linkedin">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.47,2H3.53A1.45,1.45,0,0,0,2.06,3.43V20.57A1.45,1.45,0,0,0,3.53,22H20.47a1.45,1.45,0,0,0,1.47-1.43V3.43A1.45,1.45,0,0,0,20.47,2ZM8.09,18.74h-3v-9h3ZM6.59,8.48h0a1.56,1.56,0,1,1,0-3.12,1.57,1.57,0,1,1,0,3.12ZM18.91,18.74h-3V13.91c0-1.21-.43-2-1.52-2A1.65,1.65,0,0,0,12.85,13a2,2,0,0,0-.1.73v5h-3s0-8.18,0-9h3V11A3,3,0,0,1,15.46,9.5c2,0,3.45,1.29,3.45,4.06Z" />
+                </svg>
+                Continue with LinkedIn (Server)
+            </button>
+            
+            <button id="linkedin-client-auth" class="linkedin">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.47,2H3.53A1.45,1.45,0,0,0,2.06,3.43V20.57A1.45,1.45,0,0,0,3.53,22H20.47a1.45,1.45,0,0,0,1.47-1.43V3.43A1.45,1.45,0,0,0,20.47,2ZM8.09,18.74h-3v-9h3ZM6.59,8.48h0a1.56,1.56,0,1,1,0-3.12,1.57,1.57,0,1,1,0,3.12ZM18.91,18.74h-3V13.91c0-1.21-.43-2-1.52-2A1.65,1.65,0,0,0,12.85,13a2,2,0,0,0-.1.73v5h-3s0-8.18,0-9h3V11A3,3,0,0,1,15.46,9.5c2,0,3.45,1.29,3.45,4.06Z" />
+                </svg>
+                Continue with LinkedIn (Client)
+            </button>
+            
+            <div id="linkedin-result" class="result">Results will appear here</div>
+            
+            <div class="code-example">
+                <p>Server-side redirect URI:</p>
+                <code>https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/api/auth/linkedin/callback</code>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Facebook Authentication</h2>
+            <p>Test Facebook authentication using both client-side and server-side methods.</p>
+            
+            <button id="facebook-server-auth">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9.19795 21.5H13.198V13.4901H16.8021L17.198 9.50977H13.198V7.5C13.198 6.94772 13.6457 6.5 14.198 6.5H17.198V2.5H14.198C11.4365 2.5 9.19795 4.73858 9.19795 7.5V9.50977H7.19795L6.80206 13.4901H9.19795V21.5Z"/>
+                </svg>
+                Continue with Facebook (Server)
+            </button>
+            
+            <button id="facebook-client-auth">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9.19795 21.5H13.198V13.4901H16.8021L17.198 9.50977H13.198V7.5C13.198 6.94772 13.6457 6.5 14.198 6.5H17.198V2.5H14.198C11.4365 2.5 9.19795 4.73858 9.19795 7.5V9.50977H7.19795L6.80206 13.4901H9.19795V21.5Z"/>
+                </svg>
+                Continue with Facebook (Client)
+            </button>
+            
+            <div id="facebook-result" class="result">Results will appear here</div>
+            
+            <div class="code-example">
+                <p>Server-side redirect URI:</p>
+                <code>https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/api/auth/facebook/callback</code>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper for showing results
+        function displayResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            if (isError) {
+                element.classList.add('error');
+            } else {
+                element.classList.remove('error');
+            }
+            
+            if (typeof data === 'object') {
+                element.textContent = JSON.stringify(data, null, 2);
+            } else {
+                element.textContent = data;
+            }
+        }
+
+        // LinkedIn Server-Side Auth
+        document.getElementById('linkedin-server-auth').addEventListener('click', async () => {
+            try {
+                displayResult('linkedin-result', 'Loading...');
+                const response = await fetch('/api/auth/linkedin/url');
+                const data = await response.json();
+                
+                // Redirect to LinkedIn
+                if (data && data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('Invalid response from server');
+                }
+            } catch (error) {
+                displayResult('linkedin-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Facebook Server-Side Auth
+        document.getElementById('facebook-server-auth').addEventListener('click', async () => {
+            try {
+                displayResult('facebook-result', 'Loading...');
+                const response = await fetch('/api/auth/facebook/url');
+                const data = await response.json();
+                
+                // Redirect to Facebook
+                if (data && data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('Invalid response from server');
+                }
+            } catch (error) {
+                displayResult('facebook-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Load Facebook SDK for client-side auth
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId: '1222790436230433',
+                cookie: true,
+                xfbml: true,
+                version: 'v18.0'
+            });
+        };
+
+        (function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+
+        // Facebook Client-Side Auth
+        document.getElementById('facebook-client-auth').addEventListener('click', () => {
+            displayResult('facebook-result', 'Connecting to Facebook...');
+            
+            if (typeof FB === 'undefined') {
+                displayResult('facebook-result', 'Facebook SDK not loaded yet. Please try again in a moment.', true);
+                return;
+            }
+            
+            FB.login(function(response) {
+                if (response.status === 'connected') {
+                    FB.api('/me', {fields: 'id,name,email,picture'}, function(userData) {
+                        // Send to backend to create session
+                        fetch('/api/auth/facebook', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                accessToken: response.authResponse.accessToken,
+                                userData: userData
+                            }),
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            displayResult('facebook-result', {
+                                status: 'Authenticated with Facebook',
+                                user: data.user,
+                                token: data.token
+                            });
+                        })
+                        .catch(error => {
+                            displayResult('facebook-result', `Server error: ${error.message}`, true);
+                        });
+                    });
+                } else {
+                    displayResult('facebook-result', 'Facebook login was cancelled or failed', true);
+                }
+            }, {scope: 'public_profile,email,user_friends'});
+        });
+
+        // Load LinkedIn SDK for client-side auth
+        function loadLinkedInSDK() {
+            window.linkedInInit = function() {
+                console.log('LinkedIn SDK initialized');
+            };
+            
+            (function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); js.id = id;
+                js.src = "https://platform.linkedin.com/in.js?apiKey=867adep5adc22g";
+                js.text = "api_key: 867adep5adc22g\nonLoad: linkedInInit";
+                fjs.parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'linkedin-jssdk'));
+        }
+        
+        loadLinkedInSDK();
+
+        // LinkedIn Client-Side Auth
+        document.getElementById('linkedin-client-auth').addEventListener('click', () => {
+            displayResult('linkedin-result', 'Connecting to LinkedIn...');
+            
+            if (typeof IN === 'undefined') {
+                displayResult('linkedin-result', 'LinkedIn SDK not loaded yet. Please try again in a moment.', true);
+                return;
+            }
+            
+            IN.User.authorize(() => {
+                IN.API.Profile("me")
+                .fields(["id", "firstName", "lastName", "email-address", "picture-url"])
+                .result(function(result) {
+                    if (result.values && result.values.length > 0) {
+                        const profile = result.values[0];
+                        const userData = {
+                            id: profile.id,
+                            name: `${profile.firstName.localized.en_US} ${profile.lastName.localized.en_US}`,
+                            email: profile.emailAddress,
+                            picture: profile.pictureUrl
+                        };
+                        
+                        // Send to backend to create session
+                        fetch('/api/auth/linkedin', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                accessToken: IN.ENV.auth.oauth_token,
+                                userData: userData
+                            }),
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            displayResult('linkedin-result', {
+                                status: 'Authenticated with LinkedIn',
+                                user: data.user,
+                                token: data.token
+                            });
+                        })
+                        .catch(error => {
+                            displayResult('linkedin-result', `Server error: ${error.message}`, true);
+                        });
+                    } else {
+                        displayResult('linkedin-result', 'Could not retrieve LinkedIn profile data', true);
+                    }
+                })
+                .error(function(error) {
+                    displayResult('linkedin-result', `LinkedIn API error: ${error.message}`, true);
+                });
+            });
+        });
+
+        // Check for authentication callback status
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check URL for callback parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const linkedinCode = urlParams.get('code');
+            const linkedinState = urlParams.get('state');
+            const linkedinError = urlParams.get('error');
+            const authSource = urlParams.get('auth_source');
+            
+            if (linkedinError) {
+                displayResult('linkedin-result', `LinkedIn error: ${linkedinError}`, true);
+                // Clean up URL
+                window.history.replaceState({}, document.title, '/auth-test.html');
+            }
+            
+            if (linkedinCode && linkedinState) {
+                // Auto-handle LinkedIn callback
+                displayResult('linkedin-result', 'Completing LinkedIn authentication...');
+                
+                // The backend should be handling this server-side
+                // We'll just show that we received the code
+                displayResult('linkedin-result', {
+                    status: 'Authentication code received',
+                    note: 'Server should be handling the token exchange',
+                    code: `${linkedinCode.substring(0, 10)}...`,
+                    state: linkedinState
+                });
+                
+                // Clean up URL 
+                window.history.replaceState({}, document.title, '/auth-test.html');
+            }
+            
+            // Check for auth token in localStorage (from successful auth)
+            const authToken = localStorage.getItem('auth_token');
+            const userData = localStorage.getItem('user_data');
+            
+            if (authToken && userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    if (user.provider === 'linkedin') {
+                        displayResult('linkedin-result', {
+                            status: 'Already authenticated with LinkedIn',
+                            user: user,
+                            token: `${authToken.substring(0, 10)}...`
+                        });
+                    } else if (user.provider === 'facebook') {
+                        displayResult('facebook-result', {
+                            status: 'Already authenticated with Facebook',
+                            user: user,
+                            token: `${authToken.substring(0, 10)}...`
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing stored user data', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -23,7 +23,7 @@ const LinkedInLoginButton = ({
       const loadLinkedInSDK = () => {
         window.linkedInInit = function() {
           window.IN.init({
-            api_key: process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g', // User's client ID
+            api_key: '867adep5adc22g', // LinkedIn client ID
             authorize: true,
             scope: 'r_emailaddress r_liteprofile',
             cookie_name: 'li_at'

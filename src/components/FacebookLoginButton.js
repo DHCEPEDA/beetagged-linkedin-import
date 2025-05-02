@@ -24,7 +24,7 @@ const FacebookLoginButton = ({
         // Using the exact code pattern Facebook provides
         window.fbAsyncInit = function() {
           FB.init({
-            appId: process.env.FACEBOOK_APP_ID,
+            appId: '1222790436230433',
             cookie: true,
             xfbml: true,
             version: 'v18.0'

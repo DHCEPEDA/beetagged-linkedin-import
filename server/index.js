@@ -31,9 +31,17 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 // Middleware
-app.use(cors());
+// Configure CORS for all domains with proper headers
+app.use(cors({
+  origin: '*', // Allow any origin in development
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Auth-Token']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Add trust proxy for Replit secure connections
+app.set('trust proxy', 1);
 
 // Set up EJS for templating
 app.engine('html', ejs.renderFile);
@@ -722,6 +730,14 @@ app.get('/server-auth.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'server-auth.html'));
 });
 
+app.get('/auth-test.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'auth-test.html'));
+});
+
+app.get('/auth-test', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'auth-test.html'));
+});
+
 // Serve the React app - all other routes go to index.html
 app.get('*', (req, res) => {
   // First try to serve the index.html directly
@@ -761,11 +777,15 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server accessible at: http://0.0.0.0:${PORT}`);
   console.log(`Health check endpoint: http://0.0.0.0:${PORT}/api/health`);
   
-  // Get the actual Replit URL from the header when needed
+  // Get the actual Replit URL from environment variable
+  const REPLIT_DOMAIN = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
+  console.log(`Replit domain: ${REPLIT_DOMAIN}`);
+  
   console.log('To access test pages, use these URLs:');
-  console.log(`Facebook test: https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000/fb-test`);
-  console.log(`LinkedIn test: https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000/linkedin-test`);
-  console.log(`Main app: https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000/`);
+  console.log(`Facebook test: https://${REPLIT_DOMAIN}/fb-test`);
+  console.log(`LinkedIn test: https://${REPLIT_DOMAIN}/linkedin-test`);
+  console.log(`Auth Test: https://${REPLIT_DOMAIN}/auth-test`);
+  console.log(`Main app: https://${REPLIT_DOMAIN}/`);
 });
 
 // Handle unhandled promise rejections
