@@ -253,17 +253,40 @@ router.get('/linkedin/callback', async (req, res) => {
     // Remove the state session
     delete sessions[state];
     
-    // Return user data and token
-    res.json({
-      user: profileData,
-      token: authToken
-    });
+    // Check if we have a returnUrl from the state data (similar to Facebook flow)
+    const returnUrl = sessions[state]?.returnUrl || '/';
+    
+    // Return user data based on context
+    if (returnUrl.includes('stanford-li-test') || returnUrl.includes('simple-li-test')) {
+      // For testing pages, redirect with data in URL parameters
+      const userData = encodeURIComponent(JSON.stringify(profileData));
+      return res.redirect(`${returnUrl}?token=${authToken}&userData=${userData}`);
+    } else {
+      // For regular API requests, return JSON
+      return res.json({
+        user: profileData,
+        token: authToken
+      });
+    }
   } catch (error) {
     console.error('LinkedIn auth error:', error.response?.data || error.message);
-    res.status(500).json({
-      message: 'Authentication failed',
-      error: error.response?.data || error.message
-    });
+    const errorMessage = encodeURIComponent(error.response?.data?.error?.message || error.message);
+    
+    // Get returnUrl from state if it exists
+    const returnUrl = sessions[state]?.returnUrl || '/';
+    delete sessions[state]; // Clean up session
+    
+    // Handle error response
+    if (returnUrl.includes('stanford-li-test') || returnUrl.includes('simple-li-test')) {
+      // For test pages, redirect with error in URL
+      return res.redirect(`${returnUrl}?error=${errorMessage}`);
+    } else {
+      // For API requests, return JSON
+      return res.status(500).json({
+        message: 'Authentication failed',
+        error: error.response?.data || error.message
+      });
+    }
   }
 });
 

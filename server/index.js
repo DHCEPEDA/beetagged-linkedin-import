@@ -808,6 +808,26 @@ app.get('/direct-fb-login', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'direct-fb-login.html'));
 });
 
+// Stanford approach to Facebook authentication
+app.get('/stanford-fb-test', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'stanford-fb-test.html'));
+});
+
+// Stanford approach to LinkedIn authentication
+app.get('/stanford-li-test', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'stanford-li-test.html'));
+});
+
+// Super Direct Facebook Login
+app.get('/fb-direct', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'fb-direct.html'));
+});
+
+// Super Direct LinkedIn Login
+app.get('/li-direct', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'li-direct.html'));
+});
+
 // Health check for browser testing
 app.get('/api/ping', (req, res) => {
   res.json({
@@ -864,12 +884,17 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Facebook test: https://${REPLIT_DOMAIN}/fb-test`);
   console.log(`Facebook diagnostic: https://${REPLIT_DOMAIN}/fb-diagnostic`);
   console.log(`Facebook simple: https://${REPLIT_DOMAIN}/fb-simple`);
+  console.log(`Facebook direct login: https://${REPLIT_DOMAIN}/fb-direct`);
+  console.log(`LinkedIn direct login: https://${REPLIT_DOMAIN}/li-direct`);
+  console.log(`Stanford FB test: https://${REPLIT_DOMAIN}/stanford-fb-test`);
+  console.log(`Stanford LinkedIn test: https://${REPLIT_DOMAIN}/stanford-li-test`);
   console.log(`LinkedIn test: https://${REPLIT_DOMAIN}/linkedin-test`);
   console.log(`Auth Test: https://${REPLIT_DOMAIN}/auth-test`);
   console.log(`Simple Test: https://${REPLIT_DOMAIN}/simple-test.html`);
   console.log(`Social Connection Wizard: https://${REPLIT_DOMAIN}/wizard`);
   console.log(`Tag Search Test: https://${REPLIT_DOMAIN}/tag-search-test.html`);
   console.log(`Main app: https://${REPLIT_DOMAIN}/`);
+  console.log(`API Config Verify: https://${REPLIT_DOMAIN}/api/config/verify`);
 });
 
 // Handle unhandled promise rejections
