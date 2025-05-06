@@ -55,7 +55,7 @@
     .social-login button img { 
       margin-right: 8px; 
       height: 20px; 
-    }</style></head><body><img src="/images/bee-logo.svg" alt="BeeTagged Logo" class="logo"><h1>BeeTagged Platform</h1><p>Testing connectivity and authentication for the BeeTagged application.</p><div class="container"><div class="card"><h2>API Connection</h2><p>Test the server API connection</p><p><button onclick="testApi()">Test API</button></p><pre id="apiResult">Click the button to test the API...</pre></div><div class="card"><h2>Authentication</h2><p>Test social login connectivity</p><div class="social-login"><button onclick="testFacebookAuth()"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/facebook.svg" alt="Facebook"/> Facebook Login</button> <button onclick="testLinkedInAuth()"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg" alt="LinkedIn"/> LinkedIn Login</button></div><pre id="authResult">Choose a login method to test...</pre></div><div class="card"><h2>Contact Import</h2><p>Test contact import from social platforms</p><button onclick="testContactImport()">Test Import</button><pre id="importResult">Click to test contact import...</pre></div><div class="card"><h2>Server Logs</h2><p>View recent server activity</p><button onclick="fetchLogs()">Fetch Logs</button><pre id="logsResult">Click to fetch logs...</pre></div></div><script>// Test API connection
+    }</style></head><body><img src="/images/bee-logo.svg" alt="BeeTagged Logo" class="logo"><h1>BeeTagged Platform</h1><p>Testing connectivity and authentication for the BeeTagged application.</p><p style="text-align: center; margin-bottom: 20px;"><a href="/auth-test.html" style="color: #f5a623; text-decoration: underline;">Advanced Authentication Testing</a></p><div class="container"><div class="card"><h2>API Connection</h2><p>Test the server API connection</p><p><button onclick="testApi()">Test API</button></p><pre id="apiResult">Click the button to test the API...</pre></div><div class="card"><h2>Authentication</h2><p>Test social login connectivity</p><div class="social-login"><button onclick="testFacebookAuth()"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/facebook.svg" alt="Facebook"/> Facebook Login</button> <button onclick="testLinkedInAuth()"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg" alt="LinkedIn"/> LinkedIn Login</button></div><pre id="authResult">Choose a login method to test...</pre></div><div class="card"><h2>Contact Import</h2><p>Test contact import from social platforms</p><button onclick="testContactImport()">Test Import</button><pre id="importResult">Click to test contact import...</pre></div><div class="card"><h2>Server Logs</h2><p>View recent server activity</p><button onclick="fetchLogs()">Fetch Logs</button><pre id="logsResult">Click to fetch logs...</pre></div></div><script>// Test API connection
     function testApi() {
       document.getElementById('apiResult').textContent = 'Loading...';
       
@@ -72,13 +72,12 @@
     // Test Facebook authentication
     function testFacebookAuth() {
       document.getElementById('authResult').textContent = 'Redirecting to Facebook...';
-      // In a real implementation, we would redirect to the Facebook OAuth URL
+      // Redirect to the Facebook OAuth URL
       fetch('/api/auth/facebook/url')
         .then(response => response.json())
         .then(data => {
-          document.getElementById('authResult').textContent = 'Auth URL: ' + data.url;
-          // Uncomment to actually redirect:
-          // window.location.href = data.url;
+          // Automatically redirect to Facebook
+          window.location.href = data.url;
         })
         .catch(error => {
           document.getElementById('authResult').textContent = 'Error: ' + error.message;
@@ -88,13 +87,12 @@
     // Test LinkedIn authentication
     function testLinkedInAuth() {
       document.getElementById('authResult').textContent = 'Redirecting to LinkedIn...';
-      // In a real implementation, we would redirect to the LinkedIn OAuth URL
+      // Redirect to the LinkedIn OAuth URL
       fetch('/api/auth/linkedin/url')
         .then(response => response.json())
         .then(data => {
-          document.getElementById('authResult').textContent = 'Auth URL: ' + data.url;
-          // Uncomment to actually redirect:
-          // window.location.href = data.url;
+          // Automatically redirect to LinkedIn
+          window.location.href = data.url;
         })
         .catch(error => {
           document.getElementById('authResult').textContent = 'Error: ' + error.message;
