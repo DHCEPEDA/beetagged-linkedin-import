@@ -145,15 +145,13 @@
     function testFacebookAuth() {
       const resultEl = document.getElementById('authResult');
       
-      resultEl.innerHTML = '<span class="loader"></span> Requesting Facebook authentication URL...';
+      resultEl.innerHTML = '<span class="loader"></span> Redirecting to Facebook...';
       
       fetch('/api/auth/facebook/url')
         .then(response => response.json())
         .then(data => {
-          resultEl.innerHTML = 'Facebook authentication URL:\n\n' + data.url;
-          
-          // Provide option to redirect
-          resultEl.innerHTML += '\n\n<button class="button" onclick="window.location.href = \'' + data.url + '\'">Click to Redirect</button>';
+          // Automatically redirect to Facebook
+          window.location.href = data.url;
         })
         .catch(error => {
           resultEl.innerHTML = 'Facebook authentication request failed: ' + error.message;
@@ -164,15 +162,13 @@
     function testLinkedInAuth() {
       const resultEl = document.getElementById('authResult');
       
-      resultEl.innerHTML = '<span class="loader"></span> Requesting LinkedIn authentication URL...';
+      resultEl.innerHTML = '<span class="loader"></span> Redirecting to LinkedIn...';
       
       fetch('/api/auth/linkedin/url')
         .then(response => response.json())
         .then(data => {
-          resultEl.innerHTML = 'LinkedIn authentication URL:\n\n' + data.url;
-          
-          // Provide option to redirect
-          resultEl.innerHTML += '\n\n<button class="button" onclick="window.location.href = \'' + data.url + '\'">Click to Redirect</button>';
+          // Automatically redirect to LinkedIn
+          window.location.href = data.url;
         })
         .catch(error => {
           resultEl.innerHTML = 'LinkedIn authentication request failed: ' + error.message;

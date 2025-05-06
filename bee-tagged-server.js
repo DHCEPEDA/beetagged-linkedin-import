@@ -134,13 +134,13 @@ const homePage = `
     // Test Facebook authentication
     function testFacebookAuth() {
       document.getElementById('authResult').textContent = 'Redirecting to Facebook...';
-      // In a real implementation, we would redirect to the Facebook OAuth URL
+      // Redirect to the Facebook OAuth URL
       fetch('/api/auth/facebook/url')
         .then(response => response.json())
         .then(data => {
-          document.getElementById('authResult').textContent = 'Auth URL: ' + data.url;
-          // Uncomment to actually redirect:
-          // window.location.href = data.url;
+          document.getElementById('authResult').textContent = 'Redirecting to Facebook login...';
+          // Actually redirect to Facebook OAuth URL
+          window.location.href = data.url;
         })
         .catch(error => {
           document.getElementById('authResult').textContent = 'Error: ' + error.message;
@@ -150,13 +150,13 @@ const homePage = `
     // Test LinkedIn authentication
     function testLinkedInAuth() {
       document.getElementById('authResult').textContent = 'Redirecting to LinkedIn...';
-      // In a real implementation, we would redirect to the LinkedIn OAuth URL
+      // Redirect to the LinkedIn OAuth URL
       fetch('/api/auth/linkedin/url')
         .then(response => response.json())
         .then(data => {
-          document.getElementById('authResult').textContent = 'Auth URL: ' + data.url;
-          // Uncomment to actually redirect:
-          // window.location.href = data.url;
+          document.getElementById('authResult').textContent = 'Redirecting to LinkedIn login...';
+          // Actually redirect to LinkedIn OAuth URL
+          window.location.href = data.url;
         })
         .catch(error => {
           document.getElementById('authResult').textContent = 'Error: ' + error.message;
