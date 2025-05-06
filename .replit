@@ -18,7 +18,7 @@ args = "BuildClient"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "MiniServer"
+args = "SimpleServer"
 
 [[workflows.workflow]]
 name = "BuildClient"
@@ -29,12 +29,12 @@ task = "shell.exec"
 args = "npx webpack --mode production"
 
 [[workflows.workflow]]
-name = "MiniServer"
+name = "SimpleServer"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "NODE_ENV=production node mini-server.js"
+args = "NODE_ENV=production node server-simple.js"
 waitForPort = 5000
 
 [deployment]
