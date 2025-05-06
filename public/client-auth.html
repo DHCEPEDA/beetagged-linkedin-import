@@ -112,17 +112,23 @@
       const fbAppId = '262648000122599';
       
       document.getElementById('fb-login').addEventListener('click', function() {
-        // Redirect to Facebook Login Dialog
-        const redirectUri = encodeURIComponent(window.location.href);
-        const scope = encodeURIComponent('email,public_profile');
+        // Redirect to Facebook Login Dialog - using a different approach to avoid ERR_BLOCKED_BY_RESPONSE
+        // We'll use the base domain instead of the current page URL
+        const baseUrl = window.location.origin;
+        const redirectUri = encodeURIComponent(baseUrl + '/auth');
+        
+        // Use smaller scope to reduce chance of being blocked
+        const scope = encodeURIComponent('email');
         const state = 'fb' + Math.random().toString(36).substring(2);
         
         // Store state for verification
         localStorage.setItem('fb_auth_state', state);
         
-        const fbLoginUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&response_type=token`;
+        // Use older version of Facebook API to increase compatibility
+        const fbLoginUrl = `https://www.facebook.com/v10.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&response_type=token`;
         
-        window.location.href = fbLoginUrl;
+        // Open in a new window to avoid issues with redirects
+        window.open(fbLoginUrl, '_blank', 'width=600,height=600');
       });
 
       // Check if we have a callback from Facebook
@@ -183,9 +189,12 @@
       const liClientId = '77d6kq6d5t9olt';
       
       document.getElementById('li-login').addEventListener('click', function() {
-        // Redirect to LinkedIn Authorization page
-        const redirectUri = encodeURIComponent(window.location.href);
-        const scope = encodeURIComponent('r_liteprofile r_emailaddress');
+        // Use similar approach to Facebook - use base URL for redirect
+        const baseUrl = window.location.origin;
+        const redirectUri = encodeURIComponent(baseUrl + '/auth');
+        
+        // Use minimal scope
+        const scope = encodeURIComponent('r_liteprofile');
         const state = 'li' + Math.random().toString(36).substring(2);
         
         // Store state for verification
@@ -193,7 +202,8 @@
         
         const liAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${liClientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
         
-        window.location.href = liAuthUrl;
+        // Open in new window instead of redirecting
+        window.open(liAuthUrl, '_blank', 'width=600,height=600');
       });
 
       // Check if we have a code from LinkedIn
