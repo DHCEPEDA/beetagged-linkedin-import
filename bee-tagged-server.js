@@ -20,10 +20,19 @@ const logger = require('./utils/logger');
 // Create Express app
 const app = express();
 
+// Detect Replit domain and environment
+const replitDomain = process.env.REPLIT_DOMAIN || process.env.REPL_SLUG || null;
+const isRunningOnReplit = !!replitDomain;
+
 // Basic configuration
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// Set trust proxy for Replit environment
+if (isRunningOnReplit) {
+  app.set('trust proxy', true);
+}
 
 // Apply request logging middleware
 app.use(logger.request);
@@ -257,9 +266,28 @@ app.get('/api/ping', (req, res) => {
     timestamp: new Date().toISOString(),
     env: {
       node_version: process.version,
-      replit_domain: process.env.REPLIT_DOMAIN || 'not set'
+      replit_domain: replitDomain || 'not set',
+      is_replit: isRunningOnReplit,
+      port: PORT || 3000
     }
   });
+});
+
+// Special Replit webview compatible endpoint
+app.get('/__replit', (req, res) => {
+  logger.info('Replit special path accessed');
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>BeeTagged Replit Health Check</title>
+        <meta http-equiv="refresh" content="0;URL='/'" />
+      </head>
+      <body>
+        <p>Redirecting to the BeeTagged application...</p>
+      </body>
+    </html>
+  `);
 });
 
 // Facebook Authentication URL
@@ -453,6 +481,24 @@ app.get('/api/auth/status', (req, res) => {
   });
 });
 
+// Special health check endpoints for Replit
+app.get('/__replit_health_check', (req, res) => {
+  logger.info('Replit health check requested');
+  res.status(200).send('OK');
+});
+
+app.get('/health', (req, res) => {
+  logger.info('Health check requested');
+  res.status(200).json({
+    status: 'UP',
+    timestamp: new Date().toISOString(),
+    mongodb: {
+      connected: mongoConnected,
+      connectionState: mongoose.connection.readyState
+    }
+  });
+});
+
 // Database status endpoint
 app.get('/api/database/status', (req, res) => {
   logger.info('Database status requested');
@@ -511,10 +557,16 @@ app.post('/api/auth/:provider/direct', (req, res) => {
   });
 });
 
-// Health check endpoint (for Replit webview)
+// Health check endpoints (for Replit webview)
 app.get('/healthcheck', (req, res) => {
   logger.info('Health check requested');
   res.status(200).send('OK');
+});
+
+// Special Replit webview health check
+app.get('/index.html', (req, res) => {
+  logger.info('Index.html requested by Replit webview');
+  res.send(homePage);
 });
 
 // Home page
@@ -526,18 +578,34 @@ app.get('/', (req, res) => {
 // Error handler middleware (always at the end)
 app.use(logger.errorHandler);
 
-// Listen on the standard port for Replit with host set to localhost
-// This is the key for Replit connectivity
-const PORT = 5000;
-// Binding to "0.0.0.0" instead of "localhost" or undefined seems to work better with Replit
+// Listen on port 3000 for Replit compatibility
+const PORT = 3000;
+const REPLIT_PORT = 5000; // Additional port for Replit's tools
+
+// Bind to all interfaces for better Replit compatibility
 app.listen(PORT, "0.0.0.0", () => {
   logger.info(`BeeTagged Server started`, { port: PORT, host: "0.0.0.0" });
+  
   console.log(`
-╔════════════════════════════════════════════════════╗
-║                                                    ║
-║     BeeTagged Server - Ready for Connections       ║
-║     Running on port ${PORT} - bound to all interfaces  ║
-║                                                    ║
-╚════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║     BeeTagged Server - Ready for Connections                   ║
+║     Running on port ${PORT} - bound to all interfaces          ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
 `);
+
+  // Also listen on port 5000 for compatibility with Replit tools
+  app.listen(REPLIT_PORT, "0.0.0.0", () => {
+    logger.info(`BeeTagged Secondary Server started`, { port: REPLIT_PORT, host: "0.0.0.0" });
+    
+    console.log(`
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║     BeeTagged Secondary Server - Ready for Connections         ║
+║     Running on port ${REPLIT_PORT} - bound to all interfaces   ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+    `);
+  });
 });
