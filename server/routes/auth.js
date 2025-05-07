@@ -9,16 +9,21 @@ const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '867adep5adc22g';
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'WPL_AP1.j4ipPY9wll4iqDt7.w0yMCA==';
 
-// Use the Replit domain or localhost for redirect URI
+// Get the domain from environment variables or fallback to the current domain
 const HOSTNAME = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
 
-// For Facebook
+// For Facebook - IMPORTANT: No port number in callback URLs for OAuth
 const FB_REDIRECT_URI = process.env.FB_REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
-// For LinkedIn
+// For LinkedIn - IMPORTANT: No port number in callback URLs for OAuth
 const LINKEDIN_REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`;
 
 // For backward compatibility - use Facebook-specific callback by default
 const REDIRECT_URI = process.env.REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
+
+// Log the domains we're using for callbacks
+console.log('Using domain for auth callbacks:', HOSTNAME);
+console.log('Facebook redirect URI:', FB_REDIRECT_URI);
+console.log('LinkedIn redirect URI:', LINKEDIN_REDIRECT_URI);
 
 // In-memory session store for demo (in production, use Redis or a database)
 // This simulates server-side sessions without cookies for the demo
@@ -168,16 +173,25 @@ router.get('/facebook/callback', async (req, res) => {
 router.get('/linkedin/url', (req, res) => {
   // Create a session token
   const state = uuidv4();
-  sessions[state] = { created: new Date() };
+  
+  // Extract return URL from query parameter or header, just like Facebook
+  const returnUrl = req.query.returnUrl || req.get('Referer') || '/';
+  
+  // Store state with the return URL for redirecting back after auth
+  sessions[state] = { 
+    created: new Date(),
+    returnUrl: returnUrl 
+  };
   
   // Build LinkedIn OAuth URL using LinkedIn-specific redirect URI
   // Make sure we strip any port numbers from the redirect URI
   const cleanRedirectUri = LINKEDIN_REDIRECT_URI.replace(':5000', '');
   
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  // Log for debugging
+  console.log('LinkedIn auth URL using redirect:', cleanRedirectUri);
+  console.log('Return URL after auth will be:', returnUrl);
   
-  // Log information for debugging
-  console.log(`LinkedIn auth URL generated with redirect: ${cleanRedirectUri}`);
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
   
   res.json({ url: authUrl, state });
 });
@@ -250,23 +264,29 @@ router.get('/linkedin/callback', async (req, res) => {
       created: new Date()
     };
     
+    // Get return URL before removing state
+    const returnUrl = sessions[state]?.returnUrl || '/';
+    
     // Remove the state session
     delete sessions[state];
     
-    // Check if we have a returnUrl from the state data (similar to Facebook flow)
-    const returnUrl = sessions[state]?.returnUrl || '/';
-    
-    // Return user data based on context
-    if (returnUrl.includes('stanford-li-test') || returnUrl.includes('simple-li-test')) {
+    // Return user data based on context (match Facebook behavior)
+    if (returnUrl.includes('stanford-li-test') || returnUrl.includes('simple-li-test') || returnUrl.includes('li-direct')) {
       // For testing pages, redirect with data in URL parameters
       const userData = encodeURIComponent(JSON.stringify(profileData));
       return res.redirect(`${returnUrl}?token=${authToken}&userData=${userData}`);
-    } else {
-      // For regular API requests, return JSON
+    } else if (returnUrl.includes('wizard')) {
+      // For wizard page, redirect with token
+      return res.redirect(`${returnUrl}?token=${authToken}`);
+    } else if (req.xhr) {
+      // For XHR/AJAX requests, return JSON
       return res.json({
         user: profileData,
         token: authToken
       });
+    } else {
+      // For regular requests, redirect to the main app with token
+      return res.redirect(`/?token=${authToken}`);
     }
   } catch (error) {
     console.error('LinkedIn auth error:', error.response?.data || error.message);
@@ -276,16 +296,19 @@ router.get('/linkedin/callback', async (req, res) => {
     const returnUrl = sessions[state]?.returnUrl || '/';
     delete sessions[state]; // Clean up session
     
-    // Handle error response
-    if (returnUrl.includes('stanford-li-test') || returnUrl.includes('simple-li-test')) {
+    // Handle error response (match Facebook behavior)
+    if (returnUrl.includes('stanford-li-test') || returnUrl.includes('simple-li-test') || returnUrl.includes('li-direct') || returnUrl.includes('wizard')) {
       // For test pages, redirect with error in URL
       return res.redirect(`${returnUrl}?error=${errorMessage}`);
-    } else {
-      // For API requests, return JSON
+    } else if (req.xhr) {
+      // For XHR/AJAX requests, return JSON error
       return res.status(500).json({
         message: 'Authentication failed',
         error: error.response?.data || error.message
       });
+    } else {
+      // For regular requests, redirect to the main app with error
+      return res.redirect(`/?error=${errorMessage}`);
     }
   }
 });
