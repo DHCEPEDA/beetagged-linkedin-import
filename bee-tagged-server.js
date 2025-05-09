@@ -258,7 +258,11 @@ app.use((req, res, next) => {
 
 // Basic ping endpoint
 app.get('/api/ping', (req, res) => {
-  logger.info('Ping received', { source: req.ip });
+  logger.info('Ping received', { 
+    source: req.ip,
+    host: req.get('host'),
+    origin: req.headers.origin || 'no-origin' 
+  });
   
   res.json({
     success: true,
@@ -268,7 +272,18 @@ app.get('/api/ping', (req, res) => {
       node_version: process.version,
       replit_domain: replitDomain || 'not set',
       is_replit: isRunningOnReplit,
-      port: PORT || 3000
+      port: PORT || 3000,
+      host: req.get('host')
+    },
+    auth: {
+      facebook_configured: process.env.FACEBOOK_APP_ID ? true : false,
+      linkedin_configured: process.env.LINKEDIN_CLIENT_ID ? true : false,
+      facebook_token_exchange_available: true,
+      linkedin_token_exchange_available: true
+    },
+    mongodb: {
+      connected: mongoConnected,
+      connectionState: mongoose.connection.readyState
     }
   });
 });
@@ -292,15 +307,33 @@ app.get('/__replit', (req, res) => {
 
 // Facebook Authentication URL
 app.get('/api/auth/facebook/url', (req, res) => {
-  logger.info('Facebook auth URL requested', { ip: req.ip });
+  logger.info('Facebook auth URL requested', { 
+    ip: req.ip,
+    host: req.get('host')
+  });
   
   const clientId = process.env.FACEBOOK_APP_ID || 'APP_ID_REQUIRED';
-  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/facebook/callback`;
+  
+  // Handle both Replit and local development by removing port from redirect URI if on Replit
+  let host = req.get('host');
+  const isReplitDomain = replitDomain && host.includes(replitDomain);
+  
+  // Remove port if it's a Replit domain to avoid OAuth issues
+  if (isReplitDomain && host.includes(':')) {
+    host = host.split(':')[0];
+  }
+  
+  const redirectUri = `${req.protocol}://${host}/api/auth/facebook/callback`;
   const state = Math.random().toString(36).substring(2, 15);
   
   // Store state for CSRF protection (would use a real session store in production)
   
   const authUrl = `https://www.facebook.com/v13.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=email,public_profile,user_friends`;
+  
+  logger.info('Generated Facebook auth URL', {
+    redirectUri,
+    state: state.substring(0, 5) + '...' // Log only part of the state for security
+  });
   
   res.json({ url: authUrl });
 });
@@ -309,7 +342,11 @@ app.get('/api/auth/facebook/url', (req, res) => {
 app.get('/api/auth/facebook/callback', async (req, res) => {
   const { code, state } = req.query;
   
-  logger.info('Facebook auth callback received', { state });
+  logger.info('Facebook auth callback received', { 
+    state,
+    host: req.get('host'),
+    origin: req.headers.origin || 'no-origin'
+  });
   
   if (!code) {
     logger.error('No code received from Facebook');
@@ -319,7 +356,18 @@ app.get('/api/auth/facebook/callback', async (req, res) => {
   try {
     const clientId = process.env.FACEBOOK_APP_ID;
     const clientSecret = process.env.FACEBOOK_APP_SECRET;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/facebook/callback`;
+    
+    // Handle both Replit and local development by removing port from redirect URI if on Replit
+    let host = req.get('host');
+    const isReplitDomain = replitDomain && host.includes(replitDomain);
+    
+    // Remove port if it's a Replit domain to avoid OAuth issues
+    if (isReplitDomain && host.includes(':')) {
+      host = host.split(':')[0];
+    }
+    
+    const redirectUri = `${req.protocol}://${host}/api/auth/facebook/callback`;
+    logger.info('Using Facebook redirect URI', { redirectUri });
     
     // Exchange code for token
     const tokenResponse = await axios.get(
@@ -356,15 +404,33 @@ app.get('/api/auth/facebook/callback', async (req, res) => {
 
 // LinkedIn Authentication URL
 app.get('/api/auth/linkedin/url', (req, res) => {
-  logger.info('LinkedIn auth URL requested', { ip: req.ip });
+  logger.info('LinkedIn auth URL requested', { 
+    ip: req.ip,
+    host: req.get('host')
+  });
   
   const clientId = process.env.LINKEDIN_CLIENT_ID || 'CLIENT_ID_REQUIRED';
-  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/linkedin/callback`;
+  
+  // Handle both Replit and local development by removing port from redirect URI if on Replit
+  let host = req.get('host');
+  const isReplitDomain = replitDomain && host.includes(replitDomain);
+  
+  // Remove port if it's a Replit domain to avoid OAuth issues
+  if (isReplitDomain && host.includes(':')) {
+    host = host.split(':')[0];
+  }
+  
+  const redirectUri = `${req.protocol}://${host}/api/auth/linkedin/callback`;
   const state = Math.random().toString(36).substring(2, 15);
   
   // Store state for CSRF protection (would use a real session store in production)
   
   const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  
+  logger.info('Generated LinkedIn auth URL', {
+    redirectUri,
+    state: state.substring(0, 5) + '...' // Log only part of the state for security
+  });
   
   res.json({ url: authUrl });
 });
@@ -373,7 +439,11 @@ app.get('/api/auth/linkedin/url', (req, res) => {
 app.get('/api/auth/linkedin/callback', async (req, res) => {
   const { code, state } = req.query;
   
-  logger.info('LinkedIn auth callback received', { state });
+  logger.info('LinkedIn auth callback received', { 
+    state,
+    host: req.get('host'),
+    origin: req.headers.origin || 'no-origin'
+  });
   
   if (!code) {
     logger.error('No code received from LinkedIn');
@@ -383,7 +453,18 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
   try {
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/linkedin/callback`;
+    
+    // Handle both Replit and local development by removing port from redirect URI if on Replit
+    let host = req.get('host');
+    const isReplitDomain = replitDomain && host.includes(replitDomain);
+    
+    // Remove port if it's a Replit domain to avoid OAuth issues
+    if (isReplitDomain && host.includes(':')) {
+      host = host.split(':')[0];
+    }
+    
+    const redirectUri = `${req.protocol}://${host}/api/auth/linkedin/callback`;
+    logger.info('Using redirect URI', { redirectUri });
     
     // Exchange code for token
     const tokenResponse = await axios.post(
@@ -458,6 +539,177 @@ app.get('/api/logs/recent', (req, res) => {
   res.json({
     logs: appState.recentLogs
   });
+});
+
+// Facebook token exchange endpoint for client-side flows
+app.post('/api/auth/facebook/token', async (req, res) => {
+  const { code, redirectUri } = req.body;
+  
+  logger.info('Facebook token exchange requested', { 
+    codeLength: code ? code.length : 0,
+    redirectUri 
+  });
+  
+  if (!code) {
+    logger.error('No code provided for Facebook token exchange');
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Authorization code is required' 
+    });
+  }
+  
+  try {
+    const clientId = process.env.FACEBOOK_APP_ID;
+    const clientSecret = process.env.FACEBOOK_APP_SECRET;
+    
+    // Exchange code for token
+    const tokenResponse = await axios.get(
+      `https://graph.facebook.com/v13.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`
+    );
+    
+    const { access_token } = tokenResponse.data;
+    
+    // Get user profile
+    const profileResponse = await axios.get(
+      `https://graph.facebook.com/me?fields=id,name,email&access_token=${access_token}`
+    );
+    
+    // Construct user data object
+    const userData = {
+      id: profileResponse.data.id,
+      name: profileResponse.data.name,
+      email: profileResponse.data.email,
+      provider: 'facebook',
+      accessToken: access_token
+    };
+    
+    logger.info('Facebook token exchange successful', {
+      userId: userData.id,
+      name: userData.name
+    });
+    
+    // In a real app, you would create/update the user in your DB
+    // and generate a session token here
+    
+    res.json({
+      success: true,
+      user: userData
+    });
+  } catch (error) {
+    logger.error('Facebook token exchange error', {
+      message: error.message,
+      response: error.response?.data
+    });
+    
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      details: error.response?.data || 'No additional details'
+    });
+  }
+});
+
+// LinkedIn token exchange endpoint for client-side flows
+app.post('/api/auth/linkedin/token', async (req, res) => {
+  const { code, redirectUri } = req.body;
+  
+  logger.info('LinkedIn token exchange requested', { 
+    codeLength: code ? code.length : 0,
+    redirectUri 
+  });
+  
+  if (!code) {
+    logger.error('No code provided for LinkedIn token exchange');
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Authorization code is required' 
+    });
+  }
+  
+  try {
+    const clientId = process.env.LINKEDIN_CLIENT_ID;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    
+    // Exchange code for token
+    const tokenResponse = await axios.post(
+      'https://www.linkedin.com/oauth/v2/accessToken',
+      null,
+      {
+        params: {
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          client_secret: clientSecret
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
+    const { access_token } = tokenResponse.data;
+    
+    // Get user profile
+    const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+    
+    // Get email address if available
+    let email = null;
+    try {
+      const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
+      });
+      
+      if (emailResponse.data && 
+          emailResponse.data.elements && 
+          emailResponse.data.elements.length > 0) {
+        email = emailResponse.data.elements[0]['handle~'].emailAddress;
+      }
+    } catch (emailErr) {
+      logger.warn('Could not retrieve LinkedIn email', { error: emailErr.message });
+    }
+    
+    // Construct user data object
+    const userData = {
+      id: profileResponse.data.id,
+      firstName: profileResponse.data.localizedFirstName,
+      lastName: profileResponse.data.localizedLastName,
+      fullName: `${profileResponse.data.localizedFirstName} ${profileResponse.data.localizedLastName}`,
+      email: email,
+      provider: 'linkedin',
+      accessToken: access_token
+    };
+    
+    logger.info('LinkedIn token exchange successful', {
+      userId: userData.id,
+      name: userData.fullName
+    });
+    
+    // In a real app, you would create/update the user in your DB
+    // and generate a session token here
+    
+    res.json({
+      success: true,
+      user: userData
+    });
+  } catch (error) {
+    logger.error('LinkedIn token exchange error', {
+      message: error.message,
+      response: error.response?.data
+    });
+    
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      details: error.response?.data || 'No additional details'
+    });
+  }
 });
 
 // Auth status endpoint

@@ -13,7 +13,7 @@ const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'WPL_AP1.j4
 const HOSTNAME = process.env.REPLIT_DOMAINS || 'd49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
 
 // For Facebook - IMPORTANT: No port number in callback URLs for OAuth
-const FB_REDIRECT_URI = process.env.FB_REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
+const FB_REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || `https://${HOSTNAME}/api/auth/facebook/callback`;
 // For LinkedIn - IMPORTANT: No port number in callback URLs for OAuth
 const LINKEDIN_REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI || `https://${HOSTNAME}/api/auth/linkedin/callback`;
 
@@ -59,18 +59,31 @@ router.get('/facebook/url', (req, res) => {
     returnUrl: returnUrl 
   };
   
-  // Make sure we strip any port numbers from the redirect URI
-  const cleanRedirectUri = FB_REDIRECT_URI.replace(':5000', '');
+  // Determine if the request is coming from localhost or the Replit domain
+  const host = req.headers.host || HOSTNAME;
+  let useLocalhost = host.includes('localhost');
+  
+  // For API testing, we might get requests from curl using localhost
+  // But for production/deployment, we should always use the Replit domain
+  let redirectUri = useLocalhost 
+    ? `http://${host}/api/auth/facebook/callback`  // For local testing
+    : FB_REDIRECT_URI;                            // For production
+  
+  // Make sure we strip any port numbers from the production redirect URI
+  if (!useLocalhost) {
+    redirectUri = redirectUri.replace(':5000', '').replace(':3000', '');
+  }
   
   // Log for debugging
-  console.log('Facebook auth URL using redirect:', cleanRedirectUri);
+  console.log('Facebook auth URL using host:', host);
+  console.log('Facebook auth URL using redirect:', redirectUri);
   console.log('Return URL after auth will be:', returnUrl);
   
   // Build Facebook OAuth URL using the Facebook-specific redirect URI
-  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=public_profile,email,user_friends`;
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=public_profile,email,user_friends`;
   
   // Log information for debugging
-  console.log(`Facebook auth URL generated with redirect: ${cleanRedirectUri}`);
+  console.log(`Facebook auth URL generated with redirect: ${redirectUri}`);
   
   res.json({ url: authUrl, state });
 });
@@ -85,16 +98,28 @@ router.get('/facebook/callback', async (req, res) => {
   }
   
   try {
-    // Make sure we strip any port numbers from the redirect URI for token exchange
-    const cleanRedirectUri = FB_REDIRECT_URI.replace(':5000', '');
-    console.log('Facebook token exchange using redirect:', cleanRedirectUri);
+    // Determine if the request is coming from localhost or the Replit domain
+    const host = req.headers.host || HOSTNAME;
+    let useLocalhost = host.includes('localhost');
+    
+    // Choose the appropriate redirect URI based on the environment
+    let redirectUri = useLocalhost 
+      ? `http://${host}/api/auth/facebook/callback`  // For local testing
+      : FB_REDIRECT_URI;                            // For production
+    
+    // Make sure we strip any port numbers from the production redirect URI
+    if (!useLocalhost) {
+      redirectUri = redirectUri.replace(':5000', '').replace(':3000', '');
+    }
+    
+    console.log('Facebook token exchange using redirect:', redirectUri);
     
     // Exchange authorization code for access token
     const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
       params: {
         client_id: FB_APP_ID,
         client_secret: FB_APP_SECRET,
-        redirect_uri: cleanRedirectUri,
+        redirect_uri: redirectUri,
         code
       }
     });
@@ -183,15 +208,27 @@ router.get('/linkedin/url', (req, res) => {
     returnUrl: returnUrl 
   };
   
-  // Build LinkedIn OAuth URL using LinkedIn-specific redirect URI
-  // Make sure we strip any port numbers from the redirect URI
-  const cleanRedirectUri = LINKEDIN_REDIRECT_URI.replace(':5000', '');
+  // Determine if the request is coming from localhost or the Replit domain
+  const host = req.headers.host || HOSTNAME;
+  let useLocalhost = host.includes('localhost');
+  
+  // For API testing, we might get requests from curl using localhost
+  // But for production/deployment, we should always use the Replit domain
+  let redirectUri = useLocalhost 
+    ? `http://${host}/api/auth/linkedin/callback`  // For local testing
+    : LINKEDIN_REDIRECT_URI;                      // For production
+  
+  // Make sure we strip any port numbers from the production redirect URI
+  if (!useLocalhost) {
+    redirectUri = redirectUri.replace(':5000', '').replace(':3000', '');
+  }
   
   // Log for debugging
-  console.log('LinkedIn auth URL using redirect:', cleanRedirectUri);
+  console.log('LinkedIn auth URL using host:', host);
+  console.log('LinkedIn auth URL using redirect:', redirectUri);
   console.log('Return URL after auth will be:', returnUrl);
   
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(cleanRedirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
   
   res.json({ url: authUrl, state });
 });
@@ -206,9 +243,21 @@ router.get('/linkedin/callback', async (req, res) => {
   }
   
   try {
-    // Make sure we strip any port numbers from the redirect URI for token exchange
-    const cleanRedirectUri = LINKEDIN_REDIRECT_URI.replace(':5000', '');
-    console.log('LinkedIn token exchange using redirect:', cleanRedirectUri);
+    // Determine if the request is coming from localhost or the Replit domain
+    const host = req.headers.host || HOSTNAME;
+    let useLocalhost = host.includes('localhost');
+    
+    // Choose the appropriate redirect URI based on the environment
+    let redirectUri = useLocalhost 
+      ? `http://${host}/api/auth/linkedin/callback`  // For local testing
+      : LINKEDIN_REDIRECT_URI;                      // For production
+    
+    // Make sure we strip any port numbers from the production redirect URI
+    if (!useLocalhost) {
+      redirectUri = redirectUri.replace(':5000', '').replace(':3000', '');
+    }
+    
+    console.log('LinkedIn token exchange using redirect:', redirectUri);
     
     // Exchange authorization code for access token
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
@@ -216,7 +265,7 @@ router.get('/linkedin/callback', async (req, res) => {
         grant_type: 'authorization_code',
         client_id: LINKEDIN_CLIENT_ID,
         client_secret: LINKEDIN_CLIENT_SECRET,
-        redirect_uri: cleanRedirectUri,
+        redirect_uri: redirectUri,
         code
       },
       headers: {
@@ -435,8 +484,11 @@ router.post('/linkedin/token', async (req, res) => {
       return res.status(400).json({ message: 'Missing required parameters' });
     }
     
+    // Clean up any port numbers in the redirect URI
+    const cleanRedirectUri = redirectUri.replace(':5000', '').replace(':3000', '');
+    
     console.log('LinkedIn token exchange with code:', code.substring(0, 10) + '...');
-    console.log('Using redirect URI:', redirectUri);
+    console.log('Using redirect URI:', cleanRedirectUri);
     
     // Exchange authorization code for access token
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
@@ -444,7 +496,7 @@ router.post('/linkedin/token', async (req, res) => {
         grant_type: 'authorization_code',
         client_id: LINKEDIN_CLIENT_ID,
         client_secret: LINKEDIN_CLIENT_SECRET,
-        redirect_uri: redirectUri,
+        redirect_uri: cleanRedirectUri,
         code
       },
       headers: {

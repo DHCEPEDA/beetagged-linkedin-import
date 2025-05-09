@@ -107,6 +107,14 @@
     <div class="diagnostic-section">
       <h2>Authentication Providers</h2>
       <div id="authStatus">Loading...</div>
+      <div style="margin-top: 15px;">
+        <h3>Test Authentication Flows</h3>
+        <div class="auth-test-buttons" style="display: flex; gap: 10px; margin-top: 10px;">
+          <button class="button" onclick="testFacebookAuth()">Test Facebook Auth</button>
+          <button class="button" onclick="testLinkedInAuth()">Test LinkedIn Auth</button>
+        </div>
+        <div id="authTestResult" style="margin-top: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 4px; display: none;"></div>
+      </div>
     </div>
     
     <div class="diagnostic-section">
@@ -407,7 +415,7 @@
       
       await Promise.all([
         testSystemComponents(),
-        testApiEndpoints(),
+        testAdvancedApiEndpoints(),
         testAuthProviders(),
         showEnvironmentInfo(),
         showRecentLogs()
@@ -419,10 +427,214 @@
     // Refresh all diagnostics
     function refreshDiagnostics() {
       testSystemComponents();
-      testApiEndpoints();
+      testAdvancedApiEndpoints(); // Using advanced API endpoints test instead
       testAuthProviders();
       showEnvironmentInfo();
       showRecentLogs();
+    }
+    
+    // Test Facebook Authentication Flow
+    async function testFacebookAuth() {
+      const resultEl = document.getElementById('authTestResult');
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = 'Testing Facebook authentication flow...';
+
+      try {
+        // Step 1: Get Facebook auth URL
+        const fbUrlResponse = await fetch('/api/auth/facebook/url');
+        const fbUrlData = await fbUrlResponse.json();
+        
+        if (!fbUrlData.url || fbUrlData.url.includes('APP_ID_REQUIRED')) {
+          resultEl.innerHTML = createStatusIndicator('error', 'Facebook authentication is not configured');
+          return;
+        }
+        
+        // Step 2: Test token exchange endpoint with mock data
+        const testCode = 'TEST_CODE_' + Math.random().toString(36).substring(2, 10);
+        const testRedirectUri = `${window.location.origin}/api/auth/facebook/callback`;
+        
+        try {
+          const tokenResponse = await fetch('/api/auth/facebook/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              code: testCode,
+              redirectUri: testRedirectUri
+            })
+          });
+          
+          const tokenData = await tokenResponse.json();
+          
+          // We expect this to fail with the test code, but we want to check the endpoint is working
+          resultEl.innerHTML = `
+            <h4>Facebook Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ${tokenResponse.status === 400 ? '✅ Responding (expected error with test code)' : '❌ Unexpected response'}</p>
+            <p>Auth URL: ${fbUrlData.url.substring(0, 60)}...</p>
+            <p>Response from token endpoint:</p>
+            <pre style="background: #f0f0f0; padding: 10px; overflow: auto; max-height: 150px;">${JSON.stringify(tokenData, null, 2)}</pre>
+            <p><strong>Note:</strong> The token exchange error is expected since we're using a test code.</p>
+          `;
+        } catch (tokenError) {
+          resultEl.innerHTML = `
+            <h4>Facebook Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ❌ Error (${tokenError.message})</p>
+            <p>Auth URL: ${fbUrlData.url.substring(0, 60)}...</p>
+          `;
+        }
+      } catch (error) {
+        resultEl.innerHTML = createStatusIndicator('error', `Facebook auth test failed: ${error.message}`);
+      }
+    }
+    
+    // Test LinkedIn Authentication Flow
+    async function testLinkedInAuth() {
+      const resultEl = document.getElementById('authTestResult');
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = 'Testing LinkedIn authentication flow...';
+
+      try {
+        // Step 1: Get LinkedIn auth URL
+        const liUrlResponse = await fetch('/api/auth/linkedin/url');
+        const liUrlData = await liUrlResponse.json();
+        
+        if (!liUrlData.url || liUrlData.url.includes('CLIENT_ID_REQUIRED')) {
+          resultEl.innerHTML = createStatusIndicator('error', 'LinkedIn authentication is not configured');
+          return;
+        }
+        
+        // Step 2: Test token exchange endpoint with mock data
+        const testCode = 'TEST_CODE_' + Math.random().toString(36).substring(2, 10);
+        const testRedirectUri = `${window.location.origin}/api/auth/linkedin/callback`;
+        
+        try {
+          const tokenResponse = await fetch('/api/auth/linkedin/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              code: testCode,
+              redirectUri: testRedirectUri
+            })
+          });
+          
+          const tokenData = await tokenResponse.json();
+          
+          // We expect this to fail with the test code, but we want to check the endpoint is working
+          resultEl.innerHTML = `
+            <h4>LinkedIn Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ${tokenResponse.status === 400 ? '✅ Responding (expected error with test code)' : '❌ Unexpected response'}</p>
+            <p>Auth URL: ${liUrlData.url.substring(0, 60)}...</p>
+            <p>Response from token endpoint:</p>
+            <pre style="background: #f0f0f0; padding: 10px; overflow: auto; max-height: 150px;">${JSON.stringify(tokenData, null, 2)}</pre>
+            <p><strong>Note:</strong> The token exchange error is expected since we're using a test code.</p>
+          `;
+        } catch (tokenError) {
+          resultEl.innerHTML = `
+            <h4>LinkedIn Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ❌ Error (${tokenError.message})</p>
+            <p>Auth URL: ${liUrlData.url.substring(0, 60)}...</p>
+          `;
+        }
+      } catch (error) {
+        resultEl.innerHTML = createStatusIndicator('error', `LinkedIn auth test failed: ${error.message}`);
+      }
+    }
+    
+    // Enhanced API endpoint test to include token exchange endpoints
+    async function testAdvancedApiEndpoints() {
+      const apiStatusEl = document.getElementById('apiStatus');
+      apiStatusEl.innerHTML = 'Testing API endpoints...';
+      
+      const endpoints = [
+        { url: '/api/ping', name: 'API Health Check', method: 'GET' },
+        { url: '/api/logs/recent', name: 'Logs API', method: 'GET' },
+        { url: '/api/auth/facebook/url', name: 'Facebook Auth URL', method: 'GET' },
+        { url: '/api/auth/linkedin/url', name: 'LinkedIn Auth URL', method: 'GET' },
+        { url: '/api/auth/facebook/token', name: 'Facebook Token Exchange', method: 'POST', body: { code: 'test', redirectUri: window.location.origin } },
+        { url: '/api/auth/linkedin/token', name: 'LinkedIn Token Exchange', method: 'POST', body: { code: 'test', redirectUri: window.location.origin } },
+        { url: '/api/contacts/import/test', name: 'Contacts Import API', method: 'GET' }
+      ];
+      
+      const results = await Promise.all(
+        endpoints.map(async endpoint => {
+          try {
+            let response;
+            if (endpoint.method === 'GET') {
+              response = await fetch(endpoint.url);
+            } else if (endpoint.method === 'POST') {
+              response = await fetch(endpoint.url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(endpoint.body)
+              });
+            }
+            
+            // For token exchanges, we expect a 400 since we're using test codes
+            const isSuccess = endpoint.url.includes('/token') ? response.status === 400 || response.status === 200 : response.ok;
+            
+            return {
+              name: endpoint.name,
+              url: endpoint.url,
+              method: endpoint.method,
+              status: isSuccess ? 'success' : 'error',
+              statusCode: response.status
+            };
+          } catch (error) {
+            return {
+              name: endpoint.name,
+              url: endpoint.url,
+              method: endpoint.method,
+              status: 'error',
+              message: error.message
+            };
+          }
+        })
+      );
+      
+      // Create table of results
+      let tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Method</th>
+              <th>URL</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      results.forEach(result => {
+        const statusIndicator = 
+          result.status === 'success' ? '✅' :
+          result.status === 'warning' ? '⚠️' : '❌';
+        
+        tableHtml += `
+          <tr>
+            <td>${result.name}</td>
+            <td>${result.method}</td>
+            <td>${result.url}</td>
+            <td>${statusIndicator} ${result.status === 'success' ? 'OK' : result.message || `Error ${result.statusCode}`}</td>
+          </tr>
+        `;
+      });
+      
+      tableHtml += `
+          </tbody>
+        </table>
+      `;
+      
+      apiStatusEl.innerHTML = tableHtml;
     }
     
     // Initialize on page load
