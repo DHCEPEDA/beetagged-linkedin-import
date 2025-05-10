@@ -535,10 +535,128 @@ app.get('/api/auth/linkedin/config', (req, res) => {
   
   const clientId = process.env.LINKEDIN_CLIENT_ID || 'CLIENT_ID_REQUIRED';
   
+  // Generate HTTPS base URL for Replit or HTTP for local development
+  let baseUrl;
+  let host = req.get('host');
+  const isReplitDomain = replitDomain && host.includes(replitDomain);
+  
+  if (isReplitDomain) {
+    host = host.split(':')[0];
+    baseUrl = `https://${host}`;
+  } else {
+    baseUrl = `${req.protocol}://${host}`;
+  }
+  
+  const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+  
   res.json({
     clientId,
-    apiVersion: 'v2'
+    redirectUri,
+    apiVersion: 'v2',
+    scopes: 'r_emailaddress r_liteprofile'
   });
+});
+
+// LinkedIn token exchange endpoint for client-side flows
+app.post('/api/auth/linkedin/token', async (req, res) => {
+  const { code, redirectUri } = req.body;
+  
+  logger.info('LinkedIn token exchange requested', { 
+    codeLength: code ? code.length : 0,
+    redirectUri 
+  });
+  
+  if (!code) {
+    logger.error('No code provided for LinkedIn token exchange');
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Authorization code is required' 
+    });
+  }
+  
+  try {
+    const clientId = process.env.LINKEDIN_CLIENT_ID;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    
+    // Exchange code for token
+    const tokenResponse = await axios.post(
+      'https://www.linkedin.com/oauth/v2/accessToken',
+      null,
+      {
+        params: {
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          client_secret: clientSecret
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
+    const { access_token } = tokenResponse.data;
+    
+    // Get user profile using LinkedIn's v2 API with proper headers and projection
+    const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        'X-Restli-Protocol-Version': '2.0.0'  // LinkedIn API version header
+      },
+      params: {
+        projection: '(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))'
+      }
+    });
+    
+    // Also get email address with a separate call (requires the r_emailaddress scope)
+    let email = null;
+    try {
+      const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          'X-Restli-Protocol-Version': '2.0.0'
+        }
+      });
+      
+      // Extract email from the response if available
+      if (emailResponse.data && 
+          emailResponse.data.elements && 
+          emailResponse.data.elements.length > 0 && 
+          emailResponse.data.elements[0]['handle~']) {
+        email = emailResponse.data.elements[0]['handle~'].emailAddress;
+      }
+    } catch (emailError) {
+      logger.warn('Could not retrieve LinkedIn email', {
+        error: emailError.message,
+        userId: profileResponse.data.id
+      });
+    }
+    
+    // Return user data to the client
+    res.json({
+      success: true,
+      user: {
+        id: profileResponse.data.id,
+        firstName: profileResponse.data.localizedFirstName,
+        lastName: profileResponse.data.localizedLastName,
+        email: email || 'Email not available',
+        accessToken: access_token.substring(0, 10) + '...' // Only return a snippet for security
+      }
+    });
+  } catch (error) {
+    logger.error('LinkedIn token exchange error', {
+      message: error.message,
+      response: error.response?.data
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to exchange LinkedIn token',
+      error: error.message,
+      details: error.response?.data
+    });
+  }
 });
 
 // LinkedIn Authentication URL
@@ -581,9 +699,12 @@ app.get('/api/auth/linkedin/url', (req, res) => {
   
   // Store state for CSRF protection (would use a real session store in production)
   
-  // Use a simpler scope for testing and ensure URL format is correct
-  // Use LinkedIn's r_emailaddress scope which is less restricted
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_emailaddress`;
+  // LinkedIn OAuth 2.0 authentication with proper scopes
+  // r_emailaddress is required for retrieving user email
+  // r_liteprofile is required for basic profile information
+  const scopes = ['r_emailaddress', 'r_liteprofile'].join(' ');
+  
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=${encodeURIComponent(scopes)}`;
   
   logger.info('Generated LinkedIn auth URL', {
     redirectUri,
@@ -683,17 +804,46 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
       accessTokenLength: access_token ? access_token.length : 0
     });
     
-    // Get user profile
+    // Get user profile using LinkedIn's v2 API with proper headers and projection
     const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
       headers: {
-        Authorization: `Bearer ${access_token}`
+        Authorization: `Bearer ${access_token}`,
+        'X-Restli-Protocol-Version': '2.0.0'  // LinkedIn API version header
+      },
+      params: {
+        projection: '(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))'
       }
     });
+    
+    // Also get email address with a separate call (requires the r_emailaddress scope)
+    let email = null;
+    try {
+      const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          'X-Restli-Protocol-Version': '2.0.0'
+        }
+      });
+      
+      // Extract email from the response if available
+      if (emailResponse.data && 
+          emailResponse.data.elements && 
+          emailResponse.data.elements.length > 0 && 
+          emailResponse.data.elements[0]['handle~']) {
+        email = emailResponse.data.elements[0]['handle~'].emailAddress;
+      }
+    } catch (emailError) {
+      logger.warn('Could not retrieve LinkedIn email', {
+        error: emailError.message,
+        userId: profileResponse.data.id
+      });
+    }
     
     logger.info('LinkedIn authentication successful', {
       userId: profileResponse.data.id,
       firstName: profileResponse.data.localizedFirstName,
-      lastName: profileResponse.data.localizedLastName
+      lastName: profileResponse.data.localizedLastName,
+      hasEmail: !!email
     });
     
     // In a real app, you would:
