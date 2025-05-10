@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LinkedIn OAuth Implementation Guide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      max-width: 150px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #0077B5;
+    }
+    .section {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border: 1px solid #eee;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .flow-diagram {
+      background-color: #f5f8ff;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .flow-step {
+      margin-bottom: 15px;
+      padding-left: 20px;
+      position: relative;
+    }
+    .flow-step:before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #0077B5;
+    }
+    .note {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 10px 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .info {
+      background-color: #d1ecf1;
+      border-left: 4px solid #17a2b8;
+      padding: 10px 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/images/bee-logo.svg" alt="BeeTagged Logo" class="logo">
+    <h1>LinkedIn OAuth Implementation Guide</h1>
+    <p>Technical documentation for the BeeTagged implementation of LinkedIn OAuth 2.0 authentication.</p>
+  </header>
+
+  <div class="section">
+    <h2>1. Overview of LinkedIn OAuth 2.0</h2>
+    <p>LinkedIn uses the OAuth 2.0 protocol for authentication and authorization. There are two types of authorization flows:</p>
+    
+    <ul>
+      <li><strong>Member Authorization (3-legged OAuth)</strong> - Used when your application needs to access a member's data and act on their behalf</li>
+      <li><strong>Application Authorization (2-legged OAuth)</strong> - Used for accessing non-member specific resources</li>
+    </ul>
+    
+    <div class="info">
+      <p><strong>BeeTagged Implementation</strong>: We use the <strong>Member Authorization (3-legged OAuth)</strong> flow since we need to access member profile information and email addresses.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>2. Authorization Code Flow (3-legged OAuth)</h2>
+    
+    <div class="flow-diagram">
+      <h3>Flow Steps:</h3>
+      <div class="flow-step">
+        <strong>User initiates login</strong>: User clicks the "Sign in with LinkedIn" button in BeeTagged application
+      </div>
+      <div class="flow-step">
+        <strong>Authorization request</strong>: BeeTagged redirects to LinkedIn with client ID, redirect URI, state, and scope parameters
+      </div>
+      <div class="flow-step">
+        <strong>User authenticates</strong>: User logs into LinkedIn and grants permissions to BeeTagged
+      </div>
+      <div class="flow-step">
+        <strong>Authorization code</strong>: LinkedIn redirects back to BeeTagged with an authorization code
+      </div>
+      <div class="flow-step">
+        <strong>Token exchange</strong>: BeeTagged exchanges the authorization code for an access token by making a server-to-server call
+      </div>
+      <div class="flow-step">
+        <strong>API requests</strong>: BeeTagged uses the access token to make API calls to LinkedIn
+      </div>
+    </div>
+    
+    <div class="note">
+      <p><strong>Security Note</strong>: The state parameter is crucial for security as it prevents CSRF attacks. BeeTagged generates a random state parameter for each authentication request and validates it when LinkedIn redirects back.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>3. LinkedIn API Permissions (Scopes)</h2>
+    
+    <p>BeeTagged requests the following permissions (scopes) from LinkedIn:</p>
+    
+    <table>
+      <tr>
+        <th>Scope</th>
+        <th>Description</th>
+        <th>Usage in BeeTagged</th>
+      </tr>
+      <tr>
+        <td><code>r_liteprofile</code></td>
+        <td>Access to member's basic profile data</td>
+        <td>Retrieve name and profile picture for user account creation/linking</td>
+      </tr>
+      <tr>
+        <td><code>r_emailaddress</code></td>
+        <td>Access to member's email address</td>
+        <td>Retrieve email for account identification and communication</td>
+      </tr>
+    </table>
+    
+    <div class="info">
+      <p>LinkedIn recommends requesting only the minimal permissions necessary. BeeTagged follows this principle by requesting only the essential scopes needed for its functionality.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4. Implementation Details</h2>
+    
+    <h3>Step 1: Authorization Request</h3>
+    <p>When a user initiates LinkedIn login, BeeTagged constructs and redirects to the LinkedIn authorization URL:</p>
+    
+    <pre><code>const scopes = ['r_emailaddress', 'r_liteprofile'].join(' ');
+
+const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=${encodeURIComponent(scopes)}`;</code></pre>
+    
+    <h3>Step 2: Handling the Callback</h3>
+    <p>LinkedIn redirects back to the specified redirect URI with an authorization code:</p>
+    
+    <pre><code>app.get('/api/auth/linkedin/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  
+  // Validate state parameter to prevent CSRF attacks
+  
+  // Exchange code for token
+  const tokenResponse = await axios.post(
+    'https://www.linkedin.com/oauth/v2/accessToken',
+    null,
+    {
+      params: {
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    }
+  );
+  
+  const { access_token } = tokenResponse.data;
+  
+  // Use the access token to make API requests
+});</code></pre>
+    
+    <h3>Step 3: Making API Requests</h3>
+    <p>BeeTagged makes separate API requests to get the user profile and email:</p>
+    
+    <pre><code>// Get user profile
+const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
+  headers: {
+    Authorization: `Bearer ${access_token}`,
+    'X-Restli-Protocol-Version': '2.0.0'
+  },
+  params: {
+    projection: '(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))'
+  }
+});
+
+// Get email address
+const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+  headers: {
+    Authorization: `Bearer ${access_token}`,
+    'X-Restli-Protocol-Version': '2.0.0'
+  }
+});</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>5. Error Handling and Edge Cases</h2>
+    
+    <p>BeeTagged implements comprehensive error handling for LinkedIn authentication:</p>
+    
+    <ul>
+      <li><strong>Missing authorization code</strong>: If LinkedIn returns an error instead of a code, BeeTagged logs the error and redirects the user to an error page.</li>
+      <li><strong>Token exchange failures</strong>: If the code cannot be exchanged for a token, BeeTagged logs the error details and provides appropriate feedback.</li>
+      <li><strong>API request failures</strong>: If profile or email requests fail, BeeTagged implements fallback behavior and clear error messages.</li>
+      <li><strong>Expired tokens</strong>: BeeTagged handles token expiration by prompting the user to re-authenticate when necessary.</li>
+    </ul>
+    
+    <div class="note">
+      <p>Common LinkedIn API errors:</p>
+      <ul>
+        <li><strong>"Bummer, something went wrong"</strong>: Often caused by redirect URI mismatch or insufficient application permissions</li>
+        <li><strong>401 Unauthorized</strong>: Invalid or expired access token</li>
+        <li><strong>403 Forbidden</strong>: Insufficient scope permissions or application not properly configured</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>6. LinkedIn API Version Compatibility</h2>
+    
+    <p>LinkedIn regularly updates their API. BeeTagged implements the following compatibility features:</p>
+    
+    <ul>
+      <li>Using the <code>X-Restli-Protocol-Version: 2.0.0</code> header for API requests</li>
+      <li>Following LinkedIn's API versioning recommendations</li>
+      <li>Implementing proper error handling for API changes</li>
+    </ul>
+    
+    <div class="info">
+      <p>LinkedIn does not support TLS 1.0. BeeTagged ensures all connections use TLS 1.2 or higher for secure communications.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>7. Testing and Troubleshooting</h2>
+    
+    <p>BeeTagged provides comprehensive tools for testing and troubleshooting LinkedIn authentication:</p>
+    
+    <ul>
+      <li><a href="/linkedin-diagnostic.html">LinkedIn Diagnostic Tool</a> - Advanced testing tool for LinkedIn authentication</li>
+      <li>Detailed logging of authentication steps in server logs</li>
+      <li>Support for manual token exchange for advanced debugging</li>
+    </ul>
+    
+    <p>For persistent issues, check:</p>
+    <ol>
+      <li>LinkedIn Developer Portal configuration (redirect URIs, permissions)</li>
+      <li>API rate limits and quotas</li>
+      <li>Network connectivity and TLS version</li>
+      <li>Server environment variables for client ID and secret</li>
+    </ol>
+  </div>
+
+  <div style="margin-top: 40px; text-align: center;">
+    <a href="/" style="display: inline-block; background-color: #0077B5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Return to Home</a>
+  </div>
+</body>
+</html>
