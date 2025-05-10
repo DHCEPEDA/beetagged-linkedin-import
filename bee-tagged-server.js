@@ -40,6 +40,42 @@ app.use(logger.request);
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Status endpoint for health checks
+app.get('/api/status', (req, res) => {
+  logger.info('Status check requested', { 
+    ip: req.ip,
+    path: req.path,
+    host: req.get('host')
+  });
+  
+  // Return basic server status information
+  res.json({
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    domain: req.get('host'),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    facebook: process.env.FACEBOOK_APP_ID ? 'configured' : 'not configured',
+    linkedin: process.env.LINKEDIN_CLIENT_ID ? 'configured' : 'not configured'
+  });
+});
+
+// Simple ping endpoint for testing connectivity
+app.get('/api/ping', (req, res) => {
+  logger.info('Ping requested', { 
+    ip: req.ip,
+    path: req.path,
+    host: req.get('host')
+  });
+  
+  res.json({
+    message: 'pong',
+    timestamp: new Date().toISOString(),
+    serverTime: new Date().toLocaleTimeString(),
+    serverDate: new Date().toLocaleDateString()
+  });
+});
+
 // Basic HTML for home page
 const homePage = `
 <!DOCTYPE html>
@@ -98,7 +134,19 @@ const homePage = `
           LinkedIn Login
         </button>
       </div>
+      <div style="margin-top: 10px;">
+        <a href="/auth-diagnostic.html" style="padding: 8px 12px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Advanced Auth Diagnostics</a>
+      </div>
       <pre id="authResult">Choose a login method to test...</pre>
+    </div>
+    
+    <div class="card">
+      <h2>Individual Auth Tests</h2>
+      <p>Isolated authentication flows for debugging</p>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <a href="/facebook-test.html" style="padding: 8px 12px; background: #4267B2; color: white; text-decoration: none; border-radius: 4px;">Facebook Test</a>
+        <a href="/linkedin-test.html" style="padding: 8px 12px; background: #0077B5; color: white; text-decoration: none; border-radius: 4px;">LinkedIn Test</a>
+      </div>
     </div>
     
     <div class="card">
@@ -305,6 +353,21 @@ app.get('/__replit', (req, res) => {
   `);
 });
 
+// Facebook Configuration Endpoint for Test Pages
+app.get('/api/auth/facebook/config', (req, res) => {
+  logger.info('Facebook config requested', { 
+    ip: req.ip,
+    host: req.get('host')
+  });
+  
+  const appId = process.env.FACEBOOK_APP_ID || 'APP_ID_REQUIRED';
+  
+  res.json({
+    appId,
+    apiVersion: 'v19.0'
+  });
+});
+
 // Facebook Authentication URL
 app.get('/api/auth/facebook/url', (req, res) => {
   logger.info('Facebook auth URL requested', { 
@@ -314,24 +377,44 @@ app.get('/api/auth/facebook/url', (req, res) => {
   
   const clientId = process.env.FACEBOOK_APP_ID || 'APP_ID_REQUIRED';
   
-  // Handle both Replit and local development by removing port from redirect URI if on Replit
+  // Generate HTTPS base URL for Replit or HTTP for local development
+  let baseUrl;
   let host = req.get('host');
   const isReplitDomain = replitDomain && host.includes(replitDomain);
   
-  // Remove port if it's a Replit domain to avoid OAuth issues
-  if (isReplitDomain && host.includes(':')) {
+  if (isReplitDomain) {
+    // For Replit, always use the domain without port
+    // This is critical for Facebook OAuth to work
     host = host.split(':')[0];
+    baseUrl = `https://${host}`;
+    
+    // Log the actual host and baseUrl for debugging
+    logger.info('Using Replit domain for Facebook auth', {
+      originalHost: req.get('host'),
+      parsedHost: host,
+      baseUrl: baseUrl
+    });
+  } else {
+    // For local development
+    baseUrl = `${req.protocol}://${host}`;
+    logger.info('Using local domain for Facebook auth', {
+      host: host,
+      baseUrl: baseUrl
+    });
   }
   
-  const redirectUri = `${req.protocol}://${host}/api/auth/facebook/callback`;
+  const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
   const state = Math.random().toString(36).substring(2, 15);
   
   // Store state for CSRF protection (would use a real session store in production)
   
-  const authUrl = `https://www.facebook.com/v13.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=email,public_profile,user_friends`;
+  // Using newer Facebook Graph API version and simplified parameters
+  // Note: We've deliberately removed any port numbers for Facebook compatibility
+  const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=email,public_profile`;
   
   logger.info('Generated Facebook auth URL', {
     redirectUri,
+    baseUrl,
     state: state.substring(0, 5) + '...' // Log only part of the state for security
   });
   
@@ -340,13 +423,24 @@ app.get('/api/auth/facebook/url', (req, res) => {
 
 // Facebook Authentication Callback
 app.get('/api/auth/facebook/callback', async (req, res) => {
-  const { code, state } = req.query;
+  const { code, state, error, error_reason, error_description } = req.query;
   
   logger.info('Facebook auth callback received', { 
     state,
     host: req.get('host'),
-    origin: req.headers.origin || 'no-origin'
+    origin: req.headers.origin || 'no-origin',
+    hasError: !!error
   });
+  
+  // Check if Facebook returned an error
+  if (error) {
+    logger.error('Error returned from Facebook', {
+      error,
+      reason: error_reason,
+      description: error_description
+    });
+    return res.redirect(`/?login=error&provider=facebook&error=${encodeURIComponent(error)}&reason=${encodeURIComponent(error_reason || '')}&description=${encodeURIComponent(error_description || 'No description provided')}`);
+  }
   
   if (!code) {
     logger.error('No code received from Facebook');
@@ -357,24 +451,51 @@ app.get('/api/auth/facebook/callback', async (req, res) => {
     const clientId = process.env.FACEBOOK_APP_ID;
     const clientSecret = process.env.FACEBOOK_APP_SECRET;
     
-    // Handle both Replit and local development by removing port from redirect URI if on Replit
+    // Generate HTTPS base URL for Replit or HTTP for local development
+    let baseUrl;
     let host = req.get('host');
     const isReplitDomain = replitDomain && host.includes(replitDomain);
     
-    // Remove port if it's a Replit domain to avoid OAuth issues
-    if (isReplitDomain && host.includes(':')) {
+    if (isReplitDomain) {
+      // For Replit, ensure clean domain without port
       host = host.split(':')[0];
+      baseUrl = `https://${host}`;
+      
+      logger.info('Using Replit domain for Facebook callback', {
+        originalHost: req.get('host'),
+        parsedHost: host,
+        baseUrl: baseUrl
+      });
+    } else {
+      // For local development
+      baseUrl = `${req.protocol}://${host}`;
+      logger.info('Using local domain for Facebook callback', {
+        host: host,
+        baseUrl: baseUrl
+      });
     }
     
-    const redirectUri = `${req.protocol}://${host}/api/auth/facebook/callback`;
+    const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
     logger.info('Using Facebook redirect URI', { redirectUri });
+    
+    // Log full details for token exchange troubleshooting
+    logger.info('Facebook token exchange parameters', {
+      codeLength: code ? code.length : 0,
+      redirectUri,
+      clientIdSet: !!clientId,
+      clientSecretSet: !!clientSecret
+    });
     
     // Exchange code for token
     const tokenResponse = await axios.get(
-      `https://graph.facebook.com/v13.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`
+      `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`
     );
     
     const { access_token } = tokenResponse.data;
+    
+    logger.info('Facebook token exchange successful', {
+      accessTokenLength: access_token ? access_token.length : 0
+    });
     
     // Get user profile
     const profileResponse = await axios.get(
@@ -398,8 +519,26 @@ app.get('/api/auth/facebook/callback', async (req, res) => {
       response: error.response?.data
     });
     
-    res.redirect(`/?login=error&provider=facebook&error=${encodeURIComponent(error.message)}`);
+    // Enhanced error information for troubleshooting
+    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional details';
+    
+    res.redirect(`/?login=error&provider=facebook&error=${encodeURIComponent(error.message)}&details=${encodeURIComponent(errorDetails)}`);
   }
+});
+
+// LinkedIn Configuration Endpoint for Test Pages
+app.get('/api/auth/linkedin/config', (req, res) => {
+  logger.info('LinkedIn config requested', { 
+    ip: req.ip,
+    host: req.get('host')
+  });
+  
+  const clientId = process.env.LINKEDIN_CLIENT_ID || 'CLIENT_ID_REQUIRED';
+  
+  res.json({
+    clientId,
+    apiVersion: 'v2'
+  });
 });
 
 // LinkedIn Authentication URL
@@ -411,24 +550,44 @@ app.get('/api/auth/linkedin/url', (req, res) => {
   
   const clientId = process.env.LINKEDIN_CLIENT_ID || 'CLIENT_ID_REQUIRED';
   
-  // Handle both Replit and local development by removing port from redirect URI if on Replit
+  // Generate HTTPS base URL for Replit or HTTP for local development
+  let baseUrl;
   let host = req.get('host');
   const isReplitDomain = replitDomain && host.includes(replitDomain);
   
-  // Remove port if it's a Replit domain to avoid OAuth issues
-  if (isReplitDomain && host.includes(':')) {
+  if (isReplitDomain) {
+    // For Replit, always use the domain without port
+    // This is critical for LinkedIn OAuth to work properly
     host = host.split(':')[0];
+    baseUrl = `https://${host}`;
+    
+    // Log the actual host and baseUrl for debugging
+    logger.info('Using Replit domain for LinkedIn auth', {
+      originalHost: req.get('host'),
+      parsedHost: host,
+      baseUrl: baseUrl
+    });
+  } else {
+    // For local development
+    baseUrl = `${req.protocol}://${host}`;
+    logger.info('Using local domain for LinkedIn auth', {
+      host: host,
+      baseUrl: baseUrl
+    });
   }
   
-  const redirectUri = `${req.protocol}://${host}/api/auth/linkedin/callback`;
+  const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
   const state = Math.random().toString(36).substring(2, 15);
   
   // Store state for CSRF protection (would use a real session store in production)
   
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+  // Use a simpler scope for testing and ensure URL format is correct
+  // Use LinkedIn's r_emailaddress scope which is less restricted
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_emailaddress`;
   
   logger.info('Generated LinkedIn auth URL', {
     redirectUri,
+    baseUrl,
     state: state.substring(0, 5) + '...' // Log only part of the state for security
   });
   
@@ -437,13 +596,23 @@ app.get('/api/auth/linkedin/url', (req, res) => {
 
 // LinkedIn Authentication Callback
 app.get('/api/auth/linkedin/callback', async (req, res) => {
-  const { code, state } = req.query;
+  const { code, state, error, error_description } = req.query;
   
   logger.info('LinkedIn auth callback received', { 
     state,
     host: req.get('host'),
-    origin: req.headers.origin || 'no-origin'
+    origin: req.headers.origin || 'no-origin',
+    hasError: !!error
   });
+  
+  // Check if LinkedIn returned an error
+  if (error) {
+    logger.error('Error returned from LinkedIn', {
+      error,
+      description: error_description
+    });
+    return res.redirect(`/?login=error&provider=linkedin&error=${encodeURIComponent(error)}&description=${encodeURIComponent(error_description || 'No description provided')}`);
+  }
   
   if (!code) {
     logger.error('No code received from LinkedIn');
@@ -454,17 +623,41 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     
-    // Handle both Replit and local development by removing port from redirect URI if on Replit
+    // Generate HTTPS base URL for Replit or HTTP for local development
+    let baseUrl;
     let host = req.get('host');
     const isReplitDomain = replitDomain && host.includes(replitDomain);
     
-    // Remove port if it's a Replit domain to avoid OAuth issues
-    if (isReplitDomain && host.includes(':')) {
+    if (isReplitDomain) {
+      // For Replit, ensure clean domain without port
       host = host.split(':')[0];
+      baseUrl = `https://${host}`;
+      
+      logger.info('Using Replit domain for LinkedIn callback', {
+        originalHost: req.get('host'),
+        parsedHost: host,
+        baseUrl: baseUrl
+      });
+    } else {
+      // For local development
+      baseUrl = `${req.protocol}://${host}`;
+      logger.info('Using local domain for LinkedIn callback', {
+        host: host,
+        baseUrl: baseUrl
+      });
     }
     
-    const redirectUri = `${req.protocol}://${host}/api/auth/linkedin/callback`;
-    logger.info('Using redirect URI', { redirectUri });
+    const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+    logger.info('Using LinkedIn redirect URI', { redirectUri });
+    
+    // Log full details for token exchange troubleshooting
+    logger.info('LinkedIn token exchange parameters', {
+      grantType: 'authorization_code',
+      codeLength: code ? code.length : 0,
+      redirectUri,
+      clientIdSet: !!clientId,
+      clientSecretSet: !!clientSecret
+    });
     
     // Exchange code for token
     const tokenResponse = await axios.post(
@@ -485,6 +678,10 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
     );
     
     const { access_token } = tokenResponse.data;
+    
+    logger.info('LinkedIn token exchange successful', {
+      accessTokenLength: access_token ? access_token.length : 0
+    });
     
     // Get user profile
     const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
@@ -512,7 +709,10 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
       response: error.response?.data
     });
     
-    res.redirect(`/?login=error&provider=linkedin&error=${encodeURIComponent(error.message)}`);
+    // Enhanced error information for troubleshooting
+    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional details';
+    
+    res.redirect(`/?login=error&provider=linkedin&error=${encodeURIComponent(error.message)}&details=${encodeURIComponent(errorDetails)}`);
   }
 });
 
@@ -564,7 +764,7 @@ app.post('/api/auth/facebook/token', async (req, res) => {
     
     // Exchange code for token
     const tokenResponse = await axios.get(
-      `https://graph.facebook.com/v13.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`
+      `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`
     );
     
     const { access_token } = tokenResponse.data;
@@ -830,32 +1030,34 @@ app.get('/', (req, res) => {
 // Error handler middleware (always at the end)
 app.use(logger.errorHandler);
 
-// Listen on port 3000 for Replit compatibility
-const PORT = 3000;
-const REPLIT_PORT = 5000; // Additional port for Replit's tools
+// For Replit, we need to ensure we're listening on port 5000
+// as this is the primary port for web traffic
+const PRIMARY_PORT = 5000;
+const SECONDARY_PORT = 3000; // Secondary port for backward compatibility
 
 // Bind to all interfaces for better Replit compatibility
-app.listen(PORT, "0.0.0.0", () => {
-  logger.info(`BeeTagged Server started`, { port: PORT, host: "0.0.0.0" });
+// First bind to the primary port 5000, which is the Replit standard
+app.listen(PRIMARY_PORT, "0.0.0.0", () => {
+  logger.info(`BeeTagged Primary Server started`, { port: PRIMARY_PORT, host: "0.0.0.0" });
   
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
 ║     BeeTagged Server - Ready for Connections                   ║
-║     Running on port ${PORT} - bound to all interfaces          ║
+║     Running on port ${PRIMARY_PORT} - PRIMARY PORT             ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 `);
 
-  // Also listen on port 5000 for compatibility with Replit tools
-  app.listen(REPLIT_PORT, "0.0.0.0", () => {
-    logger.info(`BeeTagged Secondary Server started`, { port: REPLIT_PORT, host: "0.0.0.0" });
+  // Also listen on port 3000 for backward compatibility
+  app.listen(SECONDARY_PORT, "0.0.0.0", () => {
+    logger.info(`BeeTagged Secondary Server started`, { port: SECONDARY_PORT, host: "0.0.0.0" });
     
     console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
 ║     BeeTagged Secondary Server - Ready for Connections         ║
-║     Running on port ${REPLIT_PORT} - bound to all interfaces   ║
+║     Running on port ${SECONDARY_PORT} for compatibility        ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
     `);

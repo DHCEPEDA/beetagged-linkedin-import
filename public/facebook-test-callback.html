@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Facebook OAuth Callback</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Facebook OAuth Callback</h1>
+  <div id="status">Processing callback...</div>
+  
+  <div>
+    <h2>Response Details:</h2>
+    <pre id="details">Loading...</pre>
+  </div>
+  
+  <button onclick="window.location.href = '/facebook-test.html'">Return to Test Page</button>
+  
+  <script>
+    // Helper function to log information both to the UI and console
+    function logInfo(detailsDiv, message, type = 'info') {
+      const timestamp = new Date().toISOString();
+      const logMessage = `[${timestamp}] ${message}`;
+      
+      console.log(logMessage);
+      
+      if (detailsDiv) {
+        if (type === 'error') {
+          console.error(message);
+          detailsDiv.innerHTML += `\n❌ ${logMessage}`;
+        } else if (type === 'success') {
+          console.info(message);
+          detailsDiv.innerHTML += `\n✅ ${logMessage}`;
+        } else {
+          detailsDiv.innerHTML += `\n📝 ${logMessage}`;
+        }
+      }
+    }
+  
+    document.addEventListener('DOMContentLoaded', async function() {
+      const statusDiv = document.getElementById('status');
+      const detailsDiv = document.getElementById('details');
+      
+      detailsDiv.textContent = 'Processing callback from Facebook...';
+      
+      // Calculate flow duration if we have a start time
+      const startTime = localStorage.getItem('fb_auth_start_time');
+      let flowDuration = 'unknown';
+      
+      if (startTime) {
+        const duration = Math.round((Date.now() - parseInt(startTime)) / 1000);
+        flowDuration = `${duration} seconds`;
+        logInfo(detailsDiv, `Authentication flow duration: ${flowDuration}`);
+      }
+      
+      // Extract code and state from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+      const errorDescription = urlParams.get('error_description');
+      
+      logInfo(detailsDiv, 'Analyzing callback parameters from Facebook');
+      
+      // Display the raw parameters
+      detailsDiv.innerHTML += `\n\nURL Parameters:
+code: ${code ? code.substring(0, 10) + '...' : 'Not provided'}
+state: ${state || 'Not provided'}
+error: ${error || 'None'}
+error_description: ${errorDescription || 'None'}\n`;
+      
+      logInfo(detailsDiv, `Full callback URL: ${window.location.href}`);
+
+      // Check for errors
+      if (error) {
+        statusDiv.className = 'error';
+        statusDiv.innerHTML = `<strong>Error:</strong> ${error}<br>${errorDescription || ''}`;
+        logInfo(detailsDiv, `Facebook returned an error: ${error} - ${errorDescription || 'No description'}`, 'error');
+        return;
+      }
+      
+      // Check for required parameters
+      if (!code || !state) {
+        statusDiv.className = 'error';
+        statusDiv.innerHTML = '<strong>Error:</strong> Missing required parameters (code or state)';
+        logInfo(detailsDiv, 'Missing required parameters (code or state)', 'error');
+        return;
+      }
+      
+      logInfo(detailsDiv, 'Required parameters received (code and state)', 'success');
+      
+      // Verify state matches what we sent
+      const savedState = localStorage.getItem('fb_auth_state');
+      if (state !== savedState) {
+        statusDiv.className = 'error';
+        statusDiv.innerHTML = `<strong>Error:</strong> State mismatch. This could indicate a CSRF attack.`;
+        logInfo(detailsDiv, 'State verification failed - mismatch between sent and received values', 'error');
+        detailsDiv.innerHTML += `\nState Verification Failed:
+Expected: ${savedState || 'Not found in localStorage'}
+Received: ${state}`;
+        return;
+      }
+      
+      logInfo(detailsDiv, 'State verification passed', 'success');
+      
+      // State verified, now exchange code for token (in a real app)
+      statusDiv.className = 'success';
+      statusDiv.innerHTML = '<strong>Success:</strong> Authentication code received and state verified.';
+      
+      // In a real application, we would exchange the code for a token here,
+      // but for this test we'll just display the success message
+      logInfo(detailsDiv, 'Authentication flow completed successfully!', 'success');
+      logInfo(detailsDiv, 'In a production app, the server would now exchange this code for an access token');
+      
+      // Success diagnostic info
+      detailsDiv.innerHTML += `\n\nDiagnostic Information:
+- Flow duration: ${flowDuration}
+- Code received: Yes (${code.length} characters)
+- State verified: Yes
+- Authentication status: Complete`;
+    });
+  </script>
+</body>
+</html>
