@@ -104,34 +104,98 @@
       
       <!-- Facebook SDK -->
       <div id="fb-root"></div>
-      <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v19.0&appId=1222790436230433"></script>
+      <script>
+        window.fbAsyncInit = function() {
+          FB.init({
+            appId      : '1222790436230433',
+            cookie     : true,
+            xfbml      : true,
+            version    : 'v19.0'
+          });
+            
+          FB.AppEvents.logPageView();   
+            
+        };
+
+        (function(d, s, id){
+           var js, fjs = d.getElementsByTagName(s)[0];
+           if (d.getElementById(id)) {return;}
+           js = d.createElement(s); js.id = id;
+           js.src = "https://connect.facebook.net/en_US/sdk.js";
+           fjs.parentNode.insertBefore(js, fjs);
+         }(document, 'script', 'facebook-jssdk'));
+      </script>
       
       <!-- Facebook Login Button with Permissions -->
-      <div class="fb-login-button" 
-        data-width="" 
-        data-size="large" 
-        data-button-type="continue_with" 
-        data-layout="rounded" 
-        data-auto-logout-link="false" 
-        data-use-continue-as="true"
-        data-scope="public_profile,email">
-      </div>
+      <fb:login-button 
+        scope="public_profile,email"
+        onlogin="checkLoginState();"
+        data-size="large"
+        data-button-type="continue_with"
+        data-layout="rounded"
+        data-use-continue-as="true">
+      </fb:login-button>
+      
+      <script>
+        function checkLoginState() {
+          FB.getLoginStatus(function(response) {
+            if (response.status === 'connected') {
+              console.log('User is logged in and connected to app');
+            } else {
+              console.log('User is not fully connected');
+            }
+          });
+        }
+      </script>
       
       <p>Implementation code:</p>
       <pre><code>&lt;!-- Facebook SDK --&gt;
 &lt;div id="fb-root"&gt;&lt;/div&gt;
-&lt;script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v19.0&appId=YOUR_APP_ID"&gt;&lt;/script&gt;
+&lt;script&gt;
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId      : 'YOUR_APP_ID',
+      cookie     : true,
+      xfbml      : true,
+      version    : 'v19.0'
+    });
+      
+    FB.AppEvents.logPageView();   
+      
+  };
+
+  (function(d, s, id){
+     var js, fjs = d.getElementsByTagName(s)[0];
+     if (d.getElementById(id)) {return;}
+     js = d.createElement(s); js.id = id;
+     js.src = "https://connect.facebook.net/en_US/sdk.js";
+     fjs.parentNode.insertBefore(js, fjs);
+   }(document, 'script', 'facebook-jssdk'));
+&lt;/script&gt;
 
 &lt;!-- Facebook Login Button with Permissions --&gt;
-&lt;div class="fb-login-button" 
-  data-width="" 
-  data-size="large" 
-  data-button-type="continue_with" 
-  data-layout="rounded" 
-  data-auto-logout-link="false" 
-  data-use-continue-as="true"
-  data-scope="public_profile,email"&gt;
-&lt;/div&gt;</code></pre>
+&lt;fb:login-button 
+  scope="public_profile,email"
+  onlogin="checkLoginState();"
+  data-size="large"
+  data-button-type="continue_with"
+  data-layout="rounded"
+  data-use-continue-as="true"&gt;
+&lt;/fb:login-button&gt;
+
+&lt;script&gt;
+  function checkLoginState() {
+    FB.getLoginStatus(function(response) {
+      if (response.status === 'connected') {
+        console.log('User is logged in and connected to app');
+        // Handle successful login
+      } else {
+        console.log('User is not fully connected');
+        // Handle login issues
+      }
+    });
+  }
+&lt;/script&gt;</code></pre>
     </div>
     
     <div class="compliance-item">

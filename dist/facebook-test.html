@@ -31,12 +31,39 @@
   </style>
 </head>
 <body>
+  <!-- Facebook SDK -->
+  <div id="fb-root"></div>
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId      : '1222790436230433',
+        cookie     : true,
+        xfbml      : true,
+        version    : 'v19.0'
+      });
+        
+      FB.AppEvents.logPageView();   
+      
+      // Check login status after SDK is loaded
+      checkLoginStatus();
+    };
+
+    (function(d, s, id){
+       var js, fjs = d.getElementsByTagName(s)[0];
+       if (d.getElementById(id)) {return;}
+       js = d.createElement(s); js.id = id;
+       js.src = "https://connect.facebook.net/en_US/sdk.js";
+       fjs.parentNode.insertBefore(js, fjs);
+     }(document, 'script', 'facebook-jssdk'));
+  </script>
+
   <h1>Facebook OAuth Test</h1>
   <p>This page tests a direct Facebook authentication flow, bypassing any middleware complexities.</p>
 
   <div>
     <h2>Step 1: Start OAuth Flow</h2>
     <button class="button" onclick="startAuth()">Authenticate with Facebook</button>
+    <button class="button" style="background-color: #3b5998;" onclick="startSDKAuth()">Login with Facebook SDK</button>
   </div>
 
   <div class="result">
