@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BeeTagged Data Deletion Status</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      max-width: 150px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #f5a623;
+    }
+    .deletion-status {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border: 1px solid #eee;
+    }
+    .status-item {
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    .status-success {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .status-pending {
+      color: #ffc107;
+      font-weight: bold;
+    }
+    .status-error {
+      color: #dc3545;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/images/bee-logo.svg" alt="BeeTagged Logo" class="logo">
+    <h1>Data Deletion Status</h1>
+  </header>
+
+  <div class="deletion-status">
+    <h2>Deletion Request Status</h2>
+    
+    <div class="status-item">
+      <h3>Request Information</h3>
+      <p><strong>Confirmation Code:</strong> <span id="confirmation-code">Loading...</span></p>
+      <p><strong>Request Date:</strong> <span id="request-date">Loading...</span></p>
+      <p><strong>Status:</strong> <span id="deletion-status" class="status-pending">Processing</span></p>
+    </div>
+    
+    <div class="status-item">
+      <h3>What Data Is Being Deleted</h3>
+      <p>The following data associated with your account is being deleted:</p>
+      <ul>
+        <li>Profile information imported from Facebook (name, email, profile picture)</li>
+        <li>Connection between your BeeTagged account and Facebook</li>
+        <li>Any contacts imported from Facebook</li>
+        <li>Authentication tokens and session data</li>
+      </ul>
+      <p>This process typically completes within 30 days, in accordance with our <a href="/privacy-policy.html">Privacy Policy</a>.</p>
+    </div>
+    
+    <div class="status-item">
+      <h3>Next Steps</h3>
+      <p>Your request has been received and is being processed. You don't need to take any further action.</p>
+      <p>If you have any questions about your data deletion request, please contact our support team at support@beetagged.com.</p>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="/" class="button" style="background-color: #f5a623; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Return to Home</a>
+  </div>
+
+  <script>
+    // Parse URL parameters to get confirmation code
+    const urlParams = new URLSearchParams(window.location.search);
+    const confirmationCode = urlParams.get('code');
+    const requestId = urlParams.get('id');
+    
+    if (confirmationCode) {
+      document.getElementById('confirmation-code').textContent = confirmationCode;
+    } else {
+      document.getElementById('confirmation-code').textContent = 'Not Available';
+    }
+    
+    // Set the current date as the request date
+    const now = new Date();
+    document.getElementById('request-date').textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+    
+    // Simulate checking deletion status (in a real app, this would query the server)
+    if (requestId) {
+      // This is where you would make an API call to check the actual status
+      document.getElementById('deletion-status').textContent = 'Processing';
+      document.getElementById('deletion-status').className = 'status-pending';
+    } else {
+      document.getElementById('deletion-status').textContent = 'Status Unknown';
+      document.getElementById('deletion-status').className = 'status-error';
+    }
+  </script>
+</body>
+</html>

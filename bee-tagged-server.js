@@ -1177,6 +1177,30 @@ app.get('/', (req, res) => {
   res.send(homePage);
 });
 
+// Facebook Data Deletion Callback
+// Required for Facebook Login App Review and GDPR/privacy compliance
+const dataDeletionRouter = require('./server/routes/data-deletion');
+app.use('/api', dataDeletionRouter);
+
+// Add documentation route for data deletion status
+app.get('/api/deletion-status', (req, res) => {
+  const { code, id } = req.query;
+  
+  logger.info('Data deletion status requested', {
+    confirmationCode: code,
+    userId: id
+  });
+  
+  // In a real implementation, this would check the actual status in the database
+  res.json({
+    status: 'processing',
+    confirmationCode: code || 'UNKNOWN',
+    userId: id || 'UNKNOWN',
+    estimatedCompletionTime: '30 days',
+    message: 'Your data deletion request is being processed in accordance with our Privacy Policy.'
+  });
+});
+
 // Error handler middleware (always at the end)
 app.use(logger.errorHandler);
 
