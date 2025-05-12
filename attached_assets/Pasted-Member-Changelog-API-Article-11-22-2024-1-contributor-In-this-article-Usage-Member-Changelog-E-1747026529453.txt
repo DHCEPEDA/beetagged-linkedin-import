@@ -1,0 +1,281 @@
+Member Changelog API
+Article
+11/22/2024
+1 contributor
+In this article
+Usage
+Member Changelog Events
+Error Handling
+Member Changelog Management API
+Once the member has consented to share data and an access token is generated, LinkedIn will start archiving all the member's interactions (posts created, comments, reactions etc) on LinkedIn, from the time they consented, as changelog events. Member Changelog API allows you to query and fetch all changelog events archived for a user from the past 28 days.
+
+ Note
+
+Member Changelog API uses Versioned LinkedIn APIs. Please append the header LinkedIn-Version: 202312 while making the API requests.
+
+Usage
+You must use an access token to make an authenticated call on behalf of a user.
+
+Permissions
+Permission	Description
+r_dma_portability_3rd_party	Provides access to LinkedIn member data to developers upon member authorization
+r_dma_portability_member	Allows users to download their own LinkedIn data
+Member Changelog Events
+The following request can be used to query changelog events for a user:
+
+http
+curl
+HTTP
+
+Copy
+GET https://api.linkedin.com/rest/memberChangeLogs?q=memberAndApplication
+Query Parameters
+Field Name	Required	Description
+startTime	No	Represented as an inclusive timestamp in epoch milliseconds. If present, returns all the changelog events that are created after the time.
+ Note
+
+We recommend you specifying startTime by using the latest processedAt from the previous response. If there is no event from the previous response, keep the same startTime for the next request. If there is an event from the response, the next request should use the latest timestamp of the processedAt and that event will show up on the next request's response. This way, we will ensure no data loss in the next API request.
+
+We currently return events up to 28 days. If you specify a startTime older than 28 days of the current timestamp, it will return events up to 28 days. If you specify an invalid timestamp, it will throw a 400 error.
+
+In addition, we recommend querying at a count=10 to reduce latency and to query each member's activities once an hour. The upper limit is 50 . If you set a number not in the range [1,50] , it will result in a 400 and an error message containing the recommended count .
+
+If you decide to increase number of activities returned via count , keep in mind it will slow down processing time and can lead to timeouts. For querying each member's activities, we recommend spreading out your requests over the hour such that your application is not having QPS spikes, which could lead to timeouts as well.
+
+We also recommend using the capturedAt time returned by Member Changelog API to determine the time of the event activity. There might be instances within the specific activity that do not return the created/lastModified time.
+
+The Member Changelog API will return an array of elements. Each element is an activity record with the following schema:
+
+Member Changelog Events Schema
+Field Name	Description
+id	The unique identifier for the activity event.
+capturedAt	Time the event is captured.
+processedAt	Time the event is processed.
+configVersion	The configuration version used to process this event. This is unique to the activity's resourceName and method. It can change periodically as we update our configurations to better the API experience. It will mainly used for debugging purpose.
+owner	The member who owns the record. It is the same member who has retrieval and viewing access to this activity.
+actor	The member who performs the action of the activity.
+resourceName	Name of resource being acted upon.
+resourceId	The identifier of the resource.
+resourceUri	URI of the resource being modified. Used for remediation.
+method	The resource method. Can be one of the following methods:
+CREATE
+UPDATE
+PARTIAL_UPDATE
+DELETE
+*As of now, if a method is DELETE, the activity and processedActivity fields should be empty since we cannot capture the object after it has been deleted.
+methodName	The optional string representing the method's name. Only present in ACTION method.
+activity	The original activity data. Used for remediation.
+processedActivity	The decorated original activity containing relevant contextual information. For example, if the original activity is a comment, this will include the original share content. Used for archiving.
+siblingActivities	The activities on the same resource level. This is used for previous sibling comments on a share or previous messages in a conversation. Will return up to 10 most recent previous activities.
+parentSiblingActivities	The previous activities on the parent resource level. Example would be the previous sibling comments of a parent comment of a nested comment. Will return up to 10 most recent previous activities.
+activityId	A unique string identifier of a captured activity. If an activity is processed more than once, all generated records share same activityId.
+activityStatus	NEW! The status of the event. Can be one of the following:
+SUCCESS - Event is successfully processed on the initial attempt.
+FAILURE - Event has partial or complete processing failure on the initial attempt. The API will not surface multiple FAILURE events of the same activity.
+SUCCESSFUL_REPLAY - Event is successfully reprocessed after one or many attempts.
+Sample Get Response
+JSON
+
+Copy
+{
+  "owner": "urn:li:person:2qXA98-mVk",
+  "resourceId": "0-UzY2MDM3MjAzODc4OTk1OTI3MDRfNTAw",
+  "configVersion": 1,
+  "method": "CREATE",
+  "activity": {
+    "owner": "urn:li:person:kAq_1ptj-v",
+    "createdAt": 1574449632116,
+    "clientExperience": {
+      "clientGeneratedToken": "11daeca1-34af-47c2-b22e-d02a947c33a2"
+    },
+    "author": "urn:li:person:kAq_1ptj-v",
+    "id": "0-UzY2MDM3MjAzODc4OTk1OTI3MDRfNTAw",
+    "thread": "urn:li:messagingThread:0-NjU5OTczMDkxNTAzODAyNzc3Ng==",
+    "readAt": 1574449632000,
+    "content": {
+      "format": "TEXT",
+      "fallback": "Hello back to Sales Navigator inbox",
+      "formatVersion": 1,
+      "content": {
+        "string": "Hello back to Sales Navigator inbox"
+      }
+    },
+    "deliveredAt": 1574449632116
+  },
+  "resourceName": "messages",
+  "resourceUri": "/messages/0-UzY2MDM3MjAzODc4OTk1OTI3MDRfNTAw",
+  "actor": "urn:li:person:kAq_1ptj-v",
+  "activityId": "c86c3c71-7844-4ed1-b1fc-66deeac14192",
+  "processedAt": 1574449662997,
+  "capturedAt": 1574449632331,
+  "processedActivity": {
+    "owner": "urn:li:person:kAq_1ptj-v",
+    "owner~": {...},
+    "createdAt": 1574449632116,
+    "deliveredAt": 1574449632116,
+    "author~": {...},
+    "thread~": {
+      "owner": "urn:li:salesIdentity:334326",
+      "membership": [
+        {
+          "createdAt": 1573498467712,
+          "identity~": {
+            "member": "urn:li:person:2qXA98-mVk",
+            "member~": {...},
+            "id": 334326
+          },
+          "identity": "urn:li:salesIdentity:334326"
+        },
+        {
+          "createdAt": 1573498467712,
+          "identity~": {...},
+          "identity": "urn:li:person:kAq_1ptj-v"
+        }
+      ]
+    },
+    "author": "urn:li:person:kAq_1ptj-v",
+    "thread": "urn:li:messagingThread:0-NjU5OTczMDkxNTAzODAyNzc3Ng==",
+    "id": "0-UzY2MDM3MjAzODc4OTk1OTI3MDRfNTAw",
+    "readAt": 1574449632000,
+    "content": {
+      "format": "TEXT",
+      "fallback": "Hello back to Sales Navigator inbox",
+      "formatVersion": 1,
+      "content": {
+        "string": "Hello back to Sales Navigator inbox"
+      }
+    }
+  },
+  "id": 978988628
+}
+Each activity record contains metadata such as resourceName , resourceId , resourceUri , and more to help you identify the activity performed so you can properly archive and remediate as needed.
+
+As best practice, we recommend archiving all the data but specifically method , resourceName , resourceId and processedActivity.
+
+Error Handling
+In the event that a field or an activity is unable to be processed, we will still return the activity such that you are notified that an activity has occurred. The field that is not processed will have following message of "Unable_to_process_this_field." . In the processedActivity , the whole activity can be unprocessed, which will result in string of "message": "Unable to process this event." . If a particular field in the processedActivity is unprocessed, then it will have ! and the string "message": "Unable to process this field." . See below for examples.
+
+Unable to process a field
+JSON
+
+Copy
+{
+    "activity": {}, 
+    "activityId": "81fafbe1-ea4b-4454-a736-6b8a20d9aa90", 
+    "actor": "urn:li:person:sFrA4B1w3F", 
+    "capturedAt": 1494367986523, 
+    "configVersion": 2, 
+    "id": 23260, 
+    "method": "UPDATE", 
+    "owner": "urn:li:person:sFrA4B1w3F", 
+    "processedActivity": {
+        "message": "Unable to process this event."
+    }, 
+    "processedAt": 1494368009776, 
+    "resourceId": "Unable_to_process_this_field.", 
+    "resourceName": "mockSimpleKeyCollection", 
+    "resourceUri": "Unable_to_process_this_field."
+}
+unable to process an activity
+JSON
+
+Copy
+{
+    "activity": {
+        "simpleUnionField": {
+            "int": 3
+        }, 
+        "urn": "urn:li:person:sFrA4B1w3F"
+    }, 
+    "activityId": "b77d27f4-b7c9-426c-a43e-204a2735c798", 
+    "actor": "urn:li:person:sFrA4B1w3F", 
+    "capturedAt": 1494368763168, 
+    "configVersion": 2, 
+    "id": 23716, 
+    "method": "UPDATE", 
+    "owner": "urn:li:person:sFrA4B1w3F", 
+    "processedActivity": {
+        "message": "Unable to process this event."
+    }, 
+    "processedAt": 1494369845019, 
+    "resourceId": "4", 
+    "resourceName": "mockSimpleKeyCollection", 
+    "resourceUri": "/mockSimpleKeyCollection/4"
+}
+Unable to process an urn field in processedActivity
+JSON
+
+Copy
+{
+    "activity": {
+        "simpleUnionField": {
+            "int": 3
+        }, 
+        "urn": "urn:li:person:sFrA4B1w3F"
+    }, 
+    "activityId": "81fafbe1-ea4b-4454-a736-6b8a20d9aa90", 
+    "actor": "urn:li:person:sFrA4B1w3F", 
+    "capturedAt": 1494367986523, 
+    "configVersion": 2, 
+    "id": 23260, 
+    "method": "UPDATE", 
+    "owner": "urn:li:person:sFrA4B1w3F", 
+    "processedActivity": {
+        "simpleUnionField": {
+            "int": 3
+        }, 
+        "urn": "urn:li:person:sFrA4B1w3F", 
+        "urn!": {
+            "message": "Unable to process this field."
+        }
+    }, 
+    "processedAt": 1494368009776, 
+    "resourceId": "4", 
+    "resourceName": "mockSimpleKeyCollection", 
+    "resourceUri": "/mockSimpleKeyCollection/4"
+}
+Member Changelog Management API
+Once the user has consented and the access token is generated, LinkedIn automatically start processing and archiving changelog events for the user. The following member FINDER API can be used to check if a changelog events are being generated for a user.
+
+http
+curl
+HTTP
+
+Copy
+GET https://api.linkedin.com/rest/memberAuthorizations?q=memberAndApplication
+sample GET response
+JSON
+
+Copy
+{
+  "elements": [
+    {
+      "memberComplianceAuthorizationKey": {
+        "developerApplication": "urn:li:developerApplication:123456",
+        "member": "urn:li:person:123ABC",
+      },
+      "regulatedAt": 1698382869085,
+      "memberComplianceScopes": [
+                "DMA"
+      ],
+    }
+  ]
+}
+member omplianceAuthorization Response Schema
+Field Name	Description	Data Type
+regulatedAt	Epoch timestamp since which the user's compliance activities are being monitored and archived	long
+memberComplianceAuthorizationKey.developerApplication	developer application which the user has consented to	URN String
+memberComplianceAuthorizationKey.member	user whose compliance events are being archived (This the user whose token is being used)	URN String
+memberComplianceScopes	Array of Compliance Products, the user has consented to. This would contain only be "DMA"	Array of ENUM
+Once the user has consented and an access token is generated, LinkedIn starts processing and archiving changelog events for the user. It usually takes a couple of seconds to enable changelog event generation for the user. You can also enable changelog event generation for a user manually by calling the following API:
+
+http
+curl
+HTTP
+
+Copy
+POST https://api.linkedin.com/rest/memberAuthorizations
+Request Body {}
+ Note
+
+You will need to supply an empty JSON object, {} to the request body to successfully enable changelog event generation for the user.

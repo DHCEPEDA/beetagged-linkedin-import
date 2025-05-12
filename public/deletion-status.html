@@ -68,12 +68,37 @@
     <div class="status-item">
       <h3>What Data Is Being Deleted</h3>
       <p>The following data associated with your account is being deleted:</p>
-      <ul>
-        <li>Profile information imported from Facebook (name, email, profile picture)</li>
-        <li>Connection between your BeeTagged account and Facebook</li>
-        <li>Any contacts imported from Facebook</li>
-        <li>Authentication tokens and session data</li>
-      </ul>
+      <div id="facebook-data" style="display: none;">
+        <h4>Facebook Data</h4>
+        <ul>
+          <li>Profile information imported from Facebook (name, email, profile picture)</li>
+          <li>Connection between your BeeTagged account and Facebook</li>
+          <li>Any contacts imported from Facebook</li>
+          <li>Facebook authentication tokens and session data</li>
+        </ul>
+      </div>
+      
+      <div id="linkedin-data" style="display: none;">
+        <h4>LinkedIn Data</h4>
+        <ul>
+          <li>Profile information imported from LinkedIn (name, email, headline, industry)</li>
+          <li>Connection between your BeeTagged account and LinkedIn</li>
+          <li>Any contacts imported from LinkedIn</li>
+          <li>LinkedIn authentication tokens and session data</li>
+          <li>Member Changelog and Snapshot data</li>
+        </ul>
+      </div>
+      
+      <div id="account-data" style="display: none;">
+        <h4>BeeTagged Account Data</h4>
+        <ul>
+          <li>Your BeeTagged user profile information</li>
+          <li>Your contact data and contact lists</li>
+          <li>Your custom tags and groups</li>
+          <li>Your usage history and settings</li>
+        </ul>
+      </div>
+      
       <p>This process typically completes within 30 days, in accordance with our <a href="/privacy-policy.html">Privacy Policy</a>.</p>
     </div>
     
@@ -93,6 +118,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const confirmationCode = urlParams.get('code');
     const requestId = urlParams.get('id');
+    const source = urlParams.get('source');
     
     if (confirmationCode) {
       document.getElementById('confirmation-code').textContent = confirmationCode;
@@ -104,11 +130,66 @@
     const now = new Date();
     document.getElementById('request-date').textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
     
-    // Simulate checking deletion status (in a real app, this would query the server)
-    if (requestId) {
-      // This is where you would make an API call to check the actual status
-      document.getElementById('deletion-status').textContent = 'Processing';
-      document.getElementById('deletion-status').className = 'status-pending';
+    // Show the appropriate data sections based on source
+    if (source === 'facebook') {
+      document.getElementById('facebook-data').style.display = 'block';
+    } else if (source === 'linkedin') {
+      document.getElementById('linkedin-data').style.display = 'block';
+    } else if (source === 'user_initiated') {
+      // Show all sections for user-initiated deletion
+      document.getElementById('facebook-data').style.display = 'block';
+      document.getElementById('linkedin-data').style.display = 'block';
+      document.getElementById('account-data').style.display = 'block';
+    } else {
+      // If source not specified, show all to be safe
+      document.getElementById('facebook-data').style.display = 'block';
+      document.getElementById('linkedin-data').style.display = 'block';
+      document.getElementById('account-data').style.display = 'block';
+    }
+    
+    // Fetch actual deletion status from API
+    if (confirmationCode) {
+      // Make an API call to check the actual status
+      fetch(`/api/deletion-status/${confirmationCode}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Status request failed');
+          }
+          return response.json();
+        })
+        .then(data => {
+          document.getElementById('request-date').textContent = new Date(data.requestDate).toLocaleString();
+          document.getElementById('deletion-status').textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+          
+          // Set appropriate CSS class based on status
+          if (data.status === 'completed') {
+            document.getElementById('deletion-status').className = 'status-success';
+          } else if (data.status === 'processing') {
+            document.getElementById('deletion-status').className = 'status-pending';
+          } else {
+            document.getElementById('deletion-status').className = 'status-error';
+          }
+          
+          // Additional customization based on the source
+          if (data.source) {
+            switch (data.source) {
+              case 'facebook':
+                document.title = 'Facebook Data Deletion Status - BeeTagged';
+                break;
+              case 'linkedin':
+                document.title = 'LinkedIn Data Deletion Status - BeeTagged';
+                break;
+              case 'user_initiated':
+                document.title = 'Account Deletion Status - BeeTagged';
+                break;
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching deletion status:', error);
+          document.getElementById('deletion-status').textContent = 'Status Unavailable';
+          document.getElementById('deletion-status').className = 'status-error';
+        });
     } else {
       document.getElementById('deletion-status').textContent = 'Status Unknown';
       document.getElementById('deletion-status').className = 'status-error';
