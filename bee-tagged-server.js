@@ -15,6 +15,7 @@ const cors = require('cors');
 const path = require('path');
 const axios = require('axios');
 const mongoose = require('mongoose');
+const compression = require('compression');
 const logger = require('./utils/logger');
 
 // Create Express app
@@ -23,6 +24,9 @@ const app = express();
 // Detect Replit domain and environment
 const replitDomain = process.env.REPLIT_DOMAIN || process.env.REPL_SLUG || null;
 const isRunningOnReplit = !!replitDomain;
+
+// Enable compression for all requests (required by Facebook crawler)
+app.use(compression());
 
 // Basic configuration
 app.use(express.json());
@@ -33,6 +37,37 @@ app.use(cors());
 if (isRunningOnReplit) {
   app.set('trust proxy', true);
 }
+
+// Special middleware to handle Facebook crawlers
+app.use((req, res, next) => {
+  const userAgent = req.get('user-agent') || '';
+  const isFacebookCrawler = 
+    userAgent.includes('facebookexternalhit') || 
+    userAgent.includes('facebookcatalog') || 
+    userAgent.includes('meta-externalagent') || 
+    userAgent.includes('meta-externalfetcher');
+  
+  if (isFacebookCrawler) {
+    logger.info('Facebook crawler detected', { 
+      userAgent,
+      path: req.path,
+      rangeHeader: req.get('Range')
+    });
+    
+    // If Range header is present, ensure we handle it properly
+    // Facebook crawler may use Range: bytes=0-524288
+    if (req.get('Range')) {
+      // For static files, Express.static will handle range requests
+      // We're just logging it here for visibility
+      logger.info('Facebook crawler range request', {
+        range: req.get('Range'),
+        path: req.path
+      });
+    }
+  }
+  
+  next();
+});
 
 // Apply request logging middleware
 app.use(logger.request);
@@ -280,7 +315,8 @@ connectToMongoDB();
 // In-memory storage for recent logs and application state
 const appState = {
   recentLogs: [],
-  maxLogs: 20
+  maxLogs: 20,
+  deletionRequests: {} // Store deletion requests by confirmation code
 };
 
 // Log capture middleware to keep recent logs in memory
@@ -300,6 +336,39 @@ app.use((req, res, next) => {
   }
   
   next();
+});
+
+// Configure data deletion routes - these need to be defined before other routes
+// Import external routes (routes/data-deletion.js)
+try {
+  // Load data deletion routes
+  const dataDeletionRoutes = require('./server/routes/data-deletion');
+  app.use('/api', dataDeletionRoutes);
+  logger.info('Data deletion routes loaded successfully');
+} catch (error) {
+  logger.error('Failed to load data deletion routes', { error: error.message });
+}
+
+// Facebook Verification Endpoint - Specifically for App Review
+app.get('/facebook-verify', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>BeeTagged Facebook Verification</title>
+      <meta property="og:title" content="BeeTagged">
+      <meta property="og:description" content="Smart contact management with social network integration">
+      <meta property="fb:app_id" content="${process.env.FACEBOOK_APP_ID || '1222790436230433'}">
+    </head>
+    <body>
+      <h1>BeeTagged Facebook Verification Page</h1>
+      <p>This page confirms that the BeeTagged application is properly configured for Facebook integration.</p>
+      <p>App ID: ${process.env.FACEBOOK_APP_ID || '1222790436230433'}</p>
+    </body>
+    </html>
+  `);
+  
+  logger.info('Facebook verification page accessed', { ip: req.ip, userAgent: req.get('user-agent') });
 });
 
 // API Routes ----------------------------------------------
