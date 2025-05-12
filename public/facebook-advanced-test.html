@@ -225,11 +225,14 @@
     // Fill help section with current domain information
     document.addEventListener('DOMContentLoaded', () => {
       const currentUrl = window.location.href;
-      const currentDomain = window.location.origin;
-      const recommendedRedirect = `${currentDomain}/facebook-test-callback.html`;
+      // Remove port number for Facebook compatibility
+      const urlObj = new URL(window.location.href);
+      const domainWithoutPort = `${urlObj.protocol}//${urlObj.hostname}`;
+      
+      const recommendedRedirect = `${domainWithoutPort}/api/auth/facebook/callback`;
       
       document.getElementById('current-url').textContent = currentUrl;
-      document.getElementById('current-domain-display').textContent = currentDomain;
+      document.getElementById('current-domain-display').textContent = domainWithoutPort;
       document.getElementById('recommended-redirect').textContent = recommendedRedirect;
       
       // Pre-fill the custom redirect URI
@@ -317,10 +320,15 @@
       logInfo('custom-result', `Redirect URI: ${redirectUri}`);
       logInfo('custom-result', `State: ${state}`);
       
-      // Construct OAuth URL
-      const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=email,public_profile`;
+      // Make sure redirect URI doesn't include port number (Facebook requirement)
+      const parsedUri = new URL(redirectUri);
+      const portlessUri = `${parsedUri.protocol}//${parsedUri.hostname}${parsedUri.pathname}${parsedUri.search}`;
+      
+      // Construct OAuth URL with processed URI that has no port
+      const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(portlessUri)}&state=${state}&response_type=code&scope=email,public_profile`;
       
       logInfo('custom-result', 'OAuth URL constructed', 'success');
+      logInfo('custom-result', `Redirect URI (port removed): ${portlessUri}`);
       logInfo('custom-result', `Auth URL: ${authUrl}`);
       
       // Store test information for callback page
