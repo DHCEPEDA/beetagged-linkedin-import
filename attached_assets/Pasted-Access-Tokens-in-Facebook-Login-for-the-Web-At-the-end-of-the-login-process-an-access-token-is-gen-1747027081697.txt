@@ -1,0 +1,41 @@
+Access Tokens in Facebook Login for the Web
+At the end of the login process, an access token is generated. This access token is the thing that's passed along with every API call as proof that the call was made by a specific person from a specific app.
+
+The Facebook SDK for JavaScript automatically handles access token storage and tracking of login status in the browser, so nothing is needed for you to store access tokens in the browser itself.
+
+However, a common pattern is to take the access token and pass it back to a server and the server makes calls on behalf of a person. In order to get the token from the browser you can use the response object that's returned via FB.getLoginStatus():
+
+FB.getLoginStatus(function(response) {
+  if (response.status === 'connected') {
+    console.log(response.authResponse.accessToken);
+  }
+});
+The token is an opaque string of variable length.
+
+Also keep in mind that the access tokens that are generated in browsers generally have a lifetime of only a couple of hours and are automatically refreshed by the JavaScript SDK. If you are making calls from a server, you will need to generate a long lived token, which is covered at length in our access token documentation.
+
+Reverifying Access Tokens
+Apps normally need to confirm that the response from the Login dialog was made from the same person who started it. If you're using Facebook's JavaScript SDK it automatically performs these checks so nothing is required, assuming that you're only making calls from the browser.
+
+If you decide to send it back to the server, you should make sure you reverify the access token once it gets to the server. Reverifying the token is covered in our documentation on manually building login flows. You'll need to verify that the app_id and user_id match what you expected from the access token debug endpoint.
+
+Make API calls
+At this point in the flow, the person is authenticated and logged in. Your app is now ready to make API calls on their behalf from the browser. In the browser, the easiest way to do that is with the FB.api() call. FB.api() will automatically add the access token to the call.
+
+This code:
+
+FB.api('/me', function(response) {
+    console.log(JSON.stringify(response));
+});
+Will return an array with the id and name:
+
+{
+  "id":"101540562372987329832845483",
+  "name":"Bob Smith"
+}
+If you're making calls server side with the access token, you can use an SDK on the server to make similar calls. Many people use PHP to build web applications. You can find some examples of making server-side API calls in our PHP SDK documentation.
+
+Detecting when people uninstall apps
+People are able to uninstall apps via Facebook.com without interacting with the app itself. To help apps detect when this has happened, we allow them to provide a de-authorize callback URL which will be pinged whenever this occurs.
+
+You can enable a deauthorize callback through the App Dashboard.
