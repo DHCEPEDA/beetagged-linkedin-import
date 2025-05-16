@@ -339,14 +339,19 @@ app.use((req, res, next) => {
 });
 
 // Configure data deletion routes - these need to be defined before other routes
-// Import external routes (routes/data-deletion.js)
+// Import external routes
 try {
   // Load data deletion routes
   const dataDeletionRoutes = require('./server/routes/data-deletion');
   app.use('/api', dataDeletionRoutes);
   logger.info('Data deletion routes loaded successfully');
+  
+  // Load contact management routes
+  const contactRoutes = require('./server/routes/contact-routes');
+  app.use('/api/contacts', contactRoutes);
+  logger.info('Contact management routes loaded successfully');
 } catch (error) {
-  logger.error('Failed to load data deletion routes', { error: error.message });
+  logger.error('Failed to load routes', { error: error.message });
 }
 
 // Facebook Verification Endpoint - Specifically for App Review

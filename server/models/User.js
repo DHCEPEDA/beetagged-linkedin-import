@@ -1,104 +1,77 @@
+/**
+ * User Model
+ * 
+ * Stores user information and authentication data
+ */
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const Schema = mongoose.Schema;
 
-const UserSchema = new mongoose.Schema({
-  name: {
+const UserSchema = new Schema({
+  username: {
     type: String,
-    required: [true, 'Please provide a name'],
-    trim: true,
-    maxlength: [50, 'Name cannot be more than 50 characters']
+    required: true,
+    unique: true,
+    trim: true
   },
   email: {
     type: String,
-    required: [true, 'Please provide an email'],
+    required: true,
     unique: true,
-    match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-      'Please provide a valid email'
-    ]
+    trim: true,
+    lowercase: true
   },
   password: {
     type: String,
-    required: function() { return !this.linkedinId && !this.facebookId; },
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false
+    required: true
   },
-  linkedinId: {
+  name: {
     type: String,
-    unique: true,
-    sparse: true
+    trim: true
   },
-  linkedinToken: {
-    type: String,
-    select: false
-  },
-  linkedinConnected: {
-    type: Boolean,
-    default: false
-  },
-  facebookId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  facebookToken: {
-    type: String,
-    select: false
-  },
-  facebookConnected: {
-    type: Boolean,
-    default: false
-  },
-  profilePicture: {
+  photoUrl: {
     type: String
   },
+  // Social accounts
+  facebookId: String,
+  facebookToken: String,
+  linkedinId: String,
+  linkedinToken: String,
+  // User preferences
+  preferences: {
+    theme: {
+      type: String,
+      enum: ['light', 'dark'],
+      default: 'light'
+    },
+    defaultView: {
+      type: String,
+      enum: ['list', 'grid'],
+      default: 'list'
+    },
+    emailNotifications: {
+      type: Boolean,
+      default: true
+    }
+  },
+  isAdmin: {
+    type: Boolean,
+    default: false
+  },
+  lastLogin: Date,
   createdAt: {
     type: Date,
     default: Date.now
   },
-  lastLogin: {
+  updatedAt: {
     type: Date,
     default: Date.now
   }
 });
 
-// Encrypt password using bcrypt
-UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    next();
-  }
-
-  // Only hash the password if it exists (social login might not have password)
-  if (this.password) {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-  }
-  
+// Pre-save middleware to update the updatedAt field
+UserSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
   next();
 });
-
-// Sign JWT and return
-UserSchema.methods.getSignedJwtToken = function() {
-  return jwt.sign(
-    { id: this._id },
-    process.env.JWT_SECRET || 'defaultsecret12345',
-    { expiresIn: process.env.JWT_EXPIRE || '30d' }
-  );
-};
-
-// Match user entered password to hashed password in database
-UserSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
-
-// Method to return user data without sensitive fields
-UserSchema.methods.toJSON = function() {
-  const user = this.toObject();
-  delete user.password;
-  delete user.linkedinToken;
-  delete user.facebookToken;
-  return user;
-};
 
 module.exports = mongoose.model('User', UserSchema);
