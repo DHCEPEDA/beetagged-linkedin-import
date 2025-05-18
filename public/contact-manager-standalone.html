@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged Contact Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    :root {
+      --primary: #f5a623;
+      --primary-dark: #d48c18;
+      --secondary: #4a4a4a;
+      --light: #f7f7f7;
+      --border: #e0e0e0;
+      --success: #48bb78;
+      --warning: #f5a623;
+      --danger: #e53e3e;
+      --radius: 8px;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--light);
+      color: var(--secondary);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: white;
+      padding: 15px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo img {
+      height: 40px;
+      margin-right: 10px;
+    }
+    
+    .logo h1 {
+      font-size: 24px;
+      margin: 0;
+      color: var(--primary);
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+    
+    .nav-links a {
+      color: var(--secondary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+    
+    .main-content {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .sidebar {
+      background-color: white;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    
+    .sidebar h2 {
+      margin-top: 0;
+      font-size: 18px;
+      color: var(--secondary);
+      margin-bottom: 15px;
+    }
+    
+    .tag-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .tag-list li {
+      margin-bottom: 8px;
+    }
+    
+    .tag-list button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    
+    .tag-list button:hover {
+      background-color: var(--light);
+    }
+    
+    .tag-list button.active {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    .tag-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background-color: var(--light);
+      border-radius: 20px;
+      font-size: 12px;
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    
+    .tag-badge.location {
+      background-color: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .tag-badge.company {
+      background-color: #e8f5e9;
+      color: #388e3c;
+    }
+    
+    .tag-badge.interest {
+      background-color: #fff3e0;
+      color: #f57c00;
+    }
+    
+    .tag-badge.skill {
+      background-color: #f3e5f5;
+      color: #8e24aa;
+    }
+    
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .contacts-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .search-container {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 10px 15px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+    }
+    
+    .contact-card {
+      background-color: white;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 20px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .contact-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .contact-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .contact-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      margin-right: 15px;
+      object-fit: cover;
+    }
+    
+    .contact-name {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .contact-position {
+      margin: 5px 0 0;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .contact-info {
+      margin-bottom: 15px;
+    }
+    
+    .info-item {
+      display: flex;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    
+    .info-label {
+      width: 80px;
+      color: #666;
+    }
+    
+    .contact-tags {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    
+    .contact-source {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    
+    .contact-source.facebook {
+      background-color: #e7f3ff;
+      color: #1877f2;
+    }
+    
+    .contact-source.linkedin {
+      background-color: #e8f1f8;
+      color: #0077b5;
+    }
+    
+    .contact-source img {
+      width: 14px;
+      height: 14px;
+      margin-right: 5px;
+    }
+    
+    .button {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .button:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .button.secondary {
+      background-color: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+    
+    .button.secondary:hover {
+      background-color: rgba(245, 166, 35, 0.1);
+    }
+    
+    .status-message {
+      padding: 10px 15px;
+      border-radius: var(--radius);
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    
+    .status-message.info {
+      background-color: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .status-message.success {
+      background-color: #e8f5e9;
+      color: #388e3c;
+    }
+    
+    .status-message.warning {
+      background-color: #fff3e0;
+      color: #f57c00;
+    }
+    
+    .status-message.error {
+      background-color: #ffebee;
+      color: #d32f2f;
+    }
+    
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px;
+      background-color: white;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .empty-state h3 {
+      margin-top: 0;
+      color: var(--secondary);
+    }
+    
+    .connection-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .sync-button {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 10px;
+      padding: 6px 12px;
+      background-color: #f2f2f2;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--secondary);
+    }
+    
+    .sync-button img {
+      width: 16px;
+      height: 16px;
+      margin-right: 5px;
+    }
+    
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <div class="logo">
+        <img src="/images/bee-logo.svg" alt="BeeTagged Logo">
+        <h1>BeeTagged</h1>
+      </div>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/contact-manager-standalone.html" class="active">Contacts</a>
+        <a href="/settings.html">Settings</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="status-container"></div>
+    
+    <div class="main-content">
+      <aside class="sidebar">
+        <h2>Filter by Tags</h2>
+        <div class="search-container">
+          <input type="text" id="tag-search" class="search-input" placeholder="Search tags...">
+        </div>
+        <div id="tag-groups">
+          <h3>Locations</h3>
+          <ul class="tag-list" id="location-tags"></ul>
+          
+          <h3>Companies</h3>
+          <ul class="tag-list" id="company-tags"></ul>
+          
+          <h3>Interests</h3>
+          <ul class="tag-list" id="interest-tags"></ul>
+          
+          <h3>Skills</h3>
+          <ul class="tag-list" id="skill-tags"></ul>
+        </div>
+      </aside>
+      
+      <main>
+        <div class="search-container">
+          <input type="text" id="search-input" class="search-input" placeholder="Search contacts...">
+        </div>
+        
+        <div class="contacts-header">
+          <h2>Your Contacts</h2>
+          <div>
+            <button class="sync-button" onclick="syncFacebookContacts()">
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/facebook.svg" alt="Facebook">
+              Sync Facebook
+            </button>
+            <button class="sync-button" onclick="syncLinkedInContacts()">
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg" alt="LinkedIn">
+              Sync LinkedIn
+            </button>
+          </div>
+        </div>
+        
+        <div id="contacts-container" class="contact-grid"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/public/mock-data.js"></script>
+  <script>
+    // Application state
+    const state = {
+      contacts: [],
+      filteredContacts: [],
+      activeTags: [],
+      allTags: [],
+      searchTerm: '',
+      isAuthenticated: false,
+      facebookToken: localStorage.getItem('facebookToken'),
+      linkedinToken: localStorage.getItem('linkedinToken')
+    };
+    
+    // Elements
+    const contactsContainer = document.getElementById('contacts-container');
+    const statusContainer = document.getElementById('status-container');
+    const searchInput = document.getElementById('search-input');
+    const tagSearch = document.getElementById('tag-search');
+    const locationTagsList = document.getElementById('location-tags');
+    const companyTagsList = document.getElementById('company-tags');
+    const interestTagsList = document.getElementById('interest-tags');
+    const skillTagsList = document.getElementById('skill-tags');
+    
+    // Initialize the application
+    function init() {
+      // Check authentication state
+      state.isAuthenticated = !!(state.facebookToken || state.linkedinToken);
+      
+      // For demo purposes, load sample contacts
+      loadSampleContacts();
+      
+      // Extract all unique tags from contacts
+      extractTagsFromContacts();
+      
+      // Render the UI
+      renderContacts();
+      renderTags();
+      
+      // Add event listeners
+      searchInput.addEventListener('input', searchContacts);
+      tagSearch.addEventListener('input', searchTags);
+    }
+    
+    // Load sample contacts (in a real app, these would come from the API)
+    function loadSampleContacts() {
+      state.contacts = sampleContacts;
+      state.filteredContacts = [...state.contacts];
+    }
+    
+    // Extract all unique tags from contacts
+    function extractTagsFromContacts() {
+      // In a real app, this would be fetched from the API
+      state.allTags = popularTags;
+    }
+    
+    // Filter contacts by search term and active tags
+    function filterContacts() {
+      let filtered = state.contacts;
+      
+      // Apply search term filter
+      if (state.searchTerm) {
+        const term = state.searchTerm.toLowerCase();
+        filtered = filtered.filter(contact => {
+          return (
+            contact.name.toLowerCase().includes(term) ||
+            contact.email.toLowerCase().includes(term) ||
+            (contact.metadata.company && contact.metadata.company.toLowerCase().includes(term)) ||
+            (contact.metadata.position && contact.metadata.position.toLowerCase().includes(term)) ||
+            contact.tags.some(tag => tag.name.toLowerCase().includes(term))
+          );
+        });
+      }
+      
+      // Apply tag filters
+      if (state.activeTags.length > 0) {
+        filtered = filtered.filter(contact => {
+          return state.activeTags.every(activeTag => {
+            return contact.tags.some(tag => tag.name === activeTag);
+          });
+        });
+      }
+      
+      state.filteredContacts = filtered;
+    }
+    
+    // Render contacts to the UI
+    function renderContacts() {
+      // First, filter the contacts
+      filterContacts();
+      
+      // Clear the container
+      contactsContainer.innerHTML = '';
+      
+      // If no contacts, show empty state
+      if (state.filteredContacts.length === 0) {
+        contactsContainer.innerHTML = `
+          <div class="empty-state">
+            <h3>No contacts found</h3>
+            <p>Try adjusting your search or tag filters, or import contacts from your social networks.</p>
+            <div class="connection-buttons">
+              <button class="button" onclick="syncFacebookContacts()">Import from Facebook</button>
+              <button class="button" onclick="syncLinkedInContacts()">Import from LinkedIn</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      
+      // Render each contact
+      state.filteredContacts.forEach(contact => {
+        const contactElement = document.createElement('div');
+        contactElement.className = 'contact-card';
+        
+        // Create tags HTML
+        const tagsHtml = contact.tags.map(tag => {
+          let tagClass = 'tag-badge';
+          if (tag.type) {
+            tagClass += ` ${tag.type}`;
+          }
+          return `<span class="${tagClass}">${tag.name.split(':')[1]}</span>`;
+        }).join('');
+        
+        // Create source badge HTML
+        const sourceHtml = contact.source === 'facebook' 
+          ? `<div class="contact-source facebook">
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/facebook.svg" alt="Facebook">
+              Facebook
+             </div>`
+          : `<div class="contact-source linkedin">
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg" alt="LinkedIn">
+              LinkedIn
+             </div>`;
+        
+        contactElement.innerHTML = `
+          <div class="contact-header">
+            <img src="${contact.profilePicture}" alt="${contact.name}" class="contact-avatar">
+            <div>
+              <h3 class="contact-name">${contact.name}</h3>
+              <p class="contact-position">${contact.metadata.position || ''} ${contact.metadata.company ? 'at ' + contact.metadata.company : ''}</p>
+            </div>
+          </div>
+          <div class="contact-info">
+            <div class="info-item">
+              <span class="info-label">Email:</span>
+              <span>${contact.email}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Phone:</span>
+              <span>${contact.phone || 'Not available'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Location:</span>
+              <span>${contact.metadata.location || 'Not available'}</span>
+            </div>
+          </div>
+          <div class="contact-tags">
+            ${tagsHtml}
+          </div>
+          ${sourceHtml}
+        `;
+        
+        contactsContainer.appendChild(contactElement);
+      });
+    }
+    
+    // Render tags to the UI
+    function renderTags() {
+      // Clear the lists
+      locationTagsList.innerHTML = '';
+      companyTagsList.innerHTML = '';
+      interestTagsList.innerHTML = '';
+      skillTagsList.innerHTML = '';
+      
+      // Group tags by type
+      const locationTags = state.allTags.filter(tag => tag.type === 'location');
+      const companyTags = state.allTags.filter(tag => tag.type === 'company');
+      const interestTags = state.allTags.filter(tag => tag.type === 'interest');
+      const skillTags = state.allTags.filter(tag => tag.type === 'skill');
+      
+      // Render each group
+      renderTagGroup(locationTagsList, locationTags);
+      renderTagGroup(companyTagsList, companyTags);
+      renderTagGroup(interestTagsList, interestTags);
+      renderTagGroup(skillTagsList, skillTags);
+    }
+    
+    // Render a group of tags
+    function renderTagGroup(container, tags) {
+      tags.forEach(tag => {
+        const li = document.createElement('li');
+        const active = state.activeTags.includes(tag.name);
+        
+        li.innerHTML = `
+          <button class="${active ? 'active' : ''}" data-tag="${tag.name}">
+            ${tag.name.split(':')[1]}
+            <span>${tag.count}</span>
+          </button>
+        `;
+        
+        // Add click event
+        li.querySelector('button').addEventListener('click', () => toggleTag(tag.name));
+        
+        container.appendChild(li);
+      });
+    }
+    
+    // Toggle a tag's active state
+    function toggleTag(tagName) {
+      const index = state.activeTags.indexOf(tagName);
+      
+      if (index === -1) {
+        // Tag not active, add it
+        state.activeTags.push(tagName);
+      } else {
+        // Tag active, remove it
+        state.activeTags.splice(index, 1);
+      }
+      
+      // Re-render the UI
+      renderContacts();
+      renderTags();
+    }
+    
+    // Search contacts
+    function searchContacts() {
+      state.searchTerm = searchInput.value.trim();
+      renderContacts();
+    }
+    
+    // Search tags
+    function searchTags() {
+      const searchTerm = tagSearch.value.trim().toLowerCase();
+      
+      // Show/hide tags based on search
+      document.querySelectorAll('.tag-list li').forEach(li => {
+        const tagName = li.querySelector('button').textContent.trim().toLowerCase();
+        if (searchTerm === '' || tagName.includes(searchTerm)) {
+          li.style.display = 'block';
+        } else {
+          li.style.display = 'none';
+        }
+      });
+      
+      // Show/hide tag group headers if all tags in the group are hidden
+      const tagGroups = document.querySelectorAll('#tag-groups h3');
+      tagGroups.forEach(header => {
+        const nextList = header.nextElementSibling;
+        const visibleTags = nextList.querySelectorAll('li[style="display: block"]').length;
+        
+        if (visibleTags === 0) {
+          header.style.display = 'none';
+        } else {
+          header.style.display = 'block';
+        }
+      });
+    }
+    
+    // Show a status message
+    function showStatus(type, message) {
+      statusContainer.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        statusContainer.innerHTML = '';
+      }, 5000);
+    }
+    
+    // Sync Facebook contacts
+    function syncFacebookContacts() {
+      if (!state.facebookToken) {
+        showStatus('warning', 'Please connect with Facebook first');
+        return;
+      }
+      
+      showStatus('info', 'Synchronizing Facebook contacts...');
+      
+      // In a real app, this would call your server API to sync contacts
+      // For now, we'll simulate a successful sync
+      setTimeout(() => {
+        showStatus('success', 'Facebook contacts synchronized successfully! Found 5 contacts.');
+        
+        // Reload sample contacts to simulate the sync
+        loadSampleContacts();
+        renderContacts();
+        renderTags();
+      }, 2000);
+    }
+    
+    // Sync LinkedIn contacts
+    function syncLinkedInContacts() {
+      if (!state.linkedinToken) {
+        showStatus('warning', 'Please connect with LinkedIn first');
+        return;
+      }
+      
+      showStatus('info', 'Synchronizing LinkedIn contacts...');
+      
+      // In a real app, this would call your server API to sync contacts
+      // For now, we'll simulate a successful sync
+      setTimeout(() => {
+        showStatus('success', 'LinkedIn contacts synchronized successfully! Found 5 contacts.');
+        
+        // Reload sample contacts to simulate the sync
+        loadSampleContacts();
+        renderContacts();
+        renderTags();
+      }, 2000);
+    }
+    
+    // Initialize the application when the page loads
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
