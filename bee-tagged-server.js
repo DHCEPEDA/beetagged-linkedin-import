@@ -75,6 +75,10 @@ app.use(logger.request);
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Import and register authentication routes
+const authRoutes = require('./server/routes/auth-routes');
+app.use('/api/auth', authRoutes);
+
 // Status endpoint for health checks
 app.get('/api/status', (req, res) => {
   logger.info('Status check requested', { 

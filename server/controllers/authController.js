@@ -1,398 +1,313 @@
-const User = require('../models/User');
-const LinkedinService = require('../services/linkedinService');
-const FacebookService = require('../services/facebookService');
+const axios = require('axios');
+const crypto = require('crypto');
+const { logger } = require('../../utils/logger');
 
-/**
- * Register a new user
- * @route POST /api/auth/register
- * @access Public
- */
-exports.register = async (req, res, next) => {
+// Session storage for authentication
+const authSessions = {};
+
+// Facebook configuration
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+
+// LinkedIn configuration
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+
+// Clean domain helpers
+function getDomainWithoutPort(host) {
+  if (!host) return null;
+  // Remove port if present
+  return host.includes(':') ? host.substring(0, host.lastIndexOf(':')) : host;
+}
+
+function getBaseUrl(req) {
+  const host = req.get('host');
+  const domain = getDomainWithoutPort(host);
+  return `https://${domain}`;
+}
+
+// ======== FACEBOOK AUTHENTICATION CONTROLLER ========
+
+exports.getFacebookAuthUrl = (req, res) => {
   try {
-    const { name, email, password } = req.body;
-
-    // Check if user already exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this email already exists'
-      });
-    }
-
-    // Create new user
-    user = await User.create({
-      name,
-      email,
-      password
+    const host = req.get('host');
+    logger.info('Facebook auth URL requested', { ip: req.ip, host });
+    
+    // Generate base URL without port
+    const baseUrl = getBaseUrl(req);
+    logger.info('Using base URL for Facebook auth', { host, baseUrl });
+    
+    // Generate a state parameter to prevent CSRF attacks
+    const state = crypto.randomBytes(8).toString('hex').substring(0, 8);
+    
+    // Store the state in the session
+    authSessions[state] = { 
+      created: Date.now(),
+      redirectUri: `${baseUrl}/api/auth/facebook/callback`
+    };
+    
+    // Build the redirect URI without port
+    const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
+    
+    // Create the Facebook authorization URL
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=email,public_profile`;
+    
+    logger.info('Generated Facebook auth URL', { 
+      redirectUri, 
+      baseUrl,
+      state: state.substring(0, 5) + '...'
     });
-
-    // Generate JWT
-    const token = user.getSignedJwtToken();
-
-    res.status(201).json({
-      success: true,
-      token,
-      user
-    });
+    
+    // Return the URL to the client
+    res.json({ url: authUrl });
   } catch (error) {
-    next(error);
+    logger.error('Error generating Facebook auth URL', { errorMessage: error.message });
+    res.status(500).json({ error: 'Failed to generate authentication URL' });
   }
 };
 
-/**
- * Login user
- * @route POST /api/auth/login
- * @access Public
- */
-exports.login = async (req, res, next) => {
+exports.handleFacebookCallback = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    // Check if email and password are provided
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide an email and password'
-      });
-    }
-
-    // Check if user exists
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check if password matches
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Update last login
-    user.lastLogin = Date.now();
-    await user.save();
-
-    // Generate JWT
-    const token = user.getSignedJwtToken();
-
-    res.status(200).json({
-      success: true,
-      token,
-      user
+    const { code, state, error } = req.query;
+    
+    logger.info('Facebook callback received', { 
+      hasCode: !!code, 
+      hasState: !!state,
+      hasError: !!error 
     });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * LinkedIn OAuth
- * @route POST /api/auth/linkedin
- * @access Public
- */
-exports.linkedinAuth = async (req, res, next) => {
-  try {
-    const { code, redirectUri } = req.body;
-
-    // For direct login with access token
-    if (req.body.accessToken) {
-      const profileData = await LinkedinService.getProfileWithToken(req.body.accessToken);
+    
+    // Handle errors from Facebook
+    if (error) {
+      logger.error('Facebook auth error', { error });
+      return res.redirect('/?auth=facebook-error&error=' + encodeURIComponent(error));
+    }
+    
+    // Verify state parameter to prevent CSRF attacks
+    if (!state || !authSessions[state]) {
+      logger.error('Invalid Facebook auth state', { receivedState: state });
+      return res.redirect('/?auth=facebook-error&error=invalid_state');
+    }
+    
+    // Get stored redirect URI
+    const storedSession = authSessions[state];
+    const redirectUri = storedSession.redirectUri;
+    
+    // Exchange authorization code for access token
+    try {
+      const tokenUrl = 'https://graph.facebook.com/v19.0/oauth/access_token';
+      const params = new URLSearchParams();
+      params.append('client_id', FACEBOOK_APP_ID);
+      params.append('client_secret', FACEBOOK_APP_SECRET);
+      params.append('redirect_uri', redirectUri);
+      params.append('code', code);
       
-      if (!profileData || !profileData.id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid LinkedIn data'
+      logger.info('Exchanging Facebook code for token', { redirectUri });
+      
+      const tokenResponse = await axios.post(tokenUrl, params);
+      const { access_token, expires_in } = tokenResponse.data;
+      
+      if (!access_token) {
+        logger.error('Facebook token exchange failed', { response: tokenResponse.data });
+        return res.redirect('/?auth=facebook-error&error=token_exchange_failed');
+      }
+      
+      logger.info('Facebook token received', { 
+        expiresIn: expires_in,
+        tokenPreview: access_token.substring(0, 5) + '...' + access_token.substring(access_token.length - 5)
+      });
+      
+      // Get user profile data
+      const profileUrl = `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${access_token}`;
+      const profileResponse = await axios.get(profileUrl);
+      const profile = profileResponse.data;
+      
+      logger.info('Facebook profile received', { 
+        id: profile.id,
+        name: profile.name,
+        hasEmail: !!profile.email,
+        hasPicture: !!profile.picture
+      });
+      
+      // Clean up the used state
+      delete authSessions[state];
+      
+      // Successful authentication - redirect to success page
+      return res.redirect(`/facebook-success.html?token=${access_token}&name=${encodeURIComponent(profile.name)}&userId=${profile.id}`);
+    } catch (tokenError) {
+      logger.error('Facebook token exchange error', { errorMessage: tokenError.message });
+      if (tokenError.response) {
+        logger.error('Facebook API response', { 
+          status: tokenError.response.status,
+          data: tokenError.response.data 
         });
       }
-
-      // Check if user exists with LinkedIn ID
-      let user = await User.findOne({ linkedinId: profileData.id });
-
-      // If user exists, update their data
-      if (user) {
-        user.linkedinToken = req.body.accessToken;
-        user.linkedinConnected = true;
-        user.lastLogin = Date.now();
-        
-        // Update name and profile picture if not set
-        if (!user.profilePicture && profileData.pictureUrl) {
-          user.profilePicture = profileData.pictureUrl;
-        }
-        
-        await user.save();
-      } else {
-        // Check if user exists with same email
-        if (profileData.email) {
-          user = await User.findOne({ email: profileData.email });
-          
-          if (user) {
-            // Update user with LinkedIn info
-            user.linkedinId = profileData.id;
-            user.linkedinToken = req.body.accessToken;
-            user.linkedinConnected = true;
-            user.lastLogin = Date.now();
-            
-            await user.save();
-          }
-        }
-        
-        // Create new user if not found
-        if (!user) {
-          user = await User.create({
-            name: `${profileData.firstName} ${profileData.lastName}`,
-            email: profileData.email || `linkedin_${profileData.id}@example.com`,
-            linkedinId: profileData.id,
-            linkedinToken: req.body.accessToken,
-            linkedinConnected: true,
-            profilePicture: profileData.pictureUrl
-          });
-        }
-      }
-
-      // Generate JWT
-      const token = user.getSignedJwtToken();
-
-      return res.status(200).json({
-        success: true,
-        token,
-        user
-      });
+      return res.redirect('/?auth=facebook-error&error=token_exchange_failed');
     }
+  } catch (error) {
+    logger.error('Facebook callback processing error', { errorMessage: error.message });
+    res.redirect('/?auth=facebook-error&error=' + encodeURIComponent(error.message));
+  }
+};
 
-    // Code flow
-    const tokenData = await LinkedinService.getAccessToken(code, redirectUri);
+exports.getFacebookConfig = (req, res) => {
+  try {
+    logger.info('Facebook config requested', { ip: req.ip, host: req.get('host') });
     
-    if (!tokenData || !tokenData.access_token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to authenticate with LinkedIn'
-      });
+    const baseUrl = getBaseUrl(req);
+    const redirectUrl = `${baseUrl}/api/auth/facebook/callback`;
+    
+    res.json({
+      appId: FACEBOOK_APP_ID,
+      redirectUrl
+    });
+  } catch (error) {
+    logger.error('Error getting Facebook config', { errorMessage: error.message });
+    res.status(500).json({ error: 'Failed to get Facebook configuration' });
+  }
+};
+
+// ======== LINKEDIN AUTHENTICATION CONTROLLER ========
+
+exports.getLinkedInAuthUrl = (req, res) => {
+  try {
+    const host = req.get('host');
+    logger.info('LinkedIn auth URL requested', { ip: req.ip, host });
+    
+    // Generate a state parameter
+    const state = crypto.randomBytes(8).toString('hex').substring(0, 8);
+    
+    // Get base URL without port
+    const baseUrl = getBaseUrl(req);
+    
+    // Store the redirect URI with the state
+    const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+    authSessions[state] = { 
+      created: Date.now(),
+      redirectUri
+    };
+    
+    // Build the LinkedIn authorization URL
+    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress`;
+    
+    logger.info('Generated LinkedIn auth URL', { 
+      redirectUri,
+      state: state.substring(0, 5) + '...'
+    });
+    
+    res.json({ url: authUrl });
+  } catch (error) {
+    logger.error('Error generating LinkedIn auth URL', { errorMessage: error.message });
+    res.status(500).json({ error: 'Failed to generate authentication URL' });
+  }
+};
+
+exports.handleLinkedInCallback = async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+    
+    logger.info('LinkedIn callback received', { 
+      hasCode: !!code, 
+      hasState: !!state, 
+      hasError: !!error 
+    });
+    
+    // Handle errors from LinkedIn
+    if (error) {
+      logger.error('LinkedIn auth error', { error });
+      return res.redirect('/?auth=linkedin-error&error=' + encodeURIComponent(error));
     }
     
-    const profileData = await LinkedinService.getProfile(tokenData.access_token);
-    
-    if (!profileData || !profileData.id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to get LinkedIn profile'
-      });
+    // Verify state parameter
+    if (!state || !authSessions[state]) {
+      logger.error('Invalid LinkedIn auth state', { receivedState: state });
+      return res.redirect('/?auth=linkedin-error&error=invalid_state');
     }
-
-    // Check if user exists with LinkedIn ID
-    let user = await User.findOne({ linkedinId: profileData.id });
-
-    // Same logic as above for existing/new users
-    if (user) {
-      user.linkedinToken = tokenData.access_token;
-      user.linkedinConnected = true;
-      user.lastLogin = Date.now();
+    
+    // Get stored redirect URI
+    const storedSession = authSessions[state];
+    const redirectUri = storedSession.redirectUri;
+    
+    try {
+      // Exchange code for access token
+      const tokenUrl = 'https://www.linkedin.com/oauth/v2/accessToken';
+      const params = new URLSearchParams();
+      params.append('grant_type', 'authorization_code');
+      params.append('code', code);
+      params.append('redirect_uri', redirectUri);
+      params.append('client_id', LINKEDIN_CLIENT_ID);
+      params.append('client_secret', LINKEDIN_CLIENT_SECRET);
       
-      if (!user.profilePicture && profileData.pictureUrl) {
-        user.profilePicture = profileData.pictureUrl;
+      logger.info('Exchanging LinkedIn code for token', { redirectUri });
+      
+      const tokenResponse = await axios.post(tokenUrl, params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      
+      const { access_token, expires_in } = tokenResponse.data;
+      
+      if (!access_token) {
+        logger.error('LinkedIn token exchange failed', { response: tokenResponse.data });
+        return res.redirect('/?auth=linkedin-error&error=token_exchange_failed');
       }
       
-      await user.save();
-    } else {
-      if (profileData.email) {
-        user = await User.findOne({ email: profileData.email });
-        
-        if (user) {
-          user.linkedinId = profileData.id;
-          user.linkedinToken = tokenData.access_token;
-          user.linkedinConnected = true;
-          user.lastLogin = Date.now();
-          
-          await user.save();
+      logger.info('LinkedIn token received', { 
+        expiresIn: expires_in,
+        tokenPreview: access_token.substring(0, 5) + '...' + access_token.substring(access_token.length - 5)
+      });
+      
+      // Get user profile data
+      const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'cache-control': 'no-cache',
+          'X-Restli-Protocol-Version': '2.0.0'
         }
+      });
+      
+      const profile = profileResponse.data;
+      
+      // Get email address
+      const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'cache-control': 'no-cache',
+          'X-Restli-Protocol-Version': '2.0.0'
+        }
+      });
+      
+      const emailData = emailResponse.data;
+      const email = emailData?.elements?.[0]?.['handle~']?.emailAddress || null;
+      
+      logger.info('LinkedIn data received', {
+        id: profile.id,
+        hasEmail: !!email
+      });
+      
+      // Clean up used state
+      delete authSessions[state];
+      
+      // Try to construct the user's name from profile data
+      let name = '';
+      if (profile.firstName?.localized?.en_US && profile.lastName?.localized?.en_US) {
+        name = profile.firstName.localized.en_US + ' ' + profile.lastName.localized.en_US;
+      } else if (profile.localizedFirstName && profile.localizedLastName) {
+        name = profile.localizedFirstName + ' ' + profile.localizedLastName;
       }
       
-      if (!user) {
-        user = await User.create({
-          name: `${profileData.firstName} ${profileData.lastName}`,
-          email: profileData.email || `linkedin_${profileData.id}@example.com`,
-          linkedinId: profileData.id,
-          linkedinToken: tokenData.access_token,
-          linkedinConnected: true,
-          profilePicture: profileData.pictureUrl
+      // Redirect to success page
+      return res.redirect(`/linkedin-success.html?token=${access_token}&name=${encodeURIComponent(name)}&userId=${profile.id}`);
+    } catch (apiError) {
+      logger.error('LinkedIn API error', { errorMessage: apiError.message });
+      if (apiError.response) {
+        logger.error('LinkedIn API response', { 
+          status: apiError.response.status,
+          data: apiError.response.data 
         });
       }
+      return res.redirect('/?auth=linkedin-error&error=' + encodeURIComponent(apiError.message));
     }
-
-    // Generate JWT
-    const token = user.getSignedJwtToken();
-
-    res.status(200).json({
-      success: true,
-      token,
-      user
-    });
   } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Facebook OAuth
- * @route POST /api/auth/facebook
- * @access Public
- */
-exports.facebookAuth = async (req, res, next) => {
-  try {
-    // For direct login with access token
-    if (req.body.accessToken) {
-      const profileData = await FacebookService.getProfileWithToken(req.body.accessToken);
-      
-      if (!profileData || !profileData.id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid Facebook data'
-        });
-      }
-
-      // Check if user exists with Facebook ID
-      let user = await User.findOne({ facebookId: profileData.id });
-
-      // If user exists, update their data
-      if (user) {
-        user.facebookToken = req.body.accessToken;
-        user.facebookConnected = true;
-        user.lastLogin = Date.now();
-        
-        // Update profile picture if not set
-        if (!user.profilePicture && profileData.picture?.data?.url) {
-          user.profilePicture = profileData.picture.data.url;
-        }
-        
-        await user.save();
-      } else {
-        // Check if user exists with same email
-        if (profileData.email) {
-          user = await User.findOne({ email: profileData.email });
-          
-          if (user) {
-            // Update user with Facebook info
-            user.facebookId = profileData.id;
-            user.facebookToken = req.body.accessToken;
-            user.facebookConnected = true;
-            user.lastLogin = Date.now();
-            
-            await user.save();
-          }
-        }
-        
-        // Create new user if not found
-        if (!user) {
-          user = await User.create({
-            name: profileData.name,
-            email: profileData.email || `facebook_${profileData.id}@example.com`,
-            facebookId: profileData.id,
-            facebookToken: req.body.accessToken,
-            facebookConnected: true,
-            profilePicture: profileData.picture?.data?.url
-          });
-        }
-      }
-
-      // Generate JWT
-      const token = user.getSignedJwtToken();
-
-      return res.status(200).json({
-        success: true,
-        token,
-        user
-      });
-    }
-
-    return res.status(400).json({
-      success: false,
-      message: 'Facebook authentication requires an access token'
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Get current user
- * @route GET /api/auth/me
- * @access Private
- */
-exports.getCurrentUser = async (req, res, next) => {
-  try {
-    // User already attached to req by the auth middleware
-    res.status(200).json({
-      success: true,
-      data: req.user
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Update current user
- * @route PUT /api/auth/me
- * @access Private
- */
-exports.updateCurrentUser = async (req, res, next) => {
-  try {
-    const { name, email, profilePicture } = req.body;
-    
-    // Allow updating only certain fields
-    const fieldsToUpdate = {};
-    if (name) fieldsToUpdate.name = name;
-    if (email) fieldsToUpdate.email = email;
-    if (profilePicture) fieldsToUpdate.profilePicture = profilePicture;
-    
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      fieldsToUpdate,
-      { new: true, runValidators: true }
-    );
-    
-    res.status(200).json({
-      success: true,
-      data: user
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Update password
- * @route PUT /api/auth/password
- * @access Private
- */
-exports.updatePassword = async (req, res, next) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    
-    const user = await User.findById(req.user.id).select('+password');
-    
-    // Check if current password matches
-    if (!currentPassword || !(await user.matchPassword(currentPassword))) {
-      return res.status(401).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
-    }
-    
-    user.password = newPassword;
-    await user.save();
-    
-    res.status(200).json({
-      success: true,
-      message: 'Password updated successfully'
-    });
-  } catch (error) {
-    next(error);
+    logger.error('LinkedIn callback processing error', { errorMessage: error.message });
+    res.redirect('/?auth=linkedin-error&error=' + encodeURIComponent(error.message));
   }
 };
