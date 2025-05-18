@@ -185,6 +185,14 @@ const homePage = `
     </div>
     
     <div class="card">
+      <h2>Contact Management</h2>
+      <p>Extract metadata from social contacts for tagging and search</p>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <a href="/contact-manager.html" style="padding: 8px 12px; background: #f5a623; color: white; text-decoration: none; border-radius: 4px;">Contact Manager</a>
+      </div>
+    </div>
+    
+    <div class="card">
       <h2>Contact Import</h2>
       <p>Test contact import from social platforms</p>
       <button onclick="testContactImport()">Test Import</button>
@@ -350,6 +358,11 @@ try {
   const contactRoutes = require('./server/routes/contact-routes');
   app.use('/api/contacts', contactRoutes);
   logger.info('Contact management routes loaded successfully');
+  
+  // Load LinkedIn authentication routes
+  const linkedinAuthRoutes = require('./server/routes/linkedin-auth');
+  app.use('/api/auth/linkedin', linkedinAuthRoutes);
+  logger.info('LinkedIn authentication routes loaded successfully');
 } catch (error) {
   logger.error('Failed to load routes', { error: error.message });
 }
