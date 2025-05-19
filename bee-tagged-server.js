@@ -81,6 +81,10 @@ app.use('/api/auth', socialAuthRoutes);
 // For backward compatibility
 app.use('/', socialAuthRoutes);
 
+// Import and register CSV import routes
+const importRoutes = require('./server/routes/import-routes');
+app.use('/api/import', importRoutes);
+
 // Initialize session middleware for authentication
 const session = require('express-session');
 app.use(session({
