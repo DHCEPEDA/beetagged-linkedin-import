@@ -387,6 +387,11 @@ try {
   const importRoutes = require('./server/routes/import-routes');
   app.use('/api/import', importRoutes);
   logger.info('Import routes loaded successfully');
+  
+  // Load Squarespace integration routes
+  const squarespaceImportRoutes = require('./server/routes/squarespace-import-routes');
+  app.use('/api/squarespace', squarespaceImportRoutes);
+  logger.info('Squarespace integration routes loaded successfully');
 } catch (error) {
   logger.error('Failed to load routes', { error: error.message });
 }
@@ -411,6 +416,28 @@ app.get('/facebook-verify', (req, res) => {
   `);
   
   logger.info('Facebook verification page accessed', { ip: req.ip, userAgent: req.get('user-agent') });
+});
+
+// Squarespace LinkedIn Import Page
+app.get('/squarespace-linkedin-import', (req, res) => {
+  logger.info('Squarespace LinkedIn Import page accessed', {
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    referer: req.get('referer')
+  });
+  
+  res.sendFile(path.join(__dirname, 'public', 'squarespace-linkedin-import.html'));
+});
+
+// Mobile Integration Documentation
+app.get('/mobile-integration', (req, res) => {
+  logger.info('Mobile integration page accessed', {
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    referer: req.get('referer')
+  });
+  
+  res.sendFile(path.join(__dirname, 'public', 'mobile-integration.html'));
 });
 
 // API Routes ----------------------------------------------
