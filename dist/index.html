@@ -222,7 +222,7 @@
     
     .hidden {
       display: none !important;
-    }</style></head><body><header><div class="container header-content"><div class="logo"><img src="/images/bee-logo.svg" alt="BeeTagged Logo"><h1>BeeTagged</h1></div><div class="nav-links"><a href="/">Home</a> <a href="/contact-manager-standalone.html">Contact Manager</a> <a href="/about.html">About</a></div></div></header><section class="hero"><div class="container"><h2>Smart Contact Management for Professionals</h2><p>BeeTagged brings your social connections together, making it easy to organize, tag, and search your contacts.</p><a href="#connect" class="btn">Connect Your Accounts</a></div></section><section class="features"><div class="container"><h2 class="text-center">Features</h2><div class="features-grid"><div class="feature-card"><div class="feature-icon">🔄</div><h3>Sync Social Connections</h3><p>Bring your Facebook and LinkedIn connections into one place.</p></div><div class="feature-card"><div class="feature-icon">🏷️</div><h3>Smart Tagging</h3><p>Automatically extract and tag metadata from social profiles.</p></div><div class="feature-card"><div class="feature-icon">🔍</div><h3>Advanced Search</h3><p>Find contacts quickly with powerful filtering options.</p></div></div></div></section><section class="social-login" id="connect"><div class="container"><h2>Connect Your Social Accounts</h2><div class="social-buttons"><button class="social-btn fb-btn" id="facebook-login"><span id="fb-loading" class="loading hidden"></span> <span id="fb-text">Connect with Facebook</span></button> <button class="social-btn linkedin-btn" id="linkedin-login"><span id="linkedin-loading" class="loading hidden"></span> <span id="linkedin-text">Connect with LinkedIn</span></button> <a href="/contact-manager-standalone.html" class="social-btn standalone-btn">Use Without Social Login</a></div><div id="auth-status" class="auth-status"></div></div></section><footer><div class="container"><p>&copy; 2025 BeeTagged. All rights reserved.</p></div></footer><script>document.addEventListener('DOMContentLoaded', () => {
+    }</style></head><body><header><div class="container header-content"><div class="logo"><img src="/images/bee-logo.svg" alt="BeeTagged Logo"><h1>BeeTagged</h1></div><div class="nav-links"><a href="/">Home</a> <a href="/contact-manager-standalone.html">Contact Manager</a> <a href="/about.html">About</a></div></div></header><section class="hero"><div class="container"><h2>Smart Contact Management for Professionals</h2><p>BeeTagged brings your social connections together, making it easy to organize, tag, and search your contacts.</p><a href="#connect" class="btn">Connect Your Accounts</a></div></section><section class="features"><div class="container"><h2 class="text-center">Features</h2><div class="features-grid"><div class="feature-card"><div class="feature-icon">🔄</div><h3>Sync Social Connections</h3><p>Bring your Facebook and LinkedIn connections into one place.</p></div><div class="feature-card"><div class="feature-icon">🏷️</div><h3>Smart Tagging</h3><p>Automatically extract and tag metadata from social profiles.</p></div><div class="feature-card"><div class="feature-icon">🔍</div><h3>Advanced Search</h3><p>Find contacts quickly with powerful filtering options.</p></div></div></div></section><section class="social-login" id="connect"><div class="container"><h2>Connect Your Social Accounts</h2><div class="social-buttons"><button class="social-btn fb-btn" id="facebook-login"><span id="fb-loading" class="loading hidden"></span> <span id="fb-text">Connect with Facebook</span></button> <a href="/quick-linkedin-guide.html" class="social-btn linkedin-btn" style="text-decoration: none; font-weight: bold; display: flex; align-items: center; justify-content: center;"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg" alt="" style="height: 20px; filter: brightness(0) invert(1); margin-right: 8px;"> Import LinkedIn Connections </a><a href="/contact-manager-standalone.html" class="social-btn standalone-btn">Use Without Social Login</a></div><div style="max-width: 600px; margin: 20px auto 0; background-color: #e8f5e9; border-radius: 8px; padding: 15px; text-align: left;"><h3 style="margin-top: 0; color: #2e7d32;">💡 Recommended: LinkedIn Import</h3><p>The quickest way to get started is by <a href="/quick-linkedin-guide.html" style="color: #0077B5; font-weight: bold;">importing your LinkedIn connections</a>. Our 3-step guide walks you through accessing your LinkedIn data, downloading it, and importing it to BeeTagged.</p><p>This creates tags from your connections' work history, location, industry, and more!</p><div style="background-color: #fff3cd; padding: 8px 12px; border-radius: 4px; margin-top: 10px; border-left: 4px solid #ffc107;"><p style="margin: 0; font-weight: bold; color: #856404;">⚠️ Desktop/Laptop Required</p><p style="margin: 5px 0 0 0; font-size: 14px;">LinkedIn only allows data export on desktop browsers. Please use a PC for this process.</p></div></div><div id="auth-status" class="auth-status"></div></div></section><footer><div class="container"><p>&copy; 2025 BeeTagged. All rights reserved.</p></div></footer><script>document.addEventListener('DOMContentLoaded', () => {
       // Get authentication status from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
       const authError = urlParams.get('auth');
@@ -232,9 +232,11 @@
       // Show authentication status if available
       if (authError === 'error' && provider && message) {
         const statusElement = document.getElementById('auth-status');
-        statusElement.classList.add('auth-error');
-        statusElement.style.display = 'block';
-        statusElement.innerHTML = `<strong>Authentication Error (${provider}):</strong> ${decodeURIComponent(message)}`;
+        if (statusElement) {
+          statusElement.classList.add('auth-error');
+          statusElement.style.display = 'block';
+          statusElement.innerHTML = `<strong>Authentication Error (${provider}):</strong> ${decodeURIComponent(message)}`;
+        }
       }
       
       // Check if already authenticated
@@ -243,79 +245,102 @@
       
       if (authStatus === 'authenticated' && authProvider) {
         const statusElement = document.getElementById('auth-status');
-        statusElement.classList.add('auth-success');
-        statusElement.style.display = 'block';
-        statusElement.innerHTML = `<strong>Connected with ${authProvider.charAt(0).toUpperCase() + authProvider.slice(1)}!</strong> 
-          <a href="/contact-manager-standalone.html">Go to Contact Manager</a>`;
+        if (statusElement) {
+          statusElement.classList.add('auth-success');
+          statusElement.style.display = 'block';
+          statusElement.innerHTML = `<strong>Connected with ${authProvider.charAt(0).toUpperCase() + authProvider.slice(1)}!</strong> 
+            <a href="/contact-manager-standalone.html">Go to Contact Manager</a>`;
+        }
       }
       
       // Facebook authentication
       const facebookLoginBtn = document.getElementById('facebook-login');
-      facebookLoginBtn.addEventListener('click', async () => {
-        // Show loading
-        document.getElementById('fb-loading').classList.remove('hidden');
-        document.getElementById('fb-text').textContent = 'Connecting...';
-        facebookLoginBtn.disabled = true;
-        
-        try {
-          // Get auth URL from server
-          const response = await fetch('/api/auth/facebook/url');
-          const data = await response.json();
+      if (facebookLoginBtn) {
+        facebookLoginBtn.addEventListener('click', async () => {
+          // Show loading
+          const fbLoading = document.getElementById('fb-loading');
+          const fbText = document.getElementById('fb-text');
           
-          if (data.url) {
-            // Redirect to Facebook auth page
-            window.location.href = data.url;
-          } else {
-            throw new Error('Failed to generate authentication URL');
+          if (fbLoading) fbLoading.classList.remove('hidden');
+          if (fbText) fbText.textContent = 'Connecting...';
+          facebookLoginBtn.disabled = true;
+          
+          try {
+            // Get auth URL from server
+            const response = await fetch('/api/auth/facebook/url');
+            const data = await response.json();
+            
+            if (data.url) {
+              // Redirect to Facebook auth page
+              window.location.href = data.url;
+            } else {
+              throw new Error('Failed to generate authentication URL');
+            }
+          } catch (error) {
+            console.error('Facebook auth error:', error);
+            
+            // Display error
+            const statusElement = document.getElementById('auth-status');
+            if (statusElement) {
+              statusElement.classList.add('auth-error');
+              statusElement.style.display = 'block';
+              statusElement.textContent = `Error connecting to Facebook: ${error.message}`;
+            }
+            
+            // Reset button
+            const fbLoading = document.getElementById('fb-loading');
+            const fbText = document.getElementById('fb-text');
+            
+            if (fbLoading) fbLoading.classList.add('hidden');
+            if (fbText) fbText.textContent = 'Connect with Facebook';
+            facebookLoginBtn.disabled = false;
           }
-        } catch (error) {
-          console.error('Facebook auth error:', error);
-          
-          // Display error
-          const statusElement = document.getElementById('auth-status');
-          statusElement.classList.add('auth-error');
-          statusElement.style.display = 'block';
-          statusElement.textContent = `Error connecting to Facebook: ${error.message}`;
-          
-          // Reset button
-          document.getElementById('fb-loading').classList.add('hidden');
-          document.getElementById('fb-text').textContent = 'Connect with Facebook';
-          facebookLoginBtn.disabled = false;
-        }
-      });
+        });
+      }
       
-      // LinkedIn authentication
+      // LinkedIn direct login button - we've removed this from UI but keeping the handler
+      // in case the element exists elsewhere
       const linkedinLoginBtn = document.getElementById('linkedin-login');
-      linkedinLoginBtn.addEventListener('click', async () => {
-        // Show loading
-        document.getElementById('linkedin-loading').classList.remove('hidden');
-        document.getElementById('linkedin-text').textContent = 'Connecting...';
-        linkedinLoginBtn.disabled = true;
-        
-        try {
-          // Get auth URL from server
-          const response = await fetch('/api/auth/linkedin/url');
-          const data = await response.json();
+      if (linkedinLoginBtn) {
+        linkedinLoginBtn.addEventListener('click', async () => {
+          // Show loading
+          const linkedinLoading = document.getElementById('linkedin-loading');
+          const linkedinText = document.getElementById('linkedin-text');
           
-          if (data.url) {
-            // Redirect to LinkedIn auth page
-            window.location.href = data.url;
-          } else {
-            throw new Error('Failed to generate authentication URL');
+          if (linkedinLoading) linkedinLoading.classList.remove('hidden');
+          if (linkedinText) linkedinText.textContent = 'Connecting...';
+          linkedinLoginBtn.disabled = true;
+          
+          try {
+            // Get auth URL from server
+            const response = await fetch('/api/auth/linkedin/url');
+            const data = await response.json();
+            
+            if (data.url) {
+              // Redirect to LinkedIn auth page
+              window.location.href = data.url;
+            } else {
+              throw new Error('Failed to generate authentication URL');
+            }
+          } catch (error) {
+            console.error('LinkedIn auth error:', error);
+            
+            // Display error
+            const statusElement = document.getElementById('auth-status');
+            if (statusElement) {
+              statusElement.classList.add('auth-error');
+              statusElement.style.display = 'block';
+              statusElement.textContent = `Error connecting to LinkedIn: ${error.message}`;
+            }
+            
+            // Reset button
+            const linkedinLoading = document.getElementById('linkedin-loading');
+            const linkedinText = document.getElementById('linkedin-text');
+            
+            if (linkedinLoading) linkedinLoading.classList.add('hidden');
+            if (linkedinText) linkedinText.textContent = 'Connect with LinkedIn';
+            linkedinLoginBtn.disabled = false;
           }
-        } catch (error) {
-          console.error('LinkedIn auth error:', error);
-          
-          // Display error
-          const statusElement = document.getElementById('auth-status');
-          statusElement.classList.add('auth-error');
-          statusElement.style.display = 'block';
-          statusElement.textContent = `Error connecting to LinkedIn: ${error.message}`;
-          
-          // Reset button
-          document.getElementById('linkedin-loading').classList.add('hidden');
-          document.getElementById('linkedin-text').textContent = 'Connect with LinkedIn';
-          linkedinLoginBtn.disabled = false;
-        }
-      });
+        });
+      }
     });</script></body></html>

@@ -34,7 +34,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node index.js"
+args = "node bee-tagged-server.js"
 waitForPort = 5000
 
 [deployment]

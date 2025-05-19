@@ -382,6 +382,11 @@ try {
   const linkedinAuthRoutes = require('./server/routes/linkedin-auth');
   app.use('/api/auth/linkedin', linkedinAuthRoutes);
   logger.info('LinkedIn authentication routes loaded successfully');
+  
+  // Load import routes for LinkedIn CSV import functionality
+  const importRoutes = require('./server/routes/import-routes');
+  app.use('/api/import', importRoutes);
+  logger.info('Import routes loaded successfully');
 } catch (error) {
   logger.error('Failed to load routes', { error: error.message });
 }
