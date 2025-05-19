@@ -75,9 +75,20 @@ app.use(logger.request);
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Import and register authentication routes
-const authRoutes = require('./server/routes/auth-routes');
-app.use('/api/auth', authRoutes);
+// Import and register social authentication routes
+const socialAuthRoutes = require('./server/routes/social-auth-routes');
+app.use('/api/auth', socialAuthRoutes);
+// For backward compatibility
+app.use('/', socialAuthRoutes);
+
+// Initialize session middleware for authentication
+const session = require('express-session');
+app.use(session({
+  secret: process.env.JWT_SECRET || 'beetagged_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: isRunningOnReplit, maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
+}));
 
 // Status endpoint for health checks
 app.get('/api/status', (req, res) => {
