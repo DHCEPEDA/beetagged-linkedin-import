@@ -1004,21 +1004,182 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
   }
 });
 
-// Test contact import endpoint
-app.get('/api/contacts/import/test', (req, res) => {
-  logger.info('Contact import test requested');
+// Process phone contacts and enhance with Facebook data
+app.post('/api/contacts/enhance-with-facebook', async (req, res) => {
+  const { contacts, facebookToken } = req.body;
   
-  // This would connect to the actual API in a real implementation
-  const mockContacts = [
-    { id: 1, name: 'Alex Johnson', email: 'alex@example.com', source: 'facebook' },
-    { id: 2, name: 'Sara Miller', email: 'sara@example.com', source: 'linkedin' }
-  ];
-  
-  res.json({
-    success: true,
-    message: 'Contact import simulation successful',
-    contacts: mockContacts
+  logger.info('Facebook contact enhancement requested', {
+    contactCount: contacts?.length || 0,
+    hasToken: !!facebookToken
   });
+  
+  if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid contacts array is required'
+    });
+  }
+  
+  if (!facebookToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'Facebook access token is required'
+    });
+  }
+  
+  try {
+    // Fetch user's Facebook friends to find matches with phone contacts
+    const friendsResponse = await axios.get(
+      `https://graph.facebook.com/v19.0/me/friends?fields=id,name,email&access_token=${facebookToken}`
+    );
+    
+    const facebookFriends = friendsResponse.data.data || [];
+    logger.info(`Retrieved ${facebookFriends.length} Facebook friends`);
+    
+    // Match phone contacts with Facebook friends based on name and email
+    const enhancedContacts = await Promise.all(contacts.map(async (contact) => {
+      // Look for a match by email (more reliable)
+      const emailMatch = contact.email ? 
+        facebookFriends.find(friend => 
+          friend.email && friend.email.toLowerCase() === contact.email.toLowerCase()
+        ) : null;
+      
+      // If no email match, try name match (less reliable)
+      const nameMatch = !emailMatch && contact.name ? 
+        facebookFriends.find(friend => 
+          friend.name && friend.name.toLowerCase() === contact.name.toLowerCase()
+        ) : null;
+      
+      const facebookMatch = emailMatch || nameMatch;
+      
+      // If we found a Facebook match, get detailed profile info
+      if (facebookMatch) {
+        try {
+          // Get detailed profile for the matched friend
+          const profileResponse = await axios.get(
+            `https://graph.facebook.com/${facebookMatch.id}?fields=id,name,email,hometown,location,work,education&access_token=${facebookToken}`
+          );
+          
+          const fbData = profileResponse.data;
+          
+          // Generate tags from Facebook data
+          const tags = [];
+          
+          // Location tags
+          if (fbData.location && fbData.location.name) {
+            tags.push({
+              name: fbData.location.name,
+              category: 'location',
+              source: 'facebook'
+            });
+          }
+          
+          if (fbData.hometown && fbData.hometown.name) {
+            tags.push({
+              name: fbData.hometown.name,
+              category: 'hometown',
+              source: 'facebook'
+            });
+          }
+          
+          // Work tags
+          if (fbData.work && Array.isArray(fbData.work)) {
+            fbData.work.forEach(work => {
+              if (work.employer && work.employer.name) {
+                tags.push({
+                  name: work.employer.name,
+                  category: 'workplace',
+                  source: 'facebook'
+                });
+              }
+              
+              if (work.position && work.position.name) {
+                tags.push({
+                  name: work.position.name,
+                  category: 'profession',
+                  source: 'facebook'
+                });
+              }
+            });
+          }
+          
+          // Education tags
+          if (fbData.education && Array.isArray(fbData.education)) {
+            fbData.education.forEach(edu => {
+              if (edu.school && edu.school.name) {
+                tags.push({
+                  name: edu.school.name,
+                  category: 'education',
+                  source: 'facebook'
+                });
+              }
+              
+              if (edu.concentration && Array.isArray(edu.concentration)) {
+                edu.concentration.forEach(conc => {
+                  if (conc.name) {
+                    tags.push({
+                      name: conc.name,
+                      category: 'field_of_study',
+                      source: 'facebook'
+                    });
+                  }
+                });
+              }
+            });
+          }
+          
+          return {
+            ...contact,
+            facebookId: fbData.id,
+            facebookData: fbData,
+            tags: tags,
+            matched: true,
+            matchSource: emailMatch ? 'email' : 'name'
+          };
+        } catch (profileError) {
+          logger.error('Error fetching detailed profile', {
+            friendId: facebookMatch.id,
+            error: profileError.message
+          });
+          
+          return {
+            ...contact,
+            facebookId: facebookMatch.id,
+            matched: true,
+            matchSource: emailMatch ? 'email' : 'name',
+            error: 'Failed to fetch detailed profile'
+          };
+        }
+      }
+      
+      // Return original contact if no match found
+      return {
+        ...contact,
+        matched: false
+      };
+    }));
+    
+    const matchCount = enhancedContacts.filter(c => c.matched).length;
+    logger.info(`Enhanced ${matchCount} contacts with Facebook data`);
+    
+    res.json({
+      success: true,
+      message: `Enhanced ${matchCount} out of ${contacts.length} contacts with Facebook data`,
+      contacts: enhancedContacts
+    });
+  } catch (error) {
+    logger.error('Facebook contact enhancement error', {
+      message: error.message,
+      response: error.response?.data
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to enhance contacts with Facebook data',
+      error: error.message,
+      details: error.response?.data || 'No additional details'
+    });
+  }
 });
 
 // Recent logs endpoint
@@ -1057,18 +1218,22 @@ app.post('/api/auth/facebook/token', async (req, res) => {
     
     const { access_token } = tokenResponse.data;
     
-    // Get user profile
+    // Get user profile with extended information
     const profileResponse = await axios.get(
-      `https://graph.facebook.com/me?fields=id,name,email&access_token=${access_token}`
+      `https://graph.facebook.com/me?fields=id,name,email,hometown,location,work,education,friends&access_token=${access_token}`
     );
     
-    // Construct user data object
+    // Construct user data object with extended information
     const userData = {
       id: profileResponse.data.id,
       name: profileResponse.data.name,
       email: profileResponse.data.email,
       provider: 'facebook',
-      accessToken: access_token
+      accessToken: access_token,
+      hometown: profileResponse.data.hometown,
+      location: profileResponse.data.location,
+      work: profileResponse.data.work,
+      education: profileResponse.data.education
     };
     
     logger.info('Facebook token exchange successful', {
