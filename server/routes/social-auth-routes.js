@@ -15,6 +15,25 @@ router.get('/facebook/url', (req, res) => {
 
 router.get('/facebook/callback', async (req, res) => {
   try {
+    // Check for error parameters returned by Facebook
+    if (req.query.error) {
+      const errorReason = req.query.error_reason || '';
+      const errorDescription = req.query.error_description || 'Unknown Facebook error';
+      
+      let customErrorMessage = errorDescription;
+      
+      // Check for common Facebook errors and provide more helpful messages
+      if (errorReason === 'user_denied') {
+        customErrorMessage = 'You declined to authorize the application.';
+      } else if (errorDescription.includes('redirect_uri') || errorDescription.includes('URL')) {
+        customErrorMessage = 'The redirect URI does not match the one registered in the Facebook Developer Console. ' +
+          'Please update your Facebook app settings to include: ' + 
+          process.env.FACEBOOK_REDIRECT_URI || `https://${req.get('host')}/api/auth/facebook/callback`;
+      }
+      
+      throw new Error(customErrorMessage);
+    }
+    
     const result = await authService.facebook.handleCallback(req);
     
     // Store token in session
@@ -25,7 +44,17 @@ router.get('/facebook/callback', async (req, res) => {
     res.redirect(`/facebook-success.html?token=${result.token}&name=${encodeURIComponent(result.profile.name)}&id=${result.profile.id}`);
   } catch (error) {
     console.error('Facebook callback error:', error);
-    res.redirect(`/?auth=error&provider=facebook&message=${encodeURIComponent(error.message)}`);
+    
+    // Provide a more user-friendly error message
+    let errorMessage = error.message;
+    
+    // Add special instructions for redirect_uri issues
+    if (errorMessage.includes('redirect_uri') || errorMessage.includes('URL')) {
+      errorMessage = 'Facebook configuration error: ' + errorMessage + 
+        ' Please verify your Facebook Developer Console settings.';
+    }
+    
+    res.redirect(`/?auth=error&provider=facebook&message=${encodeURIComponent(errorMessage)}`);
   }
 });
 
@@ -58,6 +87,22 @@ router.get('/linkedin/url', (req, res) => {
 
 router.get('/linkedin/callback', async (req, res) => {
   try {
+    // Check for error parameters returned by LinkedIn
+    if (req.query.error) {
+      const errorDescription = req.query.error_description || 'Unknown LinkedIn error';
+      
+      let customErrorMessage = errorDescription;
+      
+      // Check for common LinkedIn errors and provide more helpful messages
+      if (errorDescription.includes('redirect_uri') || errorDescription.includes('redirect uri')) {
+        customErrorMessage = 'The redirect URI does not match the one registered in the LinkedIn Developer Console. ' +
+          'Please update your LinkedIn app settings to include: ' + 
+          process.env.LINKEDIN_REDIRECT_URI || `https://${req.get('host')}/api/auth/linkedin/callback`;
+      }
+      
+      throw new Error(customErrorMessage);
+    }
+    
     const result = await authService.linkedin.handleCallback(req);
     
     // Store token in session
@@ -68,7 +113,17 @@ router.get('/linkedin/callback', async (req, res) => {
     res.redirect(`/linkedin-success.html?token=${result.token}&name=${encodeURIComponent(result.profile.name || '')}&id=${result.profile.id}`);
   } catch (error) {
     console.error('LinkedIn callback error:', error);
-    res.redirect(`/?auth=error&provider=linkedin&message=${encodeURIComponent(error.message)}`);
+    
+    // Provide a more user-friendly error message
+    let errorMessage = error.message;
+    
+    // Add special instructions for redirect_uri issues
+    if (errorMessage.includes('redirect_uri') || errorMessage.includes('redirect URI')) {
+      errorMessage = 'LinkedIn configuration error: ' + errorMessage + 
+        ' Please verify your LinkedIn Developer Console settings.';
+    }
+    
+    res.redirect(`/?auth=error&provider=linkedin&message=${encodeURIComponent(errorMessage)}`);
   }
 });
 
