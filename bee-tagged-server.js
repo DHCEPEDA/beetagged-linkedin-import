@@ -429,6 +429,17 @@ app.get('/squarespace-linkedin-import', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'squarespace-linkedin-import.html'));
 });
 
+// Android Test App Page
+app.get('/android-test', (req, res) => {
+  logger.info('Android Test page accessed', {
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    referer: req.get('referer')
+  });
+  
+  res.sendFile(path.join(__dirname, 'public', 'android-test.html'));
+});
+
 // Mobile Integration Documentation
 app.get('/mobile-integration', (req, res) => {
   logger.info('Mobile integration page accessed', {
