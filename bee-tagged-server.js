@@ -16,6 +16,9 @@ const path = require('path');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const compression = require('compression');
+const multer = require('multer');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const logger = require('./utils/logger');
 
 // Create Express app
@@ -449,6 +452,100 @@ app.get('/mobile-integration', (req, res) => {
   });
   
   res.sendFile(path.join(__dirname, 'public', 'mobile-integration.html'));
+});
+
+// Configure file upload for LinkedIn import
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: function(req, file, cb) {
+    const uniqueId = uuidv4();
+    const extension = path.extname(file.originalname);
+    cb(null, `linkedin-${uniqueId}${extension}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'text/csv' || 
+      file.originalname.toLowerCase().endsWith('.csv')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only CSV files are allowed'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage, 
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max file size
+  }
+});
+
+// Function to generate random access code
+function generateRandomCode(length = 6) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Omitting similar looking characters
+  let code = '';
+  
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    code += chars[randomIndex];
+  }
+  
+  return code;
+}
+
+// In-memory storage for access codes
+const accessCodes = {};
+
+// LinkedIn CSV upload route
+app.post('/api/squarespace/linkedin-upload', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded or file is not a CSV'
+      });
+    }
+    
+    logger.info('LinkedIn CSV file uploaded', {
+      filename: file.filename,
+      size: file.size,
+      ip: req.ip
+    });
+    
+    // Generate a 6-character access code
+    const accessCode = generateRandomCode(6);
+    
+    // Store the access code with the file path
+    accessCodes[accessCode] = {
+      filePath: file.path,
+      uploadTime: new Date(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hour expiration
+      used: false
+    };
+    
+    // Return success with the access code
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      accessCode: accessCode
+    });
+    
+  } catch (error) {
+    logger.error('Error uploading LinkedIn CSV file', {
+      error: error.message,
+      stack: error.stack
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error processing file: ' + error.message
+    });
+  }
 });
 
 // API Routes ----------------------------------------------
