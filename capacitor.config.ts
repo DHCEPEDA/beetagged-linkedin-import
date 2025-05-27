@@ -1,12 +1,9 @@
-import { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.beetagged.app',
   appName: 'BeeTagged',
-  webDir: 'public',
-  server: {
-    androidScheme: 'https'
-  }
+  webDir: 'public'
 };
 
 export default config;

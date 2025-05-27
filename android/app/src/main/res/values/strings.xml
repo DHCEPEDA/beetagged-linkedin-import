@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BeeTagged</string>
+    <string name="title_activity_main">BeeTagged</string>
+    <string name="package_name">com.beetagged.app</string>
+    <string name="custom_url_scheme">com.beetagged.app</string>
+</resources>
