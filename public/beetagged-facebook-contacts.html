@@ -316,12 +316,27 @@
   <script>
     // Facebook SDK Configuration
     window.fbAsyncInit = function() {
-      FB.init({
-        appId: '1089637699406901', // Your Facebook App ID
-        cookie: true,
-        xfbml: true,
-        version: 'v21.0'
-      });
+      // Get the Facebook App ID from server
+      fetch('/api/auth/facebook/config')
+        .then(response => response.json())
+        .then(config => {
+          FB.init({
+            appId: config.appId,
+            cookie: true,
+            xfbml: true,
+            version: config.apiVersion || 'v19.0'
+          });
+        })
+        .catch(error => {
+          console.error('Error loading Facebook config:', error);
+          // Use stored credentials
+          FB.init({
+            appId: '1089637699406901', // Will be replaced by server config
+            cookie: true,
+            xfbml: true,
+            version: 'v19.0'
+          });
+        });
     };
 
     // Load Facebook SDK
