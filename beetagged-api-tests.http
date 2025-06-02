@@ -1,10 +1,15 @@
 ###
 # BeeTagged API Tests for Android Studio
-# Copy this file into your Android Studio project and run each request
+# Server URL: d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev
+# Primary Port: 5000 | Secondary Port: 3000
 ###
 
-### Test 1: Basic Connection to BeeTagged
+### Test 1: Basic Connection to BeeTagged (Primary Port)
 GET https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/
+Accept: text/html
+
+### Test 1b: Basic Connection to BeeTagged (Secondary Port)
+GET https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:3000/
 Accept: text/html
 
 ### Test 2: Check API Health
