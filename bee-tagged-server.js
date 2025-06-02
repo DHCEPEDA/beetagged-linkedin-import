@@ -78,6 +78,17 @@ app.use(logger.request);
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Download route for Android project
+app.get('/download/android-project.tar.gz', (req, res) => {
+  const filePath = path.join(__dirname, 'android-project.tar.gz');
+  res.download(filePath, 'BeeTagged-Android-Project.tar.gz', (err) => {
+    if (err) {
+      logger.error('Download error:', err);
+      res.status(500).send('Download failed');
+    }
+  });
+});
+
 // Import and register social authentication routes
 const socialAuthRoutes = require('./server/routes/social-auth-routes');
 app.use('/api/auth', socialAuthRoutes);
@@ -218,6 +229,15 @@ const homePage = `
       <h2>Contact Import</h2>
       <p>Test contact import from social platforms</p>
       <button onclick="testContactImport()">Test Import</button>
+    </div>
+
+    <div class="card">
+      <h2>Android Project Download</h2>
+      <p>Download the Android Studio project files for local APK building</p>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <a href="/download/android-project.tar.gz" style="padding: 8px 12px; background: #32CD32; color: white; text-decoration: none; border-radius: 4px;" download>Download Android Project</a>
+      </div>
+    </div>
       <pre id="importResult">Click to test contact import...</pre>
     </div>
     
