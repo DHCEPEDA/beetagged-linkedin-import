@@ -133,21 +133,22 @@
         </div>
 
         <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 15px; margin: 20px 0; color: #155724;">
-            <h3 style="margin-top: 0; color: #155724;">All Build Errors Fixed!</h3>
-            <p><strong>Fixed Issue 1:</strong> Removed deprecated <code>android.enableBuildCache</code> option</p>
-            <p><strong>Fixed Issue 2:</strong> Removed repository declarations from app/build.gradle (now managed in settings.gradle)</p>
-            <p>This project now builds successfully with modern Gradle versions.</p>
+            <h3 style="margin-top: 0; color: #155724;">Latest Gradle 8.12 with SDK Setup</h3>
+            <p><strong>Updated:</strong> Gradle 8.12 with Android Gradle Plugin 8.7.2</p>
+            <p><strong>Fixed:</strong> All repository and build cache configuration issues</p>
+            <p><strong>Included:</strong> SDK setup instructions and local.properties template</p>
+            <p><strong>Enhanced:</strong> Performance optimizations and latest dependencies</p>
         </div>
 
         <div class="download-section">
             <h2>📱 Ready-to-Build Android Project</h2>
             
             <div class="file-info">
-                <h3>🎯 Final Android Studio Project</h3>
-                <p><strong>File:</strong> BeeTagged-Final-Android.tar.gz</p>
+                <h3>🎯 Gradle 8.12 Android Studio Project</h3>
+                <p><strong>File:</strong> BeeTagged-Gradle8.12-Android.tar.gz</p>
                 <p><strong>Size:</strong> 695 KB</p>
-                <p><strong>Contains:</strong> Complete Android Studio project with all build issues resolved</p>
-                <p><strong>Fixed:</strong> Repository configuration and deprecated options</p>
+                <p><strong>Contains:</strong> Latest Gradle 8.12 with Android Gradle Plugin 8.7.2</p>
+                <p><strong>Includes:</strong> SDK setup guide and local.properties template</p>
             </div>
 
             <a href="/download-android" class="download-btn">⬇️ Download Android Project</a>
@@ -162,20 +163,32 @@
             </div>
             <div class="step">
                 <span class="step-number">2</span>
-                <strong>Extract:</strong> Unzip BeeTagged-Optimized-Android.tar.gz to your desired location
+                <strong>Extract:</strong> Unzip BeeTagged-Gradle8.12-Android.tar.gz to your desired location
             </div>
             <div class="step">
                 <span class="step-number">3</span>
-                <strong>Open:</strong> In Android Studio: File → Open → Select the extracted 'android' folder
+                <strong>SDK Setup:</strong> Set ANDROID_HOME environment variable or edit local.properties with your SDK path
             </div>
             <div class="step">
                 <span class="step-number">4</span>
-                <strong>Build:</strong> Build → Build Bundle(s) / APK(s) → Build APK(s)
+                <strong>Open:</strong> In Android Studio: File → Open → Select the extracted folder
             </div>
             <div class="step">
                 <span class="step-number">5</span>
+                <strong>Build:</strong> ./gradlew assembleRelease
+            </div>
+            <div class="step">
+                <span class="step-number">6</span>
                 <strong>Find APK:</strong> Generated in app/build/outputs/apk/release/
             </div>
+        </div>
+
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0; color: #856404;">
+            <h3 style="margin-top: 0; color: #856404;">📍 Android SDK Setup Required</h3>
+            <p><strong>Windows:</strong> Set ANDROID_HOME to C:\Users\{Username}\AppData\Local\Android\Sdk</p>
+            <p><strong>macOS:</strong> Set ANDROID_HOME to /Users/{Username}/Library/Android/sdk</p>
+            <p><strong>Linux:</strong> Set ANDROID_HOME to /home/{Username}/Android/Sdk</p>
+            <p><strong>Alternative:</strong> Edit local.properties file with sdk.dir path (included in download)</p>
         </div>
 
         <div class="features">

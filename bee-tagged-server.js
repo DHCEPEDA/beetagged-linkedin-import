@@ -150,15 +150,15 @@ app.get('/download', (req, res) => {
 });
 
 app.get('/download-android', (req, res) => {
-  const filePath = path.join(__dirname, 'BeeTagged-Final-Android.tar.gz');
+  const filePath = path.join(__dirname, 'BeeTagged-Gradle8.12-Android.tar.gz');
   
   if (fs.existsSync(filePath)) {
-    res.download(filePath, 'BeeTagged-Final-Android.tar.gz', (err) => {
+    res.download(filePath, 'BeeTagged-Gradle8.12-Android.tar.gz', (err) => {
       if (err) {
         logger.error('Download error', { error: err.message });
         res.status(500).send('Download failed');
       } else {
-        logger.info('Final Android project downloaded', { ip: req.ip });
+        logger.info('Gradle 8.12 Android project downloaded', { ip: req.ip });
       }
     });
   } else {
