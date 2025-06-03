@@ -150,15 +150,15 @@ app.get('/download', (req, res) => {
 });
 
 app.get('/download-android', (req, res) => {
-  const filePath = path.join(__dirname, 'BeeTagged-Optimized-Android.tar.gz');
+  const filePath = path.join(__dirname, 'BeeTagged-Fixed-Android.tar.gz');
   
   if (fs.existsSync(filePath)) {
-    res.download(filePath, 'BeeTagged-Optimized-Android.tar.gz', (err) => {
+    res.download(filePath, 'BeeTagged-Fixed-Android.tar.gz', (err) => {
       if (err) {
         logger.error('Download error', { error: err.message });
         res.status(500).send('Download failed');
       } else {
-        logger.info('Android project downloaded', { ip: req.ip });
+        logger.info('Fixed Android project downloaded', { ip: req.ip });
       }
     });
   } else {
