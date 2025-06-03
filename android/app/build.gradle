@@ -25,12 +25,8 @@ android {
     }
 }
 
-repositories {
-    google()
-    mavenCentral()
-    // If you have local jars, keep flatDir as a last resort
-    // flatDir { dirs 'libs' }
-}
+// Repositories are now managed in settings.gradle
+// This section removed to fix RepositoriesMode.FAIL_ON_PROJECT_REPOS error
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
