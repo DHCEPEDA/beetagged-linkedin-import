@@ -8,16 +8,22 @@ import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
 import android.webkit.WebChromeClient;
 import androidx.appcompat.app.AppCompatActivity;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
-    private WebView webView;
+    private MemoryOptimizedWebView webView;
     private ViewStub loadingStub;
     private View loadingView;
+    private ExecutorService backgroundExecutor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Initialize background executor for heavy operations
+        backgroundExecutor = Executors.newSingleThreadExecutor();
 
         webView = findViewById(R.id.webview);
         loadingStub = findViewById(R.id.loading_stub);
@@ -65,6 +71,11 @@ public class MainActivity extends AppCompatActivity {
                     loadingView.setVisibility(View.VISIBLE);
                 }
                 webView.setVisibility(View.GONE);
+                
+                // Perform memory monitoring in background
+                backgroundExecutor.execute(() -> {
+                    monitorMemoryUsage();
+                });
             }
 
             @Override
@@ -83,12 +94,36 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 super.onProgressChanged(view, newProgress);
-                // You can add progress bar updates here if needed
+                // Monitor progress and optimize accordingly
+                if (newProgress == 100) {
+                    // Page fully loaded, perform cleanup
+                    backgroundExecutor.execute(() -> {
+                        System.gc(); // Suggest garbage collection
+                    });
+                }
             }
         });
 
         // Load your BeeTagged application
         webView.loadUrl("https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/");
+    }
+    
+    /**
+     * Monitor memory usage and perform cleanup if needed
+     */
+    private void monitorMemoryUsage() {
+        Runtime runtime = Runtime.getRuntime();
+        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+        long maxMemory = runtime.maxMemory();
+        
+        // If using more than 75% of available memory, trigger cleanup
+        if (usedMemory > maxMemory * 0.75) {
+            runOnUiThread(() -> {
+                if (webView != null) {
+                    webView.clearCache(false); // Clear cache but keep login data
+                }
+            });
+        }
     }
 
     @Override
@@ -102,10 +137,45 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (webView != null) {
-            webView.removeAllViews();
-            webView.destroy();
+        // Shutdown background executor to prevent memory leaks
+        if (backgroundExecutor != null && !backgroundExecutor.isShutdown()) {
+            backgroundExecutor.shutdown();
         }
+        
+        // Clean up WebView properly
+        if (webView != null) {
+            webView.cleanup(); // Use our custom cleanup method
+        }
+        
         super.onDestroy();
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.onPause();
+            webView.pauseTimers();
+        }
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+            webView.resumeTimers();
+        }
+    }
+    
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        // Handle low memory situation
+        if (webView != null) {
+            webView.freeMemory();
+            webView.clearCache(true);
+        }
+        System.gc(); // Suggest garbage collection
     }
 }
