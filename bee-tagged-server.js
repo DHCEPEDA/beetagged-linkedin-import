@@ -144,6 +144,45 @@ app.get('/api/ping', (req, res) => {
   });
 });
 
+// Download endpoints for Android project files
+app.get('/download', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'download.html'));
+});
+
+app.get('/download-android', (req, res) => {
+  const filePath = path.join(__dirname, 'BeeTagged-Optimized-Android.tar.gz');
+  
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, 'BeeTagged-Optimized-Android.tar.gz', (err) => {
+      if (err) {
+        logger.error('Download error', { error: err.message });
+        res.status(500).send('Download failed');
+      } else {
+        logger.info('Android project downloaded', { ip: req.ip });
+      }
+    });
+  } else {
+    res.status(404).send('File not found');
+  }
+});
+
+app.get('/download-instructions', (req, res) => {
+  const filePath = path.join(__dirname, 'Android-Studio-Build-Instructions.md');
+  
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, 'Android-Studio-Build-Instructions.md', (err) => {
+      if (err) {
+        logger.error('Download error', { error: err.message });
+        res.status(500).send('Download failed');
+      } else {
+        logger.info('Build instructions downloaded', { ip: req.ip });
+      }
+    });
+  } else {
+    res.status(404).send('File not found');
+  }
+});
+
 // Basic HTML for home page
 const homePage = `
 <!DOCTYPE html>
