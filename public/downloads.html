@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged Downloads</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .download-item {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .download-link {
+            display: inline-block;
+            background-color: #007cba;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .download-link:hover {
+            background-color: #005a87;
+        }
+        .description {
+            margin: 10px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BeeTagged Downloads</h1>
+        
+        <div class="download-item">
+            <h3>Complete Source Code</h3>
+            <div class="description">
+                Full BeeTagged source code including React frontend, Node.js backend, 
+                Android project, and all configuration files for GitHub Copilot review.
+            </div>
+            <a href="/BeeTagged-Complete-Source.tar.gz" class="download-link" download>
+                Download Source Code (5.5 MB)
+            </a>
+        </div>
+
+        <div class="download-item">
+            <h3>Android Project (Latest)</h3>
+            <div class="description">
+                Ready-to-build Android Studio project with all Gradle issues fixed 
+                and compatibility updates for Google Play Console upload.
+            </div>
+            <a href="/BeeTagged-Android-Updated.tar.gz" class="download-link" download>
+                Download Android Project (688 KB)
+            </a>
+        </div>
+
+        <div class="download-item">
+            <h3>Android Project (Clean)</h3>
+            <div class="description">
+                Simplified Android project without Capacitor dependencies, 
+                using WebView to load the BeeTagged web application.
+            </div>
+            <a href="/BeeTagged-Android-Clean.tar.gz" class="download-link" download>
+                Download Clean Android (688 KB)
+            </a>
+        </div>
+    </div>
+</body>
+</html>
