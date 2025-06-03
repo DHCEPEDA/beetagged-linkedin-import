@@ -25,9 +25,10 @@ android {
 }
 
 repositories {
-    flatDir{
-        dirs 'libs'
-    }
+    google()
+    mavenCentral()
+    // If you have local jars, keep flatDir as a last resort
+    // flatDir { dirs 'libs' }
 }
 
 dependencies {
