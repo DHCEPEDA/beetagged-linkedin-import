@@ -11,15 +11,60 @@ import './App.css';
 const beeYellow = '#FFEC16';
 const beeGold = '#FD9E31';
 
-// Simple component for navigation with BeeTagged styling
-const NavBar = () => {
+// Main navigation with three core buttons: Contact, Search, Rank
+const MainNavigation = () => {
+  const [activeTab, setActiveTab] = useState('contact');
+  
+  const navButtons = [
+    { id: 'contact', label: 'Contact', path: '/contacts' },
+    { id: 'search', label: 'Search', path: '/search' },
+    { id: 'rank', label: 'Rank', path: '/rank' }
+  ];
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      backgroundColor: 'white',
+      borderBottom: '1px solid #e0e0e0',
+      padding: '10px 0',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100
+    }}>
+      {navButtons.map(button => (
+        <Link
+          key={button.id}
+          to={button.path}
+          onClick={() => setActiveTab(button.id)}
+          style={{
+            padding: '12px 24px',
+            margin: '0 5px',
+            textDecoration: 'none',
+            color: activeTab === button.id ? 'white' : '#666',
+            backgroundColor: activeTab === button.id ? beeGold : 'transparent',
+            borderRadius: '20px',
+            fontWeight: 'bold',
+            fontSize: '16px',
+            transition: 'all 0.3s ease',
+            border: activeTab === button.id ? 'none' : '2px solid #e0e0e0'
+          }}
+        >
+          {button.label}
+        </Link>
+      ))}
+    </div>
+  );
+};
+
+// Header with logo and user controls
+const AppHeader = () => {
   const { user, logout } = useAuth();
 
   return (
     <div style={{ 
       padding: '15px 20px', 
       background: 'white', 
-      marginBottom: '20px',
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
       display: 'flex',
       justifyContent: 'space-between',
@@ -42,65 +87,30 @@ const NavBar = () => {
         </span>
       </div>
       
-      <div>
-        <Link 
-          to="/" 
-          style={{ 
-            marginRight: '15px', 
-            textDecoration: 'none', 
-            color: '#444',
-            fontWeight: 'bold'
-          }}
-        >
-          Home
-        </Link>
-        
-        {user ? (
-          <>
-            <Link 
-              to="/contacts" 
-              style={{ 
-                marginRight: '15px', 
-                textDecoration: 'none', 
-                color: '#444',
-                fontWeight: 'bold'
-              }}
-            >
-              Contacts
-            </Link>
-            <button 
-              onClick={async () => {
-                await logout();
-                window.location.href = '/auth';
-              }}
-              style={{
-                backgroundColor: '#f8f9fa',
-                border: 'none',
-                padding: '5px 10px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Logout
-            </button>
-          </>
-        ) : (
-          <Link 
-            to="/auth" 
-            style={{ 
-              textDecoration: 'none', 
-              color: 'white',
-              backgroundColor: beeGold,
-              padding: '6px 12px',
-              borderRadius: '4px',
-              fontWeight: 'bold'
+      {user && (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: '15px', color: '#666' }}>
+            {user.name || user.email}
+          </span>
+          <button 
+            onClick={async () => {
+              await logout();
+              window.location.href = '/auth';
+            }}
+            style={{
+              backgroundColor: '#f8f9fa',
+              border: '1px solid #ddd',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              color: '#666'
             }}
           >
-            Login
-          </Link>
-        )}
-      </div>
+            Logout
+          </button>
+        </div>
+      )}
     </div>
   );
 };

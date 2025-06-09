@@ -274,6 +274,37 @@ const contactSchema = new mongoose.Schema({
   // AI tagging timestamps
   lastAITagged: Date,
   
+  // Privacy control settings - "Users' exclusive right to share information"
+  privacySettings: {
+    level: {
+      type: String,
+      enum: ['private', 'social', 'professional', 'public'],
+      default: 'private'
+    },
+    context: {
+      type: String,
+      enum: ['social', 'professional', 'mixed'],
+      default: 'mixed'
+    },
+    sharedTags: [String],
+    hiddenFields: [String],
+    lastUpdated: { type: Date, default: Date.now }
+  },
+  
+  // Tag-level privacy controls
+  tagPrivacy: {
+    type: Map,
+    of: {
+      level: {
+        type: String,
+        enum: ['private', 'social', 'professional', 'public'],
+        default: 'private'
+      },
+      updatedAt: { type: Date, default: Date.now }
+    },
+    default: {}
+  },
+  
   // Gamification and ranking data
   tagRankings: {
     type: Map,

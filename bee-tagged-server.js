@@ -1720,6 +1720,10 @@ app.use('/api/test', dataExtractionTestRouter);
 const naturalLanguageSearchRouter = require('./server/routes/natural-language-search-routes');
 app.use('/api/search', naturalLanguageSearchRouter);
 
+// Privacy control system - "Users' exclusive right to share information"
+const privacyControlRouter = require('./server/routes/privacy-control-routes');
+app.use('/api/privacy', privacyControlRouter);
+
 // Add documentation route for data deletion status
 app.get('/api/deletion-status', (req, res) => {
   const { code, id } = req.query;
