@@ -94,7 +94,7 @@ class AutomatedTaggingService {
   }
 
   /**
-   * Extract comprehensive tags from Facebook profile data
+   * Extract comprehensive tags from Facebook profile data (prioritizing top 20 fields)
    * @param {Object} facebookData - Facebook profile information
    * @returns {Object} Categorized tags from Facebook
    */
