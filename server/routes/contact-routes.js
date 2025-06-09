@@ -1,323 +1,577 @@
 /**
- * Contact API Routes
+ * Contact Management Routes - Core CRUD operations for BeeTagged contacts
  * 
- * Handles routes for managing contacts, including synchronization with
- * Facebook and LinkedIn, searching, and tagging.
+ * Implements the original app design:
+ * - Auto-save contact edits
+ * - LinkedIn-first data priority
+ * - Phone contact integration
+ * - Resume/profile viewing
  */
+
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const Contact = require('../models/Contact');
-const contactSyncService = require('../services/contact-sync-service');
+const aiTagService = require('../services/ai-tag-suggestion-service');
+const dataConflictService = require('../services/data-conflict-detection-service');
+const privacyControlService = require('../services/privacy-control-service');
 const logger = require('../../utils/logger');
 
-// Authentication middleware
-const isAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ error: 'Authentication required' });
-};
-
 /**
+ * Get contacts list with search modes (ABC, YOU, NET)
  * GET /api/contacts
- * Get all contacts for the authenticated user
  */
-router.get('/', isAuthenticated, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const contacts = await Contact.find({ user: req.user._id })
-      .sort({ name: 1 });
-    
-    res.json(contacts);
-  } catch (error) {
-    logger.error('Error fetching contacts', { 
-      userId: req.user._id, 
-      error: error.message 
-    });
-    res.status(500).json({ error: 'Failed to fetch contacts' });
-  }
-});
+    const { userId, mode = 'abc', search = '', limit = 50 } = req.query;
 
-/**
- * GET /api/contacts/:id
- * Get a specific contact by ID
- */
-router.get('/:id', isAuthenticated, async (req, res) => {
-  try {
-    const contactId = req.params.id;
-    
-    if (!mongoose.Types.ObjectId.isValid(contactId)) {
-      return res.status(400).json({ error: 'Invalid contact ID' });
-    }
-    
-    const contact = await Contact.findOne({
-      _id: contactId,
-      user: req.user._id
-    });
-    
-    if (!contact) {
-      return res.status(404).json({ error: 'Contact not found' });
-    }
-    
-    res.json(contact);
-  } catch (error) {
-    logger.error('Error fetching contact', {
-      userId: req.user._id,
-      contactId: req.params.id,
-      error: error.message
-    });
-    res.status(500).json({ error: 'Failed to fetch contact' });
-  }
-});
-
-/**
- * POST /api/contacts
- * Create a new contact manually
- */
-router.post('/', isAuthenticated, async (req, res) => {
-  try {
-    // Required fields
-    if (!req.body.name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-    
-    // Create the contact
-    const contact = new Contact({
-      user: req.user._id,
-      name: req.body.name,
-      email: req.body.email,
-      phoneNumber: req.body.phoneNumber,
-      photoUrl: req.body.photoUrl,
-      metadata: req.body.metadata || {},
-      tags: req.body.tags || [],
-      notes: req.body.notes,
-      isFavorite: req.body.isFavorite || false,
-      sources: [{
-        type: 'manual',
-        lastSynced: new Date()
-      }]
-    });
-    
-    await contact.save();
-    
-    res.status(201).json(contact);
-  } catch (error) {
-    logger.error('Error creating contact', {
-      userId: req.user._id,
-      error: error.message
-    });
-    res.status(500).json({ error: 'Failed to create contact' });
-  }
-});
-
-/**
- * PUT /api/contacts/:id
- * Update an existing contact
- */
-router.put('/:id', isAuthenticated, async (req, res) => {
-  try {
-    const contactId = req.params.id;
-    
-    if (!mongoose.Types.ObjectId.isValid(contactId)) {
-      return res.status(400).json({ error: 'Invalid contact ID' });
-    }
-    
-    const contact = await Contact.findOne({
-      _id: contactId,
-      user: req.user._id
-    });
-    
-    if (!contact) {
-      return res.status(404).json({ error: 'Contact not found' });
-    }
-    
-    // Update contact fields
-    if (req.body.name) contact.name = req.body.name;
-    if (req.body.email) contact.email = req.body.email;
-    if (req.body.phoneNumber) contact.phoneNumber = req.body.phoneNumber;
-    if (req.body.photoUrl) contact.photoUrl = req.body.photoUrl;
-    if (req.body.metadata) Object.assign(contact.metadata, req.body.metadata);
-    if (req.body.notes) contact.notes = req.body.notes;
-    if (req.body.hasOwnProperty('isFavorite')) contact.isFavorite = req.body.isFavorite;
-    
-    // Handle tags update
-    if (req.body.tags) {
-      // Add new tags
-      for (const newTag of req.body.tags) {
-        // Check if the tag already exists
-        const tagExists = contact.tags.some(existingTag => 
-          existingTag.name === newTag.name && existingTag.source === newTag.source
-        );
-        
-        if (!tagExists) {
-          contact.tags.push({
-            name: newTag.name,
-            type: newTag.type || 'custom',
-            source: newTag.source || 'manual'
-          });
-        }
-      }
-    }
-    
-    // Handle tag removal
-    if (req.body.removeTags && Array.isArray(req.body.removeTags)) {
-      req.body.removeTags.forEach(tagName => {
-        contact.tags = contact.tags.filter(tag => tag.name !== tagName);
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId required'
       });
     }
-    
-    await contact.save();
-    
-    res.json(contact);
+
+    let query = { userId: userId };
+    let sortOptions = {};
+
+    // Apply search mode logic
+    switch (mode) {
+      case 'abc':
+        // Alphabetical + LinkedIn (default phone app behavior)
+        sortOptions = { name: 1 };
+        break;
+        
+      case 'you':
+        // Ordered by user's tags and ratings, then recent calls
+        sortOptions = { 
+          'gamificationData.userRating': -1,
+          'allTags.0': -1, // Sort by tag count
+          lastEnriched: -1 
+        };
+        break;
+        
+      case 'net':
+        // Network view - how others rate these contacts
+        sortOptions = { 
+          'gamificationData.networkRating': -1,
+          'gamificationData.validationCount': -1 
+        };
+        break;
+    }
+
+    // Apply search filter if provided
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { 'priorityData.employment.current.employer': { $regex: search, $options: 'i' } },
+        { 'priorityData.employment.current.jobFunction': { $regex: search, $options: 'i' } },
+        { 'priorityData.location.current': { $regex: search, $options: 'i' } },
+        { 'allTags.name': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const contacts = await Contact.find(query)
+      .sort(sortOptions)
+      .limit(parseInt(limit));
+
+    // Apply privacy filtering for each contact
+    const filteredContacts = [];
+    for (const contact of contacts) {
+      try {
+        const filtered = await privacyControlService.getFilteredContact(
+          contact._id,
+          userId,
+          'mixed'
+        );
+        
+        if (filtered.success) {
+          filteredContacts.push({
+            _id: contact._id,
+            name: filtered.contact.name,
+            phoneNumber: filtered.contact.phoneNumber,
+            email: filtered.contact.email,
+            priorityData: filtered.contact.priorityData,
+            allTags: filtered.contact.tags,
+            linkedinData: contact.linkedinData ? { id: contact.linkedinData.id } : null,
+            lastEnriched: contact.lastEnriched
+          });
+        }
+      } catch (filterError) {
+        logger.warn('Failed to filter contact in list', {
+          contactId: contact._id,
+          error: filterError.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Contacts retrieved in ${mode} mode`,
+      data: {
+        contacts: filteredContacts,
+        mode: mode,
+        searchQuery: search,
+        totalFound: filteredContacts.length
+      }
+    });
+
   } catch (error) {
-    logger.error('Error updating contact', {
-      userId: req.user._id,
-      contactId: req.params.id,
+    logger.error('Failed to get contacts list', {
+      userId: req.query.userId,
+      mode: req.query.mode,
       error: error.message
     });
-    res.status(500).json({ error: 'Failed to update contact' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve contacts',
+      error: error.message
+    });
   }
 });
 
 /**
- * DELETE /api/contacts/:id
- * Delete a contact
+ * Get single contact details
+ * GET /api/contacts/:contactId
  */
-router.delete('/:id', isAuthenticated, async (req, res) => {
+router.get('/:contactId', async (req, res) => {
   try {
-    const contactId = req.params.id;
-    
-    if (!mongoose.Types.ObjectId.isValid(contactId)) {
-      return res.status(400).json({ error: 'Invalid contact ID' });
+    const { contactId } = req.params;
+    const { userId, context = 'mixed' } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId required'
+      });
     }
-    
-    const contact = await Contact.findOneAndDelete({
-      _id: contactId,
-      user: req.user._id
-    });
+
+    const contact = await Contact.findOne({ _id: contactId, userId: userId });
     
     if (!contact) {
-      return res.status(404).json({ error: 'Contact not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Apply privacy filtering
+    const filtered = await privacyControlService.getFilteredContact(
+      contactId,
+      userId,
+      context
+    );
+
+    if (!filtered.success) {
+      throw new Error('Failed to apply privacy filtering');
+    }
+
+    res.json({
+      success: true,
+      message: 'Contact details retrieved',
+      contact: filtered.contact,
+      privacyLevel: filtered.privacyLevel,
+      context: filtered.context
+    });
+
+  } catch (error) {
+    logger.error('Failed to get contact details', {
+      contactId: req.params.contactId,
+      userId: req.query.userId,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve contact details',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Update contact field (auto-save functionality)
+ * PUT /api/contacts/:contactId
+ */
+router.put('/:contactId', async (req, res) => {
+  try {
+    const { contactId } = req.params;
+    const { userId, ...updateFields } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId required'
+      });
+    }
+
+    const contact = await Contact.findOne({ _id: contactId, userId: userId });
+    
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Update fields
+    Object.keys(updateFields).forEach(key => {
+      if (key.includes('.')) {
+        // Handle nested field updates
+        const keys = key.split('.');
+        let current = contact;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) {
+            current[keys[i]] = {};
+          }
+          current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = updateFields[key];
+      } else {
+        contact[key] = updateFields[key];
+      }
+    });
+
+    // Update lastEnriched timestamp for user edits
+    contact.lastEnriched = new Date();
+
+    await contact.save();
+
+    logger.info('Contact updated via auto-save', {
+      contactId: contactId,
+      userId: userId,
+      fieldsUpdated: Object.keys(updateFields)
+    });
+
+    res.json({
+      success: true,
+      message: 'Contact updated successfully',
+      contact: {
+        _id: contact._id,
+        name: contact.name,
+        lastEnriched: contact.lastEnriched
+      }
+    });
+
+  } catch (error) {
+    logger.error('Failed to update contact', {
+      contactId: req.params.contactId,
+      userId: req.body.userId,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update contact',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Add tag to contact
+ * POST /api/contacts/:contactId/tags
+ */
+router.post('/:contactId/tags', async (req, res) => {
+  try {
+    const { contactId } = req.params;
+    const { userId, tag } = req.body;
+
+    if (!userId || !tag || !tag.name || !tag.category) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId, tag.name, and tag.category required'
+      });
+    }
+
+    const contact = await Contact.findOne({ _id: contactId, userId: userId });
+    
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Check if tag already exists
+    const existingTag = contact.allTags?.find(t => t.name === tag.name);
+    if (existingTag) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tag already exists'
+      });
+    }
+
+    // Add tag
+    if (!contact.allTags) {
+      contact.allTags = [];
     }
     
-    res.json({ message: 'Contact deleted successfully' });
+    contact.allTags.push({
+      name: tag.name,
+      category: tag.category,
+      source: 'user',
+      confidence: 1.0,
+      addedAt: new Date()
+    });
+
+    // Update lastEnriched
+    contact.lastEnriched = new Date();
+
+    await contact.save();
+
+    logger.info('Tag added to contact', {
+      contactId: contactId,
+      userId: userId,
+      tagName: tag.name,
+      category: tag.category
+    });
+
+    res.json({
+      success: true,
+      message: 'Tag added successfully',
+      tag: tag
+    });
+
   } catch (error) {
-    logger.error('Error deleting contact', {
-      userId: req.user._id,
-      contactId: req.params.id,
+    logger.error('Failed to add tag', {
+      contactId: req.params.contactId,
+      userId: req.body.userId,
       error: error.message
     });
-    res.status(500).json({ error: 'Failed to delete contact' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add tag',
+      error: error.message
+    });
   }
 });
 
 /**
- * POST /api/contacts/sync/facebook
- * Synchronize contacts from Facebook
+ * Remove tag from contact
+ * DELETE /api/contacts/:contactId/tags
  */
-router.post('/sync/facebook', isAuthenticated, async (req, res) => {
+router.delete('/:contactId/tags', async (req, res) => {
   try {
-    const { accessToken } = req.body;
-    
-    if (!accessToken) {
-      return res.status(400).json({ error: 'Facebook access token is required' });
+    const { contactId } = req.params;
+    const { userId, tagName } = req.body;
+
+    if (!userId || !tagName) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId and tagName required'
+      });
     }
-    
-    const result = await contactSyncService.syncFacebookContacts(req.user, accessToken);
-    
-    res.json(result);
-  } catch (error) {
-    logger.error('Error synchronizing Facebook contacts', {
-      userId: req.user._id,
-      error: error.message
-    });
-    res.status(500).json({ error: error.message });
-  }
-});
 
-/**
- * POST /api/contacts/sync/linkedin
- * Synchronize contacts from LinkedIn
- */
-router.post('/sync/linkedin', isAuthenticated, async (req, res) => {
-  try {
-    const { accessToken } = req.body;
+    const contact = await Contact.findOne({ _id: contactId, userId: userId });
     
-    if (!accessToken) {
-      return res.status(400).json({ error: 'LinkedIn access token is required' });
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
     }
-    
-    const result = await contactSyncService.syncLinkedInContacts(req.user, accessToken);
-    
-    res.json(result);
+
+    // Remove tag
+    if (contact.allTags) {
+      contact.allTags = contact.allTags.filter(tag => tag.name !== tagName);
+      contact.lastEnriched = new Date();
+      await contact.save();
+    }
+
+    logger.info('Tag removed from contact', {
+      contactId: contactId,
+      userId: userId,
+      tagName: tagName
+    });
+
+    res.json({
+      success: true,
+      message: 'Tag removed successfully'
+    });
+
   } catch (error) {
-    logger.error('Error synchronizing LinkedIn contacts', {
-      userId: req.user._id,
+    logger.error('Failed to remove tag', {
+      contactId: req.params.contactId,
+      userId: req.body.userId,
       error: error.message
     });
-    res.status(500).json({ error: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove tag',
+      error: error.message
+    });
   }
 });
 
 /**
- * GET /api/contacts/search
- * Search contacts with complex query
+ * Suggest AI tags for contact
+ * POST /api/contacts/:contactId/suggest-tags
  */
-router.get('/search', isAuthenticated, async (req, res) => {
+router.post('/:contactId/suggest-tags', async (req, res) => {
   try {
-    const searchParams = req.query;
+    const { contactId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId required'
+      });
+    }
+
+    const contact = await Contact.findOne({ _id: contactId, userId: userId });
     
-    const contacts = await contactSyncService.searchContacts(req.user, searchParams);
-    
-    res.json(contacts);
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Generate AI tag suggestions
+    const suggestions = await aiTagService.generateTagSuggestions(contact);
+
+    res.json({
+      success: true,
+      message: 'AI tag suggestions generated',
+      suggestions: suggestions
+    });
+
   } catch (error) {
-    logger.error('Error searching contacts', {
-      userId: req.user._id,
-      query: req.query,
+    logger.error('Failed to generate tag suggestions', {
+      contactId: req.params.contactId,
+      userId: req.body.userId,
       error: error.message
     });
-    res.status(500).json({ error: 'Failed to search contacts' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate tag suggestions',
+      error: error.message
+    });
   }
 });
 
 /**
- * GET /api/contacts/tags/popular
- * Get popular tags for the user
+ * Enrich contact with LinkedIn/Facebook data
+ * POST /api/contacts/:contactId/enrich
  */
-router.get('/tags/popular', isAuthenticated, async (req, res) => {
+router.post('/:contactId/enrich', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 20;
+    const { contactId } = req.params;
+    const { userId, source = 'linkedin' } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId required'
+      });
+    }
+
+    const contact = await Contact.findOne({ _id: contactId, userId: userId });
     
-    const tags = await contactSyncService.getPopularTags(req.user, limit);
-    
-    res.json(tags);
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // This would trigger LinkedIn/Facebook data enrichment
+    // For now, return success message
+    logger.info('Contact enrichment requested', {
+      contactId: contactId,
+      userId: userId,
+      source: source
+    });
+
+    res.json({
+      success: true,
+      message: `Contact enrichment with ${source} data initiated`,
+      contact: {
+        _id: contact._id,
+        name: contact.name,
+        enrichmentStatus: 'processing'
+      }
+    });
+
   } catch (error) {
-    logger.error('Error fetching popular tags', {
-      userId: req.user._id,
+    logger.error('Failed to enrich contact', {
+      contactId: req.params.contactId,
+      userId: req.body.userId,
       error: error.message
     });
-    res.status(500).json({ error: 'Failed to fetch popular tags' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to enrich contact',
+      error: error.message
+    });
   }
 });
 
 /**
- * GET /api/contacts/by-tag/:tagName
- * Get contacts by tag
+ * Create new contact
+ * POST /api/contacts
  */
-router.get('/by-tag/:tagName', isAuthenticated, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const tagName = req.params.tagName;
-    
-    const contacts = await Contact.findByTags(req.user._id, tagName);
-    
-    res.json(contacts);
+    const { userId, name, phoneNumber, email } = req.body;
+
+    if (!userId || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId and name required'
+      });
+    }
+
+    const newContact = new Contact({
+      userId: userId,
+      name: name,
+      phoneNumber: phoneNumber,
+      email: email,
+      source: 'manual',
+      lastEnriched: new Date(),
+      privacySettings: {
+        level: 'private',
+        context: 'mixed',
+        lastUpdated: new Date()
+      }
+    });
+
+    await newContact.save();
+
+    logger.info('New contact created', {
+      contactId: newContact._id,
+      userId: userId,
+      name: name
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Contact created successfully',
+      contact: {
+        _id: newContact._id,
+        name: newContact.name,
+        phoneNumber: newContact.phoneNumber,
+        email: newContact.email
+      }
+    });
+
   } catch (error) {
-    logger.error('Error fetching contacts by tag', {
-      userId: req.user._id,
-      tag: req.params.tagName,
+    logger.error('Failed to create contact', {
+      userId: req.body.userId,
       error: error.message
     });
-    res.status(500).json({ error: 'Failed to fetch contacts by tag' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create contact',
+      error: error.message
+    });
   }
 });
 

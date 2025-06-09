@@ -1724,6 +1724,14 @@ app.use('/api/search', naturalLanguageSearchRouter);
 const privacyControlRouter = require('./server/routes/privacy-control-routes');
 app.use('/api/privacy', privacyControlRouter);
 
+// Contact management routes with auto-save and LinkedIn integration
+const contactRouter = require('./server/routes/contact-routes');
+app.use('/api/contacts', contactRouter);
+
+// Gamification routes - ELO rating system and conflict resolution games
+const gamificationRouter = require('./server/routes/gamification-routes');
+app.use('/api/gamification', gamificationRouter);
+
 // Add documentation route for data deletion status
 app.get('/api/deletion-status', (req, res) => {
   const { code, id } = req.query;
