@@ -111,6 +111,14 @@ app.use('/api/gamification', gamificationRoutes);
 const professionalSearchRoutes = require('./server/routes/professional-search-routes');
 app.use('/api/professional', professionalSearchRoutes);
 
+// Import and register social search routes
+const socialSearchRoutes = require('./server/routes/social-search-routes');
+app.use('/api/social', socialSearchRoutes);
+
+// Import and register analytics routes
+const analyticsRoutes = require('./server/routes/analytics-routes');
+app.use('/api/analytics', analyticsRoutes);
+
 // Initialize session middleware for authentication
 const session = require('express-session');
 app.use(session({
