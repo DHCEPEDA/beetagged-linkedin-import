@@ -106,10 +106,16 @@ app.use((req, res, next) => {
 });
 
 // Apply request logging middleware
-app.use(logger.request);
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve React build files
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // Download route for Android project
 app.get('/download/android-project.tar.gz', (req, res) => {
@@ -1728,10 +1734,6 @@ app.use('/api/privacy', privacyControlRouter);
 const contactRouter = require('./server/routes/contact-routes');
 app.use('/api/contacts', contactRouter);
 
-// Gamification routes - ELO rating system and conflict resolution games
-const gamificationRouter = require('./server/routes/gamification-routes');
-app.use('/api/gamification', gamificationRouter);
-
 // Add documentation route for data deletion status
 app.get('/api/deletion-status', (req, res) => {
   const { code, id } = req.query;
@@ -1751,8 +1753,26 @@ app.get('/api/deletion-status', (req, res) => {
   });
 });
 
+// Catch-all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ success: false, message: 'API endpoint not found' });
+  }
+  
+  // Serve React app for all other routes
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 // Error handler middleware (always at the end)
-app.use(logger.errorHandler);
+app.use((err, req, res, next) => {
+  console.error(`[${new Date().toISOString()}] ERROR:`, err.message);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
 
 // For Replit, we need to ensure we're listening on port 5000
 // as this is the primary port for web traffic
