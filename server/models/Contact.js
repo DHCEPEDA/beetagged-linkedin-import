@@ -1,5 +1,27 @@
 /**
- * Contact Model
+ * Contact Model - Core Data Schema for Professional Network Intelligence
+ * 
+ * DATABASE CHOICE: MongoDB (chosen for flexibility with social media data structures)
+ * WHY MONGODB:
+ * - Social media APIs return varied, nested JSON structures
+ * - Facebook/LinkedIn data schemas change frequently
+ * - Need to store unstructured data alongside structured search fields
+ * - Easy horizontal scaling for large contact databases
+ * 
+ * CORE FUNCTIONALITY:
+ * 1. CONTACT STORAGE: Phone contacts with enriched social media profiles
+ * 2. SEARCH OPTIMIZATION: Priority data fields for fast queries
+ * 3. SOCIAL INTEGRATION: Native storage of Facebook/LinkedIn raw data
+ * 4. TAGGING SYSTEM: Automated and manual tags for contextual search
+ * 5. GAMIFICATION: Ranking, validation, and engagement tracking
+ * 
+ * SEARCH CAPABILITIES ENABLED:
+ * - Company search: priorityData.employment.current.employer
+ * - Function search: priorityData.employment.current.jobFunction  
+ * - Location search: priorityData.location.current
+ * - Education search: priorityData.education.schools
+ * - Skills search: priorityData.social.interests
+ * 
  * MongoDB schema for BeeTagged contacts with social media enrichment and gamification
  */
 
@@ -139,6 +161,78 @@ const contactSchema = new mongoose.Schema({
   
   // Auto-generated tags
   tags: [tagSchema],
+  
+  // Priority data fields (top 10-20 most important)
+  priorityData: {
+    location: {
+      current: String,
+      hometown: String,
+      workLocations: [String]
+    },
+    employment: {
+      current: {
+        employer: String,
+        jobFunction: String,
+        startYear: Number,
+        tenure: String
+      },
+      history: [{
+        employer: String,
+        jobFunction: String,
+        startYear: Number,
+        endYear: Number,
+        location: String
+      }]
+    },
+    education: {
+      schools: [{
+        name: String,
+        type: String,
+        year: String
+      }],
+      degrees: [{
+        degree: String,
+        school: String,
+        field: String,
+        year: String
+      }],
+      certifications: [{
+        name: String,
+        authority: String,
+        year: String,
+        source: String
+      }]
+    },
+    social: {
+      hobbies: [String],
+      interests: [{
+        name: String,
+        category: String,
+        source: String,
+        endorsements: Number
+      }],
+      topicsLiked: [{
+        name: String,
+        category: String,
+        source: String
+      }],
+      memberships: [{
+        name: String,
+        type: String,
+        source: String
+      }],
+      connectionCount: {
+        facebook: Number,
+        linkedin: Number
+      }
+    }
+  },
+  
+  // Priority tags for fast search
+  priorityTags: [tagSchema],
+  
+  // All tags combined
+  allTags: [tagSchema],
   
   // Categorized tags for easy access
   tagCategories: {

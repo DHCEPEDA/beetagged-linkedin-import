@@ -1,6 +1,39 @@
 /**
- * BeeTagged Robust Server
- * Combines our successful connectivity approach with enhanced features
+ * BeeTagged Server - Professional Contact Intelligence Platform
+ * 
+ * CORE MISSION: Transform phone contacts into searchable professional networks
+ * by overlaying Facebook and LinkedIn data to enable contextual queries like:
+ * - "Who do I know at Google?"
+ * - "Who do I know in marketing?" 
+ * - "Who do I know in Seattle?"
+ * 
+ * MAJOR CAPABILITIES IMPLEMENTED:
+ * 
+ * 1. AUTOMATED CONTACT ENRICHMENT
+ *    - Facebook/LinkedIn API integration for profile matching
+ *    - Priority data extraction (10-20 key fields: employer, job function, location, etc.)
+ *    - Automated tagging system without manual input requirements
+ * 
+ * 2. INTELLIGENT SEARCH ENGINE
+ *    - Company search: Find contacts by employer
+ *    - Professional function search: Find contacts by job title/role
+ *    - Location-based search: Find contacts by city/region
+ *    - Educational background search: Find contacts by school/university
+ * 
+ * 3. SOCIAL NETWORK INTEGRATION
+ *    - OAuth authentication flows for Facebook and LinkedIn
+ *    - Comprehensive profile data extraction and storage
+ *    - Real-time contact matching and verification
+ * 
+ * 4. ANALYTICS & OPTIMIZATION
+ *    - Usage pattern tracking (professional vs social search preferences)
+ *    - Data quality metrics and enrichment coverage reports
+ *    - Performance monitoring for API integrations
+ * 
+ * 5. GAMIFICATION SYSTEM
+ *    - Tag validation through comparative questions
+ *    - Contact ranking and relationship strength scoring
+ *    - User engagement analytics
  */
 // Load environment variables if .env file exists
 try {

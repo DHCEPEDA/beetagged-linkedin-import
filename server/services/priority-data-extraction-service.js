@@ -1,5 +1,27 @@
 /**
- * Priority Data Extraction Service
+ * Priority Data Extraction Service - Core Intelligence Engine
+ * 
+ * HIGH-LEVEL FUNCTION: Extracts the 10-20 most valuable data points from social media
+ * profiles to enable intelligent contact search without manual tagging effort.
+ * 
+ * CAPABILITY: "GO BROAD BEFORE DEEP" STRATEGY
+ * - Captures maximum data breadth from Facebook and LinkedIn APIs
+ * - Prioritizes immediately searchable fields over detailed profile analysis
+ * - Generates automated tags for instant search functionality
+ * 
+ * KEY DATA FIELDS EXTRACTED:
+ * 1. LOCATION DATA: Current city, hometown, work locations
+ * 2. EMPLOYMENT DATA: Current employer, job function, work history with tenure
+ * 3. EDUCATION DATA: Schools, degrees, certifications with years
+ * 4. SOCIAL DATA: Hobbies, interests, skills, professional memberships
+ * 5. NETWORK DATA: Connection counts, relationship indicators
+ * 
+ * SEARCH ENABLEMENT: Powers core BeeTagged queries
+ * - Company search: "Who works at Google?"
+ * - Function search: "Who's in marketing?"
+ * - Location search: "Who's in Austin?"
+ * - Education search: "Who went to UT?"
+ * 
  * Focuses on the 10-20 most important fields for BeeTagged search functionality
  */
 
