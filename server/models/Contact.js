@@ -245,6 +245,35 @@ const contactSchema = new mongoose.Schema({
     social: [tagSchema]
   },
   
+  // Data source validation tracking for gamification
+  dataSourceValidation: {
+    type: Map,
+    of: {
+      validatedValue: String,
+      chosenSource: { type: String, enum: ['facebook', 'linkedin', 'both', 'manual'] },
+      confidence: { type: Number, min: 0, max: 1 },
+      validatedAt: Date,
+      userFeedback: String
+    },
+    default: {}
+  },
+  
+  // Validation history for gamification
+  validationHistory: [{
+    questionId: String,
+    questionType: String,
+    selectedOption: String,
+    selectedSource: { type: String, enum: ['facebook', 'linkedin', 'both', 'manual'] },
+    confidence: { type: Number, min: 0, max: 1 },
+    pointsEarned: { type: Number, default: 0 },
+    validatedBy: String,
+    validatedAt: { type: Date, default: Date.now },
+    userFeedback: String
+  }],
+  
+  // AI tagging timestamps
+  lastAITagged: Date,
+  
   // Gamification and ranking data
   tagRankings: {
     type: Map,

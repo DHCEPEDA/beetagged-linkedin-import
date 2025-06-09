@@ -1700,10 +1700,21 @@ app.get('/', (req, res) => {
   res.send(homePage);
 });
 
-// Facebook Data Deletion Callback
-// Required for Facebook Login App Review and GDPR/privacy compliance
+// API Routes Registration
 const dataDeletionRouter = require('./server/routes/data-deletion');
+const contactEnrichmentRouter = require('./server/routes/contact-enrichment-routes');
+const linkedinAuthRouter = require('./server/routes/linkedin-auth-routes');
+const aiTagRouter = require('./server/routes/ai-tag-routes');
+const gamificationRouter = require('./server/routes/gamification-routes');
+const dataExtractionTestRouter = require('./server/routes/data-extraction-test-routes');
+
+// Register all route modules
 app.use('/api', dataDeletionRouter);
+app.use('/api/contacts', contactEnrichmentRouter);
+app.use('/api/linkedin', linkedinAuthRouter);
+app.use('/api/ai-tags', aiTagRouter);
+app.use('/api/gamification', gamificationRouter);
+app.use('/api/test', dataExtractionTestRouter);
 
 // Add documentation route for data deletion status
 app.get('/api/deletion-status', (req, res) => {

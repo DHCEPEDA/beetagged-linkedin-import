@@ -98,9 +98,9 @@ class LinkedInService {
   }
 
   /**
-   * Get LinkedIn profile information
+   * Get comprehensive LinkedIn profile information
    * @param {string} accessToken - LinkedIn access token
-   * @returns {Object} Profile data
+   * @returns {Object} Complete profile data
    */
   async getProfile(accessToken) {
     try {
@@ -112,12 +112,24 @@ class LinkedInService {
             'X-Restli-Protocol-Version': '2.0.0'
           },
           params: {
-            projection: '(id,firstName,lastName,localizedFirstName,localizedLastName,headline,location,industry,summary,specialties,publicProfileUrl,emailAddress)'
+            projection: [
+              // Basic identification
+              'id', 'firstName', 'lastName', 'emailAddress',
+              
+              // Professional information
+              'industry', 'summary', 'specialties', 'publicProfileUrl',
+              
+              // Location and contact
+              'location', 'numConnections', 'numConnectionsCapped',
+              
+              // Additional profile fields
+              'vanityName', 'maidenName', 'phoneNumbers'
+            ].join(',')
           }
         }
       );
 
-      logger.info('LinkedIn profile retrieved successfully');
+      logger.info('LinkedIn comprehensive profile retrieved successfully');
       return profileResponse.data;
     } catch (error) {
       logger.error('Failed to get LinkedIn profile', {
@@ -128,7 +140,7 @@ class LinkedInService {
   }
 
   /**
-   * Get LinkedIn positions (work experience)
+   * Get comprehensive LinkedIn positions (work experience)
    * @param {string} accessToken - LinkedIn access token
    * @returns {Object} Positions data
    */
@@ -142,7 +154,7 @@ class LinkedInService {
             'X-Restli-Protocol-Version': '2.0.0'
           },
           params: {
-            projection: '(values:(id,title,summary,startDate,endDate,isCurrent,company:(id,name,type,size,industry,logo-url)))'
+            projection: '(values:(id,title,summary,startDate,endDate,isCurrent,company:(id,name,type,size,industry,specialties,website,ticker,description),location:(name,country:(code,name)),description))'
           }
         }
       );
@@ -153,13 +165,12 @@ class LinkedInService {
       logger.error('Failed to get LinkedIn positions', {
         error: error.response?.data || error.message
       });
-      // Don't throw - positions might not be available
       return { values: [] };
     }
   }
 
   /**
-   * Get LinkedIn education information
+   * Get comprehensive LinkedIn education information
    * @param {string} accessToken - LinkedIn access token
    * @returns {Object} Education data
    */
@@ -173,7 +184,7 @@ class LinkedInService {
             'X-Restli-Protocol-Version': '2.0.0'
           },
           params: {
-            projection: '(values:(id,schoolName,fieldOfStudy,startDate,endDate,degree,activities,notes,school:(name)))'
+            projection: '(values:(id,schoolName,fieldOfStudy,startDate,endDate,degree,activities,notes,grade,description,school:(name,type,logo-url,website)))'
           }
         }
       );

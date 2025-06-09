@@ -1,448 +1,491 @@
 /**
- * Gamification Routes
- * API endpoints for tag validation game and ranking system
+ * Gamification Routes - Data Validation Game Engine
+ * 
+ * HIGH-LEVEL FUNCTION: Converts data conflicts between Facebook and LinkedIn
+ * into engaging validation games that improve contact data accuracy
+ * 
+ * CORE ENDPOINTS:
+ * 1. CONFLICT DISCOVERY: Find conflicts for a specific contact or user's contacts
+ * 2. VALIDATION GAMES: Present conflicts as multiple choice questions
+ * 3. ANSWER SUBMISSION: Process user validation choices and update contact data
+ * 4. PROGRESS TRACKING: Track user validation scores and achievements
+ * 5. LEADERBOARDS: Show top validators and accuracy improvements
  */
 
 const express = require('express');
 const router = express.Router();
-const tagGamificationService = require('../services/tag-gamification-service');
+const dataConflictDetectionService = require('../services/data-conflict-detection-service');
 const Contact = require('../models/Contact');
 const logger = require('../../utils/logger');
 
 /**
- * Get a comparative question for tag validation
- * GET /api/gamification/question
+ * Get validation conflicts for a contact
+ * GET /api/gamification/conflicts/:contactId
  */
-router.get('/question', async (req, res) => {
+router.get('/conflicts/:contactId', async (req, res) => {
   try {
-    const { userId, category } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({
+    const { contactId } = req.params;
+    
+    const contact = await Contact.findById(contactId);
+    if (!contact) {
+      return res.status(404).json({
         success: false,
-        message: 'User ID is required'
+        message: 'Contact not found'
       });
     }
 
-    const questionResult = await tagGamificationService.generateComparativeQuestion(
-      userId,
-      { category: category || null }
+    // Only detect conflicts if both Facebook and LinkedIn data exist
+    if (!contact.facebookData || !contact.linkedinData) {
+      return res.json({
+        success: true,
+        message: 'No conflicts to validate - requires both Facebook and LinkedIn data',
+        data: {
+          conflicts: [],
+          hasConflicts: false,
+          validationOpportunities: 0
+        }
+      });
+    }
+
+    // Detect conflicts between Facebook and LinkedIn data
+    const conflicts = dataConflictDetectionService.detectAllConflicts(
+      contact.facebookData,
+      contact.linkedinData,
+      contact.name
     );
 
-    if (!questionResult.success) {
-      return res.status(404).json(questionResult);
-    }
+    // Generate validation questions
+    const validationQuestions = conflicts.map(conflict => 
+      dataConflictDetectionService.generateValidationQuestion(conflict)
+    );
 
     res.json({
       success: true,
-      data: questionResult.question
+      message: 'Validation conflicts identified',
+      data: {
+        contactId: contactId,
+        contactName: contact.name,
+        conflicts: validationQuestions,
+        hasConflicts: conflicts.length > 0,
+        validationOpportunities: conflicts.length,
+        totalPossiblePoints: conflicts.reduce((sum, c) => sum + (c.validationReward || 0), 0)
+      }
     });
 
   } catch (error) {
-    logger.error('Failed to generate comparative question', {
-      userId: req.query.userId,
+    logger.error('Failed to get validation conflicts', {
+      contactId: req.params.contactId,
       error: error.message
     });
 
     res.status(500).json({
       success: false,
-      message: 'Failed to generate question',
+      message: 'Failed to retrieve validation conflicts',
       error: error.message
     });
   }
 });
 
 /**
- * Submit answer to comparative question
- * POST /api/gamification/answer
+ * Get validation conflicts for all contacts of a user
+ * GET /api/gamification/user-conflicts/:userId
  */
-router.post('/answer', async (req, res) => {
+router.get('/user-conflicts/:userId', async (req, res) => {
   try {
-    const { userId, questionId, selectedContactId, category, reasoning } = req.body;
+    const { userId } = req.params;
+    const { limit = 10 } = req.query;
 
-    if (!userId || !questionId || !selectedContactId || !category) {
-      return res.status(400).json({
-        success: false,
-        message: 'userId, questionId, selectedContactId, and category are required'
-      });
+    // Find contacts with both Facebook and LinkedIn data
+    const contacts = await Contact.find({
+      userId: userId,
+      facebookData: { $exists: true, $ne: null },
+      linkedinData: { $exists: true, $ne: null }
+    }).limit(parseInt(limit));
+
+    const allConflicts = [];
+    let totalPoints = 0;
+
+    for (const contact of contacts) {
+      const conflicts = dataConflictDetectionService.detectAllConflicts(
+        contact.facebookData,
+        contact.linkedinData,
+        contact.name
+      );
+
+      if (conflicts.length > 0) {
+        const validationQuestions = conflicts.map(conflict => 
+          dataConflictDetectionService.generateValidationQuestion(conflict)
+        );
+
+        allConflicts.push({
+          contactId: contact._id,
+          contactName: contact.name,
+          conflicts: validationQuestions,
+          conflictCount: conflicts.length,
+          possiblePoints: conflicts.reduce((sum, c) => sum + (c.validationReward || 0), 0)
+        });
+
+        totalPoints += conflicts.reduce((sum, c) => sum + (c.validationReward || 0), 0);
+      }
     }
 
-    // Process the answer and update rankings
-    const result = await tagGamificationService.processComparativeAnswer(
-      userId,
-      questionId,
-      selectedContactId,
-      category
-    );
-
-    // Store user's reasoning for future ML training
-    if (reasoning) {
-      logger.info('User reasoning captured', {
-        userId,
-        questionId,
-        selectedContactId,
-        category,
-        reasoning
-      });
-    }
+    // Sort by most validation opportunities first
+    allConflicts.sort((a, b) => b.conflictCount - a.conflictCount);
 
     res.json({
       success: true,
-      message: 'Answer processed successfully',
+      message: 'User validation opportunities identified',
       data: {
-        userScore: result.userScore,
-        pointsEarned: 10 // Base points for answering
+        userId: userId,
+        contactsWithConflicts: allConflicts,
+        summary: {
+          totalContacts: contacts.length,
+          contactsWithConflicts: allConflicts.length,
+          totalValidationOpportunities: allConflicts.reduce((sum, c) => sum + c.conflictCount, 0),
+          totalPossiblePoints: totalPoints
+        }
       }
     });
 
   } catch (error) {
-    logger.error('Failed to process comparative answer', {
-      userId: req.body.userId,
+    logger.error('Failed to get user validation conflicts', {
+      userId: req.params.userId,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve user validation conflicts',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Submit validation answer for a conflict
+ * POST /api/gamification/validate
+ */
+router.post('/validate', async (req, res) => {
+  try {
+    const { 
+      contactId, 
+      questionId, 
+      selectedOptionId, 
+      userFeedback,
+      userId 
+    } = req.body;
+
+    if (!contactId || !questionId || selectedOptionId === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'contactId, questionId, and selectedOptionId required'
+      });
+    }
+
+    const contact = await Contact.findById(contactId);
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Re-detect conflicts to find the specific question
+    const conflicts = dataConflictDetectionService.detectAllConflicts(
+      contact.facebookData,
+      contact.linkedinData,
+      contact.name
+    );
+
+    const validationQuestions = conflicts.map(conflict => 
+      dataConflictDetectionService.generateValidationQuestion(conflict)
+    );
+
+    const question = validationQuestions.find(q => q.id === questionId);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Validation question not found'
+      });
+    }
+
+    const selectedOption = question.options[selectedOptionId];
+    if (!selectedOption) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid option selected'
+      });
+    }
+
+    // Update contact data based on validation
+    const validationResult = await this.applyValidationResult(
+      contact, 
+      question, 
+      selectedOption, 
+      userFeedback
+    );
+
+    // Track validation history
+    if (!contact.validationHistory) {
+      contact.validationHistory = [];
+    }
+
+    contact.validationHistory.push({
+      questionId: questionId,
+      questionType: question.category,
+      selectedOption: selectedOption.text,
+      selectedSource: selectedOption.source,
+      confidence: selectedOption.confidence,
+      pointsEarned: question.points,
+      validatedBy: userId,
+      validatedAt: new Date(),
+      userFeedback: userFeedback
+    });
+
+    await contact.save();
+
+    logger.info('Validation completed successfully', {
+      contactId: contactId,
+      questionId: questionId,
+      selectedSource: selectedOption.source,
+      pointsEarned: question.points
+    });
+
+    res.json({
+      success: true,
+      message: 'Validation completed successfully',
+      data: {
+        contactId: contactId,
+        questionId: questionId,
+        selectedOption: selectedOption,
+        pointsEarned: question.points,
+        validationResult: validationResult,
+        updatedFields: validationResult.updatedFields
+      }
+    });
+
+  } catch (error) {
+    logger.error('Validation submission failed', {
+      contactId: req.body.contactId,
       questionId: req.body.questionId,
       error: error.message
     });
 
     res.status(500).json({
       success: false,
-      message: 'Failed to process answer',
+      message: 'Failed to process validation',
       error: error.message
     });
   }
 });
 
 /**
- * Get user's gamification stats
+ * Apply validation result to contact data
+ * @param {Object} contact - Contact document
+ * @param {Object} question - Validation question
+ * @param {Object} selectedOption - User's selected option
+ * @param {string} userFeedback - Optional user feedback
+ * @returns {Object} Validation result
+ */
+async function applyValidationResult(contact, question, selectedOption, userFeedback) {
+  const updatedFields = [];
+  
+  // Update priority data based on validation
+  if (!contact.priorityData) {
+    contact.priorityData = {
+      location: { current: '', hometown: '', workLocations: [] },
+      employment: { current: {}, history: [] },
+      education: { schools: [], degrees: [], certifications: [] },
+      social: { hobbies: [], interests: [], topicsLiked: [], memberships: [], connectionCount: {} }
+    };
+  }
+
+  // Apply updates based on question category
+  switch (question.category) {
+    case 'professional':
+      if (question.type === 'employment_company') {
+        contact.priorityData.employment.current.employer = selectedOption.value;
+        contact.priorityData.employment.current.source = selectedOption.source;
+        updatedFields.push('current_employer');
+      } else if (question.type === 'employment_title') {
+        contact.priorityData.employment.current.jobFunction = selectedOption.value;
+        contact.priorityData.employment.current.titleSource = selectedOption.source;
+        updatedFields.push('current_title');
+      }
+      break;
+
+    case 'location':
+      if (question.type === 'location_current') {
+        contact.priorityData.location.current = selectedOption.value;
+        contact.priorityData.location.currentSource = selectedOption.source;
+        updatedFields.push('current_location');
+      }
+      break;
+
+    case 'education':
+      if (question.type === 'education_school') {
+        // Update education schools list
+        const schools = selectedOption.value.split(', ').map(school => ({
+          name: school,
+          source: selectedOption.source
+        }));
+        contact.priorityData.education.schools = schools;
+        updatedFields.push('education_schools');
+      }
+      break;
+
+    case 'personal':
+      if (question.type === 'contact_info' && selectedOption.value) {
+        contact.name = selectedOption.value;
+        updatedFields.push('contact_name');
+      }
+      break;
+  }
+
+  // Add data source tracking
+  if (!contact.dataSourceValidation) {
+    contact.dataSourceValidation = {};
+  }
+  
+  contact.dataSourceValidation[question.field] = {
+    validatedValue: selectedOption.value,
+    chosenSource: selectedOption.source,
+    confidence: selectedOption.confidence,
+    validatedAt: new Date(),
+    userFeedback: userFeedback
+  };
+
+  return {
+    success: true,
+    updatedFields: updatedFields,
+    chosenSource: selectedOption.source,
+    confidence: selectedOption.confidence
+  };
+}
+
+/**
+ * Get user validation statistics
  * GET /api/gamification/stats/:userId
  */
 router.get('/stats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Get user's gamification score
-    const userScore = await tagGamificationService.calculateUserGamificationScore(userId);
+    // Get all contacts for user with validation history
+    const contacts = await Contact.find({
+      userId: userId,
+      validationHistory: { $exists: true, $ne: [] }
+    });
 
-    // Get validation statistics
-    const validationStats = await Contact.aggregate([
-      { $match: { userId: userId } },
-      {
-        $group: {
-          _id: null,
-          totalContacts: { $sum: 1 },
-          contactsWithValidatedTags: {
-            $sum: {
-              $cond: [
-                { $gt: [{ $size: { $ifNull: ["$tagRankings", {}] } }, 0] },
-                1,
-                0
-              ]
-            }
-          },
-          totalTagValidations: {
-            $sum: { $size: { $objectToArray: { $ifNull: ["$tagRankings", {}] } } }
+    let totalValidations = 0;
+    let totalPointsEarned = 0;
+    let accuracyScore = 0;
+    const validationsByCategory = {};
+
+    contacts.forEach(contact => {
+      if (contact.validationHistory) {
+        contact.validationHistory.forEach(validation => {
+          totalValidations++;
+          totalPointsEarned += validation.pointsEarned || 0;
+          
+          const category = validation.questionType || 'general';
+          if (!validationsByCategory[category]) {
+            validationsByCategory[category] = 0;
           }
-        }
+          validationsByCategory[category]++;
+        });
       }
-    ]);
+    });
 
-    const stats = validationStats.length > 0 ? validationStats[0] : {
-      totalContacts: 0,
-      contactsWithValidatedTags: 0,
-      totalTagValidations: 0
-    };
+    // Calculate accuracy based on high-confidence choices
+    const highConfidenceValidations = contacts.reduce((count, contact) => {
+      return count + (contact.validationHistory || []).filter(v => v.confidence > 0.8).length;
+    }, 0);
 
-    // Calculate level based on score
-    const level = Math.floor(userScore / 100) + 1;
-    const nextLevelPoints = (level * 100) - userScore;
+    accuracyScore = totalValidations > 0 ? (highConfidenceValidations / totalValidations) * 100 : 0;
 
     res.json({
       success: true,
+      message: 'User validation statistics retrieved',
       data: {
-        score: userScore,
-        level: level,
-        pointsToNextLevel: nextLevelPoints,
-        totalContacts: stats.totalContacts,
-        contactsWithValidatedTags: stats.contactsWithValidatedTags,
-        totalTagValidations: stats.totalTagValidations,
-        completionRate: stats.totalContacts > 0 
-          ? (stats.contactsWithValidatedTags / stats.totalContacts * 100).toFixed(1)
-          : 0
+        userId: userId,
+        stats: {
+          totalValidations: totalValidations,
+          totalPointsEarned: totalPointsEarned,
+          accuracyScore: Math.round(accuracyScore),
+          validationsByCategory: validationsByCategory,
+          contactsImproved: contacts.length,
+          averagePointsPerValidation: totalValidations > 0 ? Math.round(totalPointsEarned / totalValidations) : 0
+        }
       }
     });
 
   } catch (error) {
-    logger.error('Failed to get gamification stats', {
+    logger.error('Failed to get validation statistics', {
       userId: req.params.userId,
       error: error.message
     });
 
     res.status(500).json({
       success: false,
-      message: 'Failed to get stats',
+      message: 'Failed to retrieve validation statistics',
       error: error.message
     });
   }
 });
 
 /**
- * Get personalized contact rankings for search
- * POST /api/gamification/rankings
+ * Test conflict detection with sample data
+ * POST /api/gamification/test-conflicts
  */
-router.post('/rankings', async (req, res) => {
+router.post('/test-conflicts', async (req, res) => {
   try {
-    const { userId, category, contactIds } = req.body;
+    const { sampleFacebookData, sampleLinkedinData } = req.body;
 
-    if (!userId || !category || !contactIds || !Array.isArray(contactIds)) {
-      return res.status(400).json({
-        success: false,
-        message: 'userId, category, and contactIds array are required'
-      });
-    }
+    // Use provided data or create sample conflicting data
+    const fbData = sampleFacebookData || {
+      name: "John Smith",
+      location: { name: "Austin, TX" },
+      work: { data: [{ employer: { name: "Google" }, position: { name: "Software Engineer" } }] }
+    };
 
-    // Get contacts with their tag rankings
-    const contacts = await Contact.find({
-      userId: userId,
-      _id: { $in: contactIds }
-    });
+    const liData = sampleLinkedinData || {
+      firstName: "John",
+      lastName: "Smith", 
+      location: { name: "San Francisco, CA" },
+      positions: { values: [{ title: "Senior Developer", company: { name: "Meta" }, isCurrent: true }] }
+    };
 
-    // Apply personalized rankings based on validated tags
-    const rankedContacts = await tagGamificationService.getPersonalizedRankings(
-      userId,
-      category,
-      contacts
+    // Detect conflicts
+    const conflicts = dataConflictDetectionService.detectAllConflicts(fbData, liData, "John Smith");
+    
+    // Generate validation questions
+    const validationQuestions = conflicts.map(conflict => 
+      dataConflictDetectionService.generateValidationQuestion(conflict)
     );
 
     res.json({
       success: true,
+      message: 'Conflict detection test completed',
       data: {
-        category: category,
-        rankedContacts: rankedContacts.map(contact => ({
-          id: contact._id,
-          name: contact.name,
-          ranking: contact.tagRankings?.[category] || 0,
-          profilePictureUrl: contact.profilePictureUrl,
-          company: contact.company,
-          jobTitle: contact.jobTitle,
-          location: contact.location
-        }))
+        sampleData: { facebook: fbData, linkedin: liData },
+        conflicts: validationQuestions,
+        conflictCount: conflicts.length,
+        totalPossiblePoints: conflicts.reduce((sum, c) => sum + (c.validationReward || 0), 0)
       }
     });
 
   } catch (error) {
-    logger.error('Failed to get personalized rankings', {
-      userId: req.body.userId,
-      category: req.body.category,
+    logger.error('Conflict detection test failed', {
       error: error.message
     });
 
     res.status(500).json({
       success: false,
-      message: 'Failed to get personalized rankings',
+      message: 'Conflict detection test failed',
       error: error.message
     });
   }
 });
-
-/**
- * Get leaderboard for gamification
- * GET /api/gamification/leaderboard
- */
-router.get('/leaderboard', async (req, res) => {
-  try {
-    const { timeframe = 'all' } = req.query;
-
-    // For MVP, we'll show top users by total tag validations
-    const topUsers = await Contact.aggregate([
-      {
-        $group: {
-          _id: "$userId",
-          totalValidations: {
-            $sum: { $size: { $objectToArray: { $ifNull: ["$tagRankings", {}] } } }
-          },
-          contactCount: { $sum: 1 }
-        }
-      },
-      {
-        $match: {
-          totalValidations: { $gt: 0 }
-        }
-      },
-      {
-        $addFields: {
-          score: { $multiply: ["$totalValidations", 10] }
-        }
-      },
-      { $sort: { score: -1 } },
-      { $limit: 10 }
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        timeframe: timeframe,
-        leaderboard: topUsers.map((user, index) => ({
-          rank: index + 1,
-          userId: user._id,
-          score: user.score,
-          totalValidations: user.totalValidations,
-          contactCount: user.contactCount
-        }))
-      }
-    });
-
-  } catch (error) {
-    logger.error('Failed to get leaderboard', {
-      error: error.message
-    });
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get leaderboard',
-      error: error.message
-    });
-  }
-});
-
-/**
- * Skip a question (for questions that are too difficult or unclear)
- * POST /api/gamification/skip
- */
-router.post('/skip', async (req, res) => {
-  try {
-    const { userId, questionId, reason } = req.body;
-
-    if (!userId || !questionId) {
-      return res.status(400).json({
-        success: false,
-        message: 'userId and questionId are required'
-      });
-    }
-
-    // Log the skip for analytics
-    logger.info('Question skipped', {
-      userId,
-      questionId,
-      reason: reason || 'no_reason_provided'
-    });
-
-    // Generate a new question
-    const newQuestionResult = await tagGamificationService.generateComparativeQuestion(userId);
-
-    if (!newQuestionResult.success) {
-      return res.status(404).json({
-        success: false,
-        message: 'No more questions available'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Question skipped, new question generated',
-      data: newQuestionResult.question
-    });
-
-  } catch (error) {
-    logger.error('Failed to skip question', {
-      userId: req.body.userId,
-      questionId: req.body.questionId,
-      error: error.message
-    });
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to skip question',
-      error: error.message
-    });
-  }
-});
-
-/**
- * Get available categories for tag validation
- * GET /api/gamification/categories/:userId
- */
-router.get('/categories/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Get user's contacts to determine available categories
-    const contacts = await Contact.find({ userId: userId });
-
-    if (contacts.length === 0) {
-      return res.json({
-        success: true,
-        data: {
-          categories: [],
-          message: 'No contacts available for gamification'
-        }
-      });
-    }
-
-    // Extract available categories from contacts
-    const categories = tagGamificationService.extractTagCategories(contacts);
-
-    // Add category metadata
-    const categoryData = categories.map(category => ({
-      id: category,
-      name: this.formatCategoryName(category),
-      description: this.getCategoryDescription(category),
-      eligibleContacts: tagGamificationService.findContactsWithCategoryData(contacts, category).length
-    }));
-
-    res.json({
-      success: true,
-      data: {
-        categories: categoryData,
-        totalContacts: contacts.length
-      }
-    });
-
-  } catch (error) {
-    logger.error('Failed to get categories', {
-      userId: req.params.userId,
-      error: error.message
-    });
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get categories',
-      error: error.message
-    });
-  }
-});
-
-/**
- * Format category name for display
- * @param {string} category - Category ID
- * @returns {string} Formatted name
- */
-function formatCategoryName(category) {
-  const nameMap = {
-    'poker_skill': 'Poker Skills',
-    'programming_experience': 'Programming Experience',
-    'location_knowledge': 'Local Knowledge',
-    'professional_experience': 'Professional Experience',
-    'industry_expertise': 'Industry Expertise',
-    'education_background': 'Education Background'
-  };
-
-  return nameMap[category] || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-/**
- * Get category description
- * @param {string} category - Category ID
- * @returns {string} Description
- */
-function getCategoryDescription(category) {
-  const descriptionMap = {
-    'poker_skill': 'Compare poker playing abilities',
-    'programming_experience': 'Compare programming and technical skills',
-    'location_knowledge': 'Compare familiarity with specific locations',
-    'professional_experience': 'Compare work experience and expertise',
-    'industry_expertise': 'Compare knowledge within specific industries',
-    'education_background': 'Compare educational achievements'
-  };
-
-  return descriptionMap[category] || `Compare ${category.replace(/_/g, ' ')} between contacts`;
-}
 
 module.exports = router;
