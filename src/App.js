@@ -119,11 +119,14 @@ const AppHeader = () => {
 
 // AppContent component that uses the AuthContext
 const AppContent = () => {
+  const { user } = useAuth();
+
   return (
     <div className="app">
-      <NavBar />
+      <AppHeader />
+      {user && <MainNavigation />}
       <Routes>
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/" element={user ? <Navigate to="/contacts" replace /> : <Navigate to="/auth" replace />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/test" element={<TestPage />} />
@@ -131,7 +134,39 @@ const AppContent = () => {
           path="/contacts" 
           element={
             <ProtectedRoute>
-              <div>Contacts Page (Coming Soon)</div>
+              <ContactsPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/search" 
+          element={
+            <ProtectedRoute>
+              <SearchPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/rank" 
+          element={
+            <ProtectedRoute>
+              <RankPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/contact/:contactId" 
+          element={
+            <ProtectedRoute>
+              <ContactDetailPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           } 
         />
