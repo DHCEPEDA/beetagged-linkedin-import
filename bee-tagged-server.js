@@ -1716,6 +1716,10 @@ app.use('/api/ai-tags', aiTagRouter);
 app.use('/api/gamification', gamificationRouter);
 app.use('/api/test', dataExtractionTestRouter);
 
+// Core search functionality - "Search YOUR world as YOU define it"
+const naturalLanguageSearchRouter = require('./server/routes/natural-language-search-routes');
+app.use('/api/search', naturalLanguageSearchRouter);
+
 // Add documentation route for data deletion status
 app.get('/api/deletion-status', (req, res) => {
   const { code, id } = req.query;
