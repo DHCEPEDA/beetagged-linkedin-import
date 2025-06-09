@@ -99,6 +99,18 @@ app.use('/', socialAuthRoutes);
 const importRoutes = require('./server/routes/import-routes');
 app.use('/api/import', importRoutes);
 
+// Import and register contact enrichment routes
+const contactEnrichmentRoutes = require('./server/routes/contact-enrichment-routes');
+app.use('/api/contacts', contactEnrichmentRoutes);
+
+// Import and register gamification routes
+const gamificationRoutes = require('./server/routes/gamification-routes');
+app.use('/api/gamification', gamificationRoutes);
+
+// Import and register professional search routes (MVP core feature)
+const professionalSearchRoutes = require('./server/routes/professional-search-routes');
+app.use('/api/professional', professionalSearchRoutes);
+
 // Initialize session middleware for authentication
 const session = require('express-session');
 app.use(session({
