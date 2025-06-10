@@ -203,3 +203,92 @@
   padding: 4px 10px;
   font-size: 12px;
 }
+
+/* Expand indicator styling */
+.contact-card-expand-indicator {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.contact-card.expandable:hover .contact-card-expand-indicator {
+  opacity: 0.7;
+}
+
+.expand-arrow {
+  font-size: 12px;
+  color: #666;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expand-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+/* Add expandable cursor styling */
+.contact-card.expandable {
+  cursor: pointer;
+}
+
+/* Pulse animation for initial load */
+@keyframes contactCardLoad {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contact-card {
+  animation: contactCardLoad 0.4s ease-out;
+}
+
+/* Staggered load animation for multiple cards */
+.contact-card:nth-child(1) { animation-delay: 0ms; }
+.contact-card:nth-child(2) { animation-delay: 50ms; }
+.contact-card:nth-child(3) { animation-delay: 100ms; }
+.contact-card:nth-child(4) { animation-delay: 150ms; }
+.contact-card:nth-child(5) { animation-delay: 200ms; }
+.contact-card:nth-child(6) { animation-delay: 250ms; }
+.contact-card:nth-child(7) { animation-delay: 300ms; }
+.contact-card:nth-child(8) { animation-delay: 350ms; }
+
+/* Focus states for accessibility */
+.contact-card:focus {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+/* Ripple effect on click */
+.contact-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.contact-card:active::after {
+  width: 300px;
+  height: 300px;
+}

@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import TagBadge from '../Tags/TagBadge';
 import './ContactCard.css';
 
 /**
- * Contact Card component
+ * Contact Card component with micro-interactions
  * Based on the iOS ContactsViewController cell implementation
  */
 const ContactCard = ({ 
   contact, 
   onClick, 
   showTags = true,
-  className = '' 
+  className = '',
+  expandable = false 
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   const { 
     name, 
     first_name, 
@@ -37,8 +40,33 @@ const ContactCard = ({
     ? education[0].school || '' 
     : '';
 
+  // Handle expand toggle
+  const handleExpand = useCallback((e) => {
+    if (expandable) {
+      e.stopPropagation();
+      setIsExpanded(!isExpanded);
+    }
+  }, [expandable, isExpanded]);
+
+  // Handle card click
+  const handleCardClick = useCallback((e) => {
+    if (expandable && !isExpanded) {
+      handleExpand(e);
+    } else if (onClick) {
+      onClick(e);
+    }
+  }, [expandable, isExpanded, handleExpand, onClick]);
+
+  // Card class names
+  const cardClasses = [
+    'contact-card',
+    className,
+    isExpanded ? 'expanded' : '',
+    expandable ? 'expandable' : ''
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className={`contact-card ${className}`} onClick={onClick}>
+    <div className={cardClasses} onClick={handleCardClick}>
       <div className="contact-card-avatar">
         <img 
           src={pictureUrl || '/images/placeholder-avatar.png'} 
@@ -86,6 +114,15 @@ const ContactCard = ({
             ))}
           </div>
         )}
+        
+        {/* Expand indicator for expandable cards */}
+        {expandable && (
+          <div className="contact-card-expand-indicator">
+            <span className={`expand-arrow ${isExpanded ? 'expanded' : ''}`}>
+              ▼
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -106,6 +143,7 @@ ContactCard.propTypes = {
   onClick: PropTypes.func,
   showTags: PropTypes.bool,
   className: PropTypes.string,
+  expandable: PropTypes.bool,
 };
 
 export default ContactCard;
