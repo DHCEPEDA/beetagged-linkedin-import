@@ -38,7 +38,7 @@ args = "node working-server.js"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "node server/index.js"]
+run = ["sh", "-c", "node working-server.js"]
 
 [[ports]]
 localPort = 3000

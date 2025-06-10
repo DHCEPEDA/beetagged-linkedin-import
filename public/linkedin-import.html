@@ -413,7 +413,6 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Elements
       const fileInput = document.getElementById('file-input');
       const selectFileBtn = document.getElementById('select-file-btn');
       const uploadSection = document.getElementById('upload-section');
@@ -426,109 +425,94 @@
       const contactsPreviewEl = document.getElementById('contacts-preview');
       const viewContactsBtn = document.getElementById('view-contacts-btn');
       const importMoreBtn = document.getElementById('import-more-btn');
-      
-      // Selected file
       let selectedFile = null;
-      
-      // Event listeners
-      selectFileBtn.addEventListener('click', () => {
-        fileInput.click();
-      });
-      
+
+      function showError(msg) {
+        errorMessageEl.textContent = msg;
+        errorMessageEl.style.display = 'block';
+      }
+
+      function hideError() {
+        errorMessageEl.style.display = 'none';
+      }
+
+      selectFileBtn.addEventListener('click', () => fileInput.click());
+
       fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
-          selectedFile = e.target.files[0];
+          const file = e.target.files[0];
+          if (!file.name.toLowerCase().endsWith('.csv')) {
+            showError('Please upload a CSV file exported from LinkedIn.');
+            fileInput.value = '';
+            selectedFile = null;
+            selectedFileEl.style.display = 'none';
+            uploadBtn.style.display = 'none';
+            return;
+          }
+          selectedFile = file;
           selectedFileEl.textContent = `Selected: ${selectedFile.name}`;
           selectedFileEl.style.display = 'block';
           uploadBtn.style.display = 'inline-block';
+          hideError();
         }
       });
-      
-      // Drag and drop
+
       uploadSection.addEventListener('dragover', (e) => {
         e.preventDefault();
         uploadSection.classList.add('dragover');
       });
-      
+
       uploadSection.addEventListener('dragleave', () => {
         uploadSection.classList.remove('dragover');
       });
-      
+
       uploadSection.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadSection.classList.remove('dragover');
-        
         if (e.dataTransfer.files.length > 0) {
-          selectedFile = e.dataTransfer.files[0];
-          
-          // Check if file is CSV
-          if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
-            errorMessageEl.textContent = 'Please upload a CSV file exported from LinkedIn.';
-            errorMessageEl.style.display = 'block';
+          const file = e.dataTransfer.files[0];
+          if (!file.name.toLowerCase().endsWith('.csv')) {
+            showError('Please upload a CSV file exported from LinkedIn.');
             return;
           }
-          
+          selectedFile = file;
           selectedFileEl.textContent = `Selected: ${selectedFile.name}`;
           selectedFileEl.style.display = 'block';
           uploadBtn.style.display = 'inline-block';
-          errorMessageEl.style.display = 'none';
+          hideError();
         }
       });
-      
-      // Upload button
+
       uploadBtn.addEventListener('click', async () => {
         if (!selectedFile) {
-          errorMessageEl.textContent = 'Please select a file to upload.';
-          errorMessageEl.style.display = 'block';
+          showError('Please select a file to upload.');
           return;
         }
-        
-        // Hide error message if previously shown
-        errorMessageEl.style.display = 'none';
-        
-        // Show loading
+        hideError();
         loadingEl.style.display = 'block';
         uploadBtn.disabled = true;
-        
-        // Create form data
         const formData = new FormData();
         formData.append('file', selectedFile);
-        
         try {
-          // Upload file
           const response = await fetch('/api/import/linkedin', {
             method: 'POST',
             body: formData
           });
-          
           const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.message || 'Failed to import LinkedIn connections.');
-          }
-          
-          // Hide loading
+          if (!response.ok) throw new Error(data.message || 'Failed to import LinkedIn connections.');
           loadingEl.style.display = 'none';
-          
-          // Show results
-          importSummaryEl.textContent = data.message;
-          
-          // Display contacts preview (up to 5)
-          const previewContacts = data.contacts.slice(0, 5);
-          
+          importSummaryEl.textContent = data.message || `Successfully imported ${data.contacts?.length || 0} connections from LinkedIn.`;
+          const previewContacts = (data.contacts || []).slice(0, 5);
           contactsPreviewEl.innerHTML = '';
           previewContacts.forEach(contact => {
             const contactEl = document.createElement('div');
             contactEl.className = 'contact-item';
-            
-            // Generate tags HTML
-            const tagsHTML = contact.tags.map(tag => {
-              return `<div class="tag ${tag.type}">${tag.name}</div>`;
-            }).join('');
-            
+            const tagsHTML = (contact.tags || []).map(tag =>
+              `<div class="tag ${tag.type}">${tag.name}</div>`
+            ).join('');
             contactEl.innerHTML = `
               <div class="contact-avatar">
-                <img src="${contact.picture}" alt="${contact.name}">
+                <img src="${contact.picture || '/images/default-avatar.png'}" alt="${contact.name}">
               </div>
               <div class="contact-details">
                 <div class="contact-name">${contact.name}</div>
@@ -541,39 +525,25 @@
                 </div>
               </div>
             `;
-            
             contactsPreviewEl.appendChild(contactEl);
           });
-          
-          // Store contacts in localStorage
-          localStorage.setItem('linkedinContacts', JSON.stringify(data.contacts));
+          localStorage.setItem('linkedinContacts', JSON.stringify(data.contacts || []));
           localStorage.setItem('authStatus', 'authenticated');
           localStorage.setItem('authProvider', 'linkedin_import');
-          
-          // Show results section
           importResultsEl.style.display = 'block';
           uploadSection.style.display = 'none';
         } catch (error) {
-          // Hide loading
           loadingEl.style.display = 'none';
-          
-          // Show error
-          errorMessageEl.textContent = error.message;
-          errorMessageEl.style.display = 'block';
-          
-          // Re-enable upload button
+          showError(error.message);
           uploadBtn.disabled = false;
         }
       });
-      
-      // View contacts button
+
       viewContactsBtn.addEventListener('click', () => {
         window.location.href = '/contact-manager-standalone.html';
       });
-      
-      // Import more button
+
       importMoreBtn.addEventListener('click', () => {
-        // Reset UI
         selectedFile = null;
         fileInput.value = '';
         selectedFileEl.style.display = 'none';
@@ -581,6 +551,7 @@
         importResultsEl.style.display = 'none';
         uploadSection.style.display = 'block';
         uploadBtn.disabled = false;
+        hideError();
       });
     });
   </script>
