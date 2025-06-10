@@ -203,6 +203,32 @@ app.get('/api/ping', (req, res) => {
   });
 });
 
+// Health check endpoint specifically for Replit webview
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Simple HTML endpoint for testing
+app.get('/test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>BeeTagged Test</title></head>
+    <body>
+      <h1>BeeTagged Server Running</h1>
+      <p>Time: ${new Date().toISOString()}</p>
+      <p>Port: 5000</p>
+      <p>Host: ${req.get('host')}</p>
+    </body>
+    </html>
+  `);
+});
+
+// Diagnostic page for webview testing
+app.get('/webview-test', (req, res) => {
+  res.sendFile(path.join(__dirname, 'replit_webview_test.html'));
+});
+
 // Download endpoints for Android project files
 app.get('/download', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'download.html'));
