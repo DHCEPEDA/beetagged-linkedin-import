@@ -746,6 +746,16 @@ app.get('/app.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'app.html'));
 });
 
+// Squarespace LinkedIn import page
+app.get('/squarespace-linkedin-import', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'squarespace-linkedin-import.html'));
+});
+
+// LinkedIn import page
+app.get('/linkedin-import', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'linkedin-import.html'));
+});
+
 // Route to serve the app-config.js file
 app.get('/app-config.js', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'app-config.js'));
