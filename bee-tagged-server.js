@@ -111,11 +111,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve React build files
+// Serve React build files first (higher priority)
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Serve other static files
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Download route for Android project
 app.get('/download/android-project.tar.gz', (req, res) => {
@@ -1700,10 +1700,10 @@ app.get('/index.html', (req, res) => {
   res.send(homePage);
 });
 
-// Home page
+// Home page - serve React app
 app.get('/', (req, res) => {
   logger.info('Home page requested', { ip: req.ip });
-  res.send(homePage);
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // API Routes Registration
