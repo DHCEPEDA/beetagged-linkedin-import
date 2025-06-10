@@ -271,6 +271,29 @@ const ContactsPage = () => {
             ))}
           </div>
         </div>
+        
+        {/* Import Contacts Button */}
+        <div style={{ textAlign: 'center', marginTop: '15px' }}>
+          <button
+            onClick={() => window.location.href = '/linkedin-import.html'}
+            style={{
+              backgroundColor: beeGold,
+              color: 'white',
+              border: 'none',
+              borderRadius: '20px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#e88b1a'}
+            onMouseOut={(e) => e.target.style.backgroundColor = beeGold}
+          >
+            📥 Import LinkedIn Data
+          </button>
+        </div>
       </div>
 
       {/* Search Mode Selector */}
