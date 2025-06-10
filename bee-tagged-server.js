@@ -67,7 +67,15 @@ app.use(compression());
 // Basic configuration
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+
+// Enhanced CORS configuration for Replit webview
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With']
+}));
 
 // Set trust proxy for Replit environment
 if (isRunningOnReplit) {
@@ -205,7 +213,20 @@ app.get('/api/ping', (req, res) => {
 
 // Health check endpoint specifically for Replit webview
 app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+  logger.info('Health check requested', {
+    ip: req.ip,
+    host: req.get('host'),
+    userAgent: req.get('user-agent')
+  });
+  
+  res.status(200).json({
+    status: 'UP',
+    timestamp: new Date().toISOString(),
+    mongodb: {
+      connected: mongoConnected,
+      connectionState: mongoose.connection.readyState
+    }
+  });
 });
 
 // Simple HTML endpoint for testing
