@@ -160,6 +160,16 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
   }
 });
 
+// Squarespace LinkedIn import page
+app.get('/squarespace-linkedin-import', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'squarespace-linkedin-import.html'));
+});
+
+// LinkedIn import page
+app.get('/linkedin-import', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'linkedin-import.html'));
+});
+
 // Serve React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
