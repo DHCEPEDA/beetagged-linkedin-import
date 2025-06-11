@@ -7,59 +7,48 @@ const csv = require('csv-parser');
 
 const app = express();
 
-// Basic middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+// Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Set up file upload configuration
+// Static files
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Upload configuration
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
+  destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
-  filename: function(req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const random = Math.round(Math.random() * 1E9);
+    cb(null, `${file.fieldname}-${timestamp}-${random}${path.extname(file.originalname)}`);
   }
 });
-
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype === 'text/csv' || file.originalname.toLowerCase().endsWith('.csv')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only CSV files are allowed'), false);
-  }
-};
 
 const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 1024 * 1024 * 5 } // 5MB max
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.toLowerCase().endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files allowed'), false);
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// Serve static files from dist (React build) and public
-app.use(express.static(path.join(__dirname, 'dist')));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'UP', timestamp: new Date().toISOString() });
-});
-
-// API ping
-app.get('/api/ping', (req, res) => {
-  res.json({
-    success: true,
-    message: 'pong',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// LinkedIn CSV parser function
+// LinkedIn CSV parser
 function parseLinkedInCSV(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -73,9 +62,9 @@ function parseLinkedInCSV(filePath) {
           tags: []
         };
         
-        const fieldMapping = {
+        const fields = {
           'First Name': 'firstName',
-          'Last Name': 'lastName',
+          'Last Name': 'lastName', 
           'Email Address': 'email',
           'Company': 'company',
           'Position': 'title',
@@ -85,58 +74,93 @@ function parseLinkedInCSV(filePath) {
           'Phone Number': 'phone'
         };
         
-        Object.keys(data).forEach(column => {
-          if (fieldMapping[column] && data[column]) {
-            contact[fieldMapping[column]] = data[column].trim();
+        Object.keys(data).forEach(col => {
+          if (fields[col] && data[col]) {
+            contact[fields[col]] = data[col].trim();
           }
         });
         
         contact.name = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
         
-        const potentialTags = [];
-        if (contact.location) potentialTags.push({ type: 'location', name: contact.location });
-        if (contact.company) potentialTags.push({ type: 'company', name: contact.company });
-        if (contact.title) potentialTags.push({ type: 'position', name: contact.title });
-        if (contact.industry) potentialTags.push({ type: 'industry', name: contact.industry });
+        const tags = [];
+        if (contact.location) tags.push({ type: 'location', name: contact.location });
+        if (contact.company) tags.push({ type: 'company', name: contact.company });
+        if (contact.title) tags.push({ type: 'position', name: contact.title });
+        if (contact.industry) tags.push({ type: 'industry', name: contact.industry });
         
+        contact.tags = tags;
         contact.picture = 'https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg';
-        contact.tags = potentialTags;
         
         results.push(contact);
       })
       .on('end', () => resolve(results))
-      .on('error', (error) => reject(error));
+      .on('error', reject);
   });
 }
 
-// LinkedIn import endpoint
+// Routes
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'BeeTagged LinkedIn Import' 
+  });
+});
+
+app.get('/status', (req, res) => {
+  res.json({
+    server: 'running',
+    linkedinImport: 'available',
+    routes: {
+      import: '/li-import',
+      api: '/api/import/linkedin'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test page
+app.get('/li-import', (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'li-import.html');
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('LinkedIn import page not found');
+  }
+});
+
+app.get('/squarespace-linkedin-import', (req, res) => {
+  res.redirect('/li-import');
+});
+
+// LinkedIn import API
 app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 
         success: false, 
-        message: 'No file uploaded or file is not a CSV' 
+        message: 'No CSV file uploaded' 
       });
     }
 
     const contacts = await parseLinkedInCSV(req.file.path);
     
     fs.unlink(req.file.path, (err) => {
-      if (err) console.error('Error deleting file:', err);
+      if (err) console.error('File cleanup error:', err);
     });
     
-    res.status(200).json({
+    res.json({
       success: true,
       message: `Successfully imported ${contacts.length} contacts from LinkedIn`,
-      contacts
+      contacts,
+      count: contacts.length
     });
+    
   } catch (error) {
     console.error('LinkedIn import error:', error);
     
     if (req.file && req.file.path) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting file:', err);
-      });
+      fs.unlink(req.file.path, () => {});
     }
     
     res.status(500).json({
@@ -147,48 +171,26 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
   }
 });
 
-// Squarespace LinkedIn import page
-app.get('/squarespace-linkedin-import', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'squarespace-linkedin-import.html'));
+// Fallback routes
+app.get('/', (req, res) => {
+  res.redirect('/li-import');
 });
 
-// LinkedIn import page
-app.get('/linkedin-import', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'linkedin-import.html'));
-});
-
-// Serve React app for all other routes
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).send('App not found');
+    res.status(404).send('Page not found');
   }
 });
 
-// Debug route to verify server is running
-app.get('/debug', (req, res) => {
-  res.json({
-    status: 'Server is running',
-    port: PORT,
-    timestamp: new Date().toISOString(),
-    routes: [
-      '/squarespace-linkedin-import',
-      '/linkedin-import', 
-      '/api/import/linkedin',
-      '/health',
-      '/api/ping'
-    ]
-  });
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`BeeTagged LinkedIn Import Server`);
+  console.log(`Running on port: ${PORT}`);
+  console.log(`Test page: /li-import`);
+  console.log(`API: /api/import/linkedin`);
 });
 
-// Start server on port that Replit expects
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`BeeTagged server running on port ${PORT}`);
-  console.log(`LinkedIn import: http://localhost:${PORT}/squarespace-linkedin-import`);
-  console.log(`External domain should serve: https://beetagged-server.replit.app/squarespace-linkedin-import`);
-  console.log(`Debug endpoint: https://beetagged-server.replit.app/debug`);
-  console.log(`Access at: http://localhost:${PORT}`);
-});
+module.exports = app;

@@ -34,11 +34,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node main.js"
-waitForPort = 3000
+args = "node index.js"
+waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "node main.js"]
+run = ["sh", "-c", "node index.js"]
 
 [[ports]]
 localPort = 3000

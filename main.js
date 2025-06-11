@@ -214,12 +214,12 @@ app.get('*', (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 BeeTagged Server Running`);
   console.log(`Port: ${PORT}`);
-  console.log(`LinkedIn Import: http://localhost:${PORT}/squarespace-linkedin-import`);
-  console.log(`External URL: https://beetagged-server.replit.app/squarespace-linkedin-import`);
+  console.log(`LinkedIn Import: http://localhost:${PORT}/li-import`);
+  console.log(`External URL: https://beetagged-server.replit.app/li-import`);
   console.log(`Status: http://localhost:${PORT}/status\n`);
 });
 
