@@ -28,9 +28,8 @@ const connectDB = require('./config/db');
 
 // Initialize app
 const app = express();
-// Use the PORT environment variable or default to 5000
-// Replit prefers using port 5000 for exposed services
-const PORT = process.env.PORT || 5000;
+// Use the PORT environment variable or default to 3000 for Replit deployment
+const PORT = process.env.PORT || 3000;
 
 // Connect to database
 connectDB();

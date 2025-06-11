@@ -35,7 +35,7 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server/index.js"
-waitForPort = 5000
+waitForPort = 3000
 
 [deployment]
 run = ["sh", "-c", "node server/index.js"]
