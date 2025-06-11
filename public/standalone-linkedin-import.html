@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Import - BeeTagged</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: #0077B5;
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .content { padding: 30px; }
+    .upload-area {
+      border: 2px dashed #0077B5;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      background: #f8fbff;
+      margin: 20px 0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area:hover { background: #e8f4fd; }
+    .btn {
+      background: #0077B5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    .btn:disabled { background: #ccc; }
+    .hidden { display: none; }
+    .message {
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .success { background: #e8f5e9; color: #2e7d32; }
+    .error { background: #ffebee; color: #c62828; }
+    .contact-preview {
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+    }
+    .contact-avatar {
+      width: 40px;
+      height: 40px;
+      background: #0077B5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      margin-right: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>LinkedIn Import</h1>
+      <p>Import your LinkedIn connections to BeeTagged</p>
+    </div>
+    
+    <div class="content">
+      <div class="message" style="background: #fff3cd; color: #856404;">
+        <strong>How to Export:</strong> LinkedIn → Settings & Privacy → Data privacy → Get a copy of your data → Select "Connections" → Download CSV
+      </div>
+      
+      <div id="uploadArea" class="upload-area">
+        <div style="font-size: 48px; color: #0077B5; margin-bottom: 15px;">📄</div>
+        <div>Drop your LinkedIn CSV file here or click to browse</div>
+        <input type="file" id="fileInput" accept=".csv" class="hidden">
+        <button id="browseBtn" class="btn">Choose File</button>
+        <div id="fileName" class="hidden" style="margin-top: 15px; color: #0077B5;"></div>
+        <button id="uploadBtn" class="btn hidden">Import Connections</button>
+      </div>
+      
+      <div id="loading" class="hidden" style="text-align: center; padding: 20px;">
+        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0077B5; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="margin-top: 15px;">Processing contacts...</div>
+      </div>
+      
+      <div id="message" class="hidden"></div>
+      
+      <div id="preview" class="hidden">
+        <h3>Imported Contacts Preview:</h3>
+        <div id="contactsList"></div>
+        <div style="text-align: center; margin-top: 20px;">
+          <button id="viewContactsBtn" class="btn">View All Contacts</button>
+          <button id="importMoreBtn" class="btn" style="background: #f5f5f5; color: #333;">Import More</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+
+  <script>
+    const API_BASE = 'https://beetagged-server.replit.app';
+    
+    const elements = {
+      uploadArea: document.getElementById('uploadArea'),
+      fileInput: document.getElementById('fileInput'),
+      browseBtn: document.getElementById('browseBtn'),
+      fileName: document.getElementById('fileName'),
+      uploadBtn: document.getElementById('uploadBtn'),
+      loading: document.getElementById('loading'),
+      message: document.getElementById('message'),
+      preview: document.getElementById('preview'),
+      contactsList: document.getElementById('contactsList'),
+      viewContactsBtn: document.getElementById('viewContactsBtn'),
+      importMoreBtn: document.getElementById('importMoreBtn')
+    };
+    
+    let selectedFile = null;
+    
+    function showMessage(text, type = 'success') {
+      elements.message.textContent = text;
+      elements.message.className = `message ${type}`;
+      elements.message.classList.remove('hidden');
+    }
+    
+    function hideMessage() {
+      elements.message.classList.add('hidden');
+    }
+    
+    elements.browseBtn.onclick = () => elements.fileInput.click();
+    elements.uploadArea.onclick = () => elements.fileInput.click();
+    
+    elements.fileInput.onchange = (e) => {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+          showMessage('Please upload a CSV file from LinkedIn', 'error');
+          return;
+        }
+        selectedFile = file;
+        elements.fileName.textContent = `Selected: ${file.name}`;
+        elements.fileName.classList.remove('hidden');
+        elements.uploadBtn.classList.remove('hidden');
+        hideMessage();
+      }
+    };
+    
+    elements.uploadArea.ondragover = (e) => {
+      e.preventDefault();
+      elements.uploadArea.style.background = '#e8f4fd';
+    };
+    
+    elements.uploadArea.ondragleave = () => {
+      elements.uploadArea.style.background = '#f8fbff';
+    };
+    
+    elements.uploadArea.ondrop = (e) => {
+      e.preventDefault();
+      elements.uploadArea.style.background = '#f8fbff';
+      if (e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          selectedFile = file;
+          elements.fileName.textContent = `Selected: ${file.name}`;
+          elements.fileName.classList.remove('hidden');
+          elements.uploadBtn.classList.remove('hidden');
+          hideMessage();
+        } else {
+          showMessage('Please upload a CSV file from LinkedIn', 'error');
+        }
+      }
+    };
+    
+    elements.uploadBtn.onclick = async () => {
+      if (!selectedFile) return;
+      
+      hideMessage();
+      elements.loading.classList.remove('hidden');
+      elements.uploadBtn.disabled = true;
+      
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/import/linkedin`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Import failed');
+        }
+        
+        elements.loading.classList.add('hidden');
+        showMessage(`Successfully imported ${data.contacts?.length || 0} LinkedIn connections!`);
+        
+        // Show preview
+        const contacts = (data.contacts || []).slice(0, 3);
+        elements.contactsList.innerHTML = '';
+        
+        contacts.forEach(contact => {
+          const div = document.createElement('div');
+          div.className = 'contact-preview';
+          div.innerHTML = `
+            <div class="contact-avatar">${(contact.name || 'N')[0].toUpperCase()}</div>
+            <div>
+              <div style="font-weight: bold;">${contact.name || 'Unknown'}</div>
+              <div style="color: #666; font-size: 14px;">${contact.company || ''} ${contact.title ? '• ' + contact.title : ''}</div>
+            </div>
+          `;
+          elements.contactsList.appendChild(div);
+        });
+        
+        if (contacts.length > 0) {
+          elements.preview.classList.remove('hidden');
+        }
+        
+        // Store data
+        localStorage.setItem('linkedinContacts', JSON.stringify(data.contacts || []));
+        localStorage.setItem('authStatus', 'authenticated');
+        localStorage.setItem('authProvider', 'linkedin_import');
+        
+      } catch (error) {
+        elements.loading.classList.add('hidden');
+        showMessage(error.message, 'error');
+        elements.uploadBtn.disabled = false;
+      }
+    };
+    
+    elements.viewContactsBtn.onclick = () => {
+      window.location.href = `${API_BASE}/contact-manager-standalone.html`;
+    };
+    
+    elements.importMoreBtn.onclick = () => {
+      selectedFile = null;
+      elements.fileInput.value = '';
+      elements.fileName.classList.add('hidden');
+      elements.uploadBtn.classList.add('hidden');
+      elements.uploadBtn.disabled = false;
+      elements.preview.classList.add('hidden');
+      hideMessage();
+    };
+  </script>
+</body>
+</html>

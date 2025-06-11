@@ -1,0 +1,48 @@
+Here are the most common steps to force Replit to pick up your latest changes and get your LinkedIn import working on your public URL:
+
+Verify your redirect URIs and secrets
+
+In your LinkedIn Developer console make sure the exact Replit domain (including https:// and any trailing slash) is listed under “Authorized Redirect URLs.”
+
+In Replit’s Secrets panel, double-check that LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET and any other env vars match your LinkedIn app settings.
+
+Clear Replit’s build cache & redeploy
+Replit sometimes serves a cached build. Open the Shell pane and run:
+
+bash
+Copy
+rm -rf node_modules \
+  && npm install \
+  && killall node    # stops any stray processes
+Then in the left sidebar click Deployments → Redeploy (or stop & hit Run again).
+
+Ensure your .replit run command matches production
+Open your .replit file and confirm you’re not using a “dev” script that only runs locally. For example:
+
+ini
+Copy
+language = "nodejs"
+run = "npm start"
+If you’ve been running npm run dev for local hot-reload, switch it to whatever command actually builds & serves your code in production.
+
+Check the Replit deployment URL
+Sometimes Replit shows both a “Preview” URL and a “Deployed” URL. Make sure you’re testing the one under Deployments > Domains (it’s usually https://your-repl-name.username.repl.co).
+
+Restart and inspect logs
+
+Click Stop, then Run.
+
+Open the Logs panel and watch for any errors on startup or during an OAuth callback.
+
+If you see a 404 on your /api/auth/linkedin/callback route, that means your code didn’t actually compile to your deployed instance.
+
+(Optional) Use replit deploy CLI
+If you push your code via GitHub, or want to script it, install Replit’s CLI and run:
+
+bash
+Copy
+npx replit deploy --public
+This will push your latest commit directly to your Replit deployment.
+
+Why this happens
+Replit’s “always-on” instances will occasionally serve an older build until you explicitly clear cache or redeploy, and environment variables in Secrets only load on a fresh start. By wiping node_modules, reinstalling, and restarting your Repl under the production run command, you force it to pull in both your code changes and updated secrets. Once the callback URL and client/secret are correct, LinkedIn OAuth will work exactly as it does on your local machine.

@@ -167,10 +167,28 @@ app.get('*', (req, res) => {
   }
 });
 
+// Debug route to verify server is running
+app.get('/debug', (req, res) => {
+  res.json({
+    status: 'Server is running',
+    port: PORT,
+    timestamp: new Date().toISOString(),
+    routes: [
+      '/squarespace-linkedin-import',
+      '/linkedin-import', 
+      '/api/import/linkedin',
+      '/health',
+      '/api/ping'
+    ]
+  });
+});
+
 // Start server on port that Replit expects
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`BeeTagged server running on port ${PORT}`);
   console.log(`LinkedIn import: http://localhost:${PORT}/squarespace-linkedin-import`);
+  console.log(`External domain should serve: https://beetagged-server.replit.app/squarespace-linkedin-import`);
+  console.log(`Debug endpoint: https://beetagged-server.replit.app/debug`);
   console.log(`Access at: http://localhost:${PORT}`);
 });
