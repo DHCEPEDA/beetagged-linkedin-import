@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
 const ejs = require('ejs');
+const multer = require('multer');
+const fs = require('fs');
+const csv = require('csv-parser');
 
 // Load environment variables
 dotenv.config();
@@ -44,6 +47,35 @@ app.use(express.urlencoded({ extended: true }));
 
 // Add trust proxy for Replit secure connections
 app.set('trust proxy', 1);
+
+// Set up file upload configuration
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function(req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'text/csv' || file.originalname.toLowerCase().endsWith('.csv')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only CSV files are allowed'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 1024 * 1024 * 5 } // 5MB max
+});
 
 // Set up EJS for templating
 app.engine('html', ejs.renderFile);
@@ -729,6 +761,94 @@ app.get('/fb-test', (req, res) => {
   `);
 });
 
+// LinkedIn CSV parser function
+function parseLinkedInCSV(filePath) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', (data) => {
+        const contact = {
+          id: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          source: 'linkedin_import',
+          tags: []
+        };
+        
+        const fieldMapping = {
+          'First Name': 'firstName',
+          'Last Name': 'lastName',
+          'Email Address': 'email',
+          'Company': 'company',
+          'Position': 'title',
+          'Connected On': 'connectedOn',
+          'Location': 'location',
+          'Industry': 'industry',
+          'Phone Number': 'phone'
+        };
+        
+        Object.keys(data).forEach(column => {
+          if (fieldMapping[column] && data[column]) {
+            contact[fieldMapping[column]] = data[column].trim();
+          }
+        });
+        
+        contact.name = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+        
+        const potentialTags = [];
+        if (contact.location) potentialTags.push({ type: 'location', name: contact.location });
+        if (contact.company) potentialTags.push({ type: 'company', name: contact.company });
+        if (contact.title) potentialTags.push({ type: 'position', name: contact.title });
+        if (contact.industry) potentialTags.push({ type: 'industry', name: contact.industry });
+        
+        contact.picture = 'https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg';
+        contact.tags = potentialTags;
+        
+        results.push(contact);
+      })
+      .on('end', () => resolve(results))
+      .on('error', (error) => reject(error));
+  });
+}
+
+// LinkedIn import endpoint
+app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No file uploaded or file is not a CSV' 
+      });
+    }
+
+    const contacts = await parseLinkedInCSV(req.file.path);
+    
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error('Error deleting file:', err);
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully imported ${contacts.length} contacts from LinkedIn`,
+      contacts
+    });
+  } catch (error) {
+    console.error('LinkedIn import error:', error);
+    
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting file:', err);
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to import LinkedIn contacts',
+      error: error.message
+    });
+  }
+});
+
 // Set up routes
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
@@ -737,7 +857,6 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/wizard', wizardRoutes);
-app.use('/api/import', importRoutes);
 
 // Serve static assets from public and dist
 app.use(express.static(path.join(__dirname, '..', 'public')));
