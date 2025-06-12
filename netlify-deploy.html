@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deploy LinkedIn Import to Netlify</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .deploy-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 30px;
+      margin: 20px 0;
+      border-left: 4px solid #0077B5;
+    }
+    .code-block {
+      background: #2d3748;
+      color: #68d391;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: monospace;
+      margin: 15px 0;
+      overflow-x: auto;
+    }
+    .btn {
+      background: #0077B5;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      margin: 10px 5px;
+      font-weight: 500;
+    }
+    .btn:hover {
+      background: #005885;
+    }
+    .step {
+      margin: 25px 0;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .step h3 {
+      color: #0077B5;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Deploy LinkedIn Import to Stable Hosting</h1>
+  
+  <div class="deploy-card">
+    <h2>Quick Deployment Options</h2>
+    <p>Since Replit external domains aren't working reliably, here are three instant deployment options:</p>
+  </div>
+
+  <div class="step">
+    <h3>Option 1: Netlify Drop (Fastest - 30 seconds)</h3>
+    <ol>
+      <li>Download the file <code>linkedin-import-direct.html</code> from your Replit project</li>
+      <li>Go to <a href="https://app.netlify.com/drop" target="_blank" class="btn">Netlify Drop</a></li>
+      <li>Drag the HTML file onto the page</li>
+      <li>Get instant URL like: <code>https://amazing-name-123.netlify.app</code></li>
+    </ol>
+    <p><strong>Result:</strong> Permanent, fast, reliable hosting with HTTPS</p>
+  </div>
+
+  <div class="step">
+    <h3>Option 2: GitHub Pages (Most Professional)</h3>
+    <ol>
+      <li>Create new repository on GitHub</li>
+      <li>Upload <code>linkedin-import-direct.html</code></li>
+      <li>Enable Pages in repository Settings</li>
+      <li>Access at: <code>https://yourusername.github.io/repo-name/linkedin-import-direct.html</code></li>
+    </ol>
+    <p><strong>Result:</strong> Professional URL, version control, permanent hosting</p>
+  </div>
+
+  <div class="step">
+    <h3>Option 3: Vercel (Developer-Friendly)</h3>
+    <ol>
+      <li>Go to <a href="https://vercel.com/new" target="_blank" class="btn">Vercel Deploy</a></li>
+      <li>Upload the HTML file</li>
+      <li>Get instant URL like: <code>https://project-name.vercel.app</code></li>
+    </ol>
+    <p><strong>Result:</strong> Fast global CDN, instant deployments</p>
+  </div>
+
+  <div class="deploy-card">
+    <h3>What You're Deploying</h3>
+    <p>The <code>linkedin-import-direct.html</code> file is a complete, standalone LinkedIn import tool that:</p>
+    <ul>
+      <li>Processes LinkedIn CSV files entirely in the browser</li>
+      <li>Generates intelligent tags for contacts</li>
+      <li>Creates downloadable contact data</li>
+      <li>Works without any server or backend</li>
+      <li>Provides access codes for mobile app integration</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <h3>Testing Your Deployment</h3>
+    <p>Once deployed, test with a sample LinkedIn CSV export to ensure:</p>
+    <ul>
+      <li>File upload works correctly</li>
+      <li>Contact processing generates tags</li>
+      <li>Download functionality works</li>
+      <li>Access codes are generated</li>
+    </ul>
+  </div>
+
+  <div class="code-block">
+    <strong>Quick Test Command (if using local server):</strong><br>
+    python -m http.server 8000<br>
+    # Then visit: http://localhost:8000/linkedin-import-direct.html
+  </div>
+
+  <p><strong>Recommendation:</strong> Use Netlify Drop for the fastest deployment. Simply download the HTML file from Replit and drag it to Netlify's drop zone for instant, reliable hosting.</p>
+</body>
+</html>

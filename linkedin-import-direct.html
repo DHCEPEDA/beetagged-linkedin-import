@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BeeTagged LinkedIn Import</title>
+  <title>LinkedIn Import - BeeTagged</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -267,13 +267,13 @@
   <div class="container">
     <div class="card">
       <div class="header">
-        <h1>LinkedIn Import</h1>
+        <h1>🔗 LinkedIn Import</h1>
         <p>Transform your LinkedIn network into organized, searchable contacts</p>
       </div>
       
       <div class="content">
         <div class="steps">
-          <h3>How to Export Your LinkedIn Connections</h3>
+          <h3>📋 How to Export Your LinkedIn Connections</h3>
           <ol>
             <li><strong>Sign in to LinkedIn</strong> on your desktop computer</li>
             <li>Go to <strong>Settings & Privacy</strong> → <strong>Data privacy</strong></li>
@@ -304,17 +304,17 @@
         
         <div id="results" class="results">
           <div class="summary">
-            <h3 id="summaryText">Successfully Processed Contacts!</h3>
+            <h3 id="summaryText">🎉 Successfully Processed Contacts!</h3>
             <p id="summaryDetails">Your LinkedIn network has been transformed into organized, searchable contacts</p>
           </div>
           
-          <h3 style="margin-bottom: 20px;">Contact Preview</h3>
+          <h3 style="margin-bottom: 20px;">📋 Contact Preview</h3>
           <div id="contactsList"></div>
           
           <div class="action-buttons">
-            <button id="downloadBtn" class="btn btn-success">Download Contact Data</button>
-            <button id="copyCodeBtn" class="btn btn-secondary">Copy Access Code</button>
-            <button id="resetBtn" class="btn">Process Another File</button>
+            <button id="downloadBtn" class="btn btn-success">💾 Download Contact Data</button>
+            <button id="copyCodeBtn" class="btn btn-secondary">📋 Copy Access Code</button>
+            <button id="resetBtn" class="btn">🔄 Process Another File</button>
           </div>
           
           <div id="accessCodeDisplay" class="code-display" style="display: none;">
@@ -520,7 +520,7 @@
           }
           
           // Update summary
-          elements.summaryText.textContent = `Successfully Processed ${processedContacts.length} Contacts!`;
+          elements.summaryText.textContent = `🎉 Successfully Processed ${processedContacts.length} Contacts!`;
           elements.summaryDetails.textContent = `Your LinkedIn network has been organized with intelligent tags and is ready for import.`;
           
           displayContacts(processedContacts);
