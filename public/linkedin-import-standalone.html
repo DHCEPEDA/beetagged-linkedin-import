@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Import - BeeTagged</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: #0077B5;
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .content { padding: 30px; }
+    .instructions {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 6px;
+    }
+    .upload-area {
+      border: 2px dashed #0077B5;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      background: #f8fbff;
+      margin: 20px 0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area:hover { background: #e8f4fd; }
+    .btn {
+      background: #0077B5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    .btn:disabled { background: #ccc; }
+    .hidden { display: none; }
+    .message {
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .success { background: #e8f5e9; color: #2e7d32; }
+    .error { background: #ffebee; color: #c62828; }
+    .contact-preview {
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+    }
+    .contact-avatar {
+      width: 40px;
+      height: 40px;
+      background: #0077B5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      margin-right: 15px;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #0077B5;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>LinkedIn Import</h1>
+      <p>Import your LinkedIn connections to BeeTagged</p>
+    </div>
+    
+    <div class="content">
+      <div class="instructions">
+        <h3>How to Export from LinkedIn:</h3>
+        <ol>
+          <li>Go to LinkedIn → Settings & Privacy → Data privacy</li>
+          <li>Click "Get a copy of your data"</li>
+          <li>Select "Connections" → Request archive</li>
+          <li>Download the CSV file when ready</li>
+          <li>Upload it below</li>
+        </ol>
+      </div>
+      
+      <div id="uploadArea" class="upload-area">
+        <div style="font-size: 48px; color: #0077B5; margin-bottom: 15px;">📄</div>
+        <div>Drop your LinkedIn CSV file here or click to browse</div>
+        <input type="file" id="fileInput" accept=".csv" class="hidden">
+        <button id="browseBtn" class="btn">Choose File</button>
+        <div id="fileName" class="hidden" style="margin-top: 15px; color: #0077B5;"></div>
+        <button id="uploadBtn" class="btn hidden">Process File</button>
+      </div>
+      
+      <div id="loading" class="hidden" style="text-align: center; padding: 20px;">
+        <div class="spinner"></div>
+        <div>Processing contacts...</div>
+      </div>
+      
+      <div id="message" class="hidden"></div>
+      
+      <div id="preview" class="hidden">
+        <h3>Processed Contacts:</h3>
+        <div id="contactsList"></div>
+        <div style="text-align: center; margin-top: 20px;">
+          <button id="downloadBtn" class="btn">Download Processed Data</button>
+          <button id="copyCodeBtn" class="btn">Copy Access Code</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Client-side CSV processing - no server required
+    let processedContacts = [];
+    let accessCode = '';
+    
+    const elements = {
+      uploadArea: document.getElementById('uploadArea'),
+      fileInput: document.getElementById('fileInput'),
+      browseBtn: document.getElementById('browseBtn'),
+      fileName: document.getElementById('fileName'),
+      uploadBtn: document.getElementById('uploadBtn'),
+      loading: document.getElementById('loading'),
+      message: document.getElementById('message'),
+      preview: document.getElementById('preview'),
+      contactsList: document.getElementById('contactsList'),
+      downloadBtn: document.getElementById('downloadBtn'),
+      copyCodeBtn: document.getElementById('copyCodeBtn')
+    };
+    
+    let selectedFile = null;
+    
+    function showMessage(text, type = 'success') {
+      elements.message.textContent = text;
+      elements.message.className = `message ${type}`;
+      elements.message.classList.remove('hidden');
+    }
+    
+    function hideMessage() {
+      elements.message.classList.add('hidden');
+    }
+    
+    // CSV parsing function
+    function parseCSV(text) {
+      const lines = text.split('\n');
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      const contacts = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+          const contact = {};
+          
+          headers.forEach((header, index) => {
+            contact[header] = values[index] || '';
+          });
+          
+          // Process contact data
+          const processedContact = {
+            id: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: `${contact['First Name'] || ''} ${contact['Last Name'] || ''}`.trim(),
+            firstName: contact['First Name'] || '',
+            lastName: contact['Last Name'] || '',
+            email: contact['Email Address'] || '',
+            company: contact['Company'] || '',
+            title: contact['Position'] || '',
+            location: contact['Location'] || '',
+            industry: contact['Industry'] || '',
+            connectedOn: contact['Connected On'] || '',
+            tags: []
+          };
+          
+          // Generate tags
+          const tags = [];
+          if (processedContact.location) tags.push({ type: 'location', name: processedContact.location });
+          if (processedContact.company) tags.push({ type: 'company', name: processedContact.company });
+          if (processedContact.title) tags.push({ type: 'position', name: processedContact.title });
+          if (processedContact.industry) tags.push({ type: 'industry', name: processedContact.industry });
+          
+          processedContact.tags = tags;
+          processedContact.source = 'linkedin_import';
+          
+          if (processedContact.name && processedContact.name !== ' ') {
+            contacts.push(processedContact);
+          }
+        }
+      }
+      
+      return contacts;
+    }
+    
+    function generateAccessCode() {
+      return Math.random().toString(36).substr(2, 8).toUpperCase();
+    }
+    
+    // Event handlers
+    elements.browseBtn.onclick = () => elements.fileInput.click();
+    elements.uploadArea.onclick = () => elements.fileInput.click();
+    
+    elements.fileInput.onchange = (e) => {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+          showMessage('Please upload a CSV file from LinkedIn', 'error');
+          return;
+        }
+        selectedFile = file;
+        elements.fileName.textContent = `Selected: ${file.name}`;
+        elements.fileName.classList.remove('hidden');
+        elements.uploadBtn.classList.remove('hidden');
+        hideMessage();
+      }
+    };
+    
+    elements.uploadArea.ondragover = (e) => {
+      e.preventDefault();
+      elements.uploadArea.style.background = '#e8f4fd';
+    };
+    
+    elements.uploadArea.ondragleave = () => {
+      elements.uploadArea.style.background = '#f8fbff';
+    };
+    
+    elements.uploadArea.ondrop = (e) => {
+      e.preventDefault();
+      elements.uploadArea.style.background = '#f8fbff';
+      if (e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          selectedFile = file;
+          elements.fileName.textContent = `Selected: ${file.name}`;
+          elements.fileName.classList.remove('hidden');
+          elements.uploadBtn.classList.remove('hidden');
+          hideMessage();
+        } else {
+          showMessage('Please upload a CSV file from LinkedIn', 'error');
+        }
+      }
+    };
+    
+    elements.uploadBtn.onclick = () => {
+      if (!selectedFile) return;
+      
+      hideMessage();
+      elements.loading.classList.remove('hidden');
+      elements.uploadBtn.disabled = true;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csvText = e.target.result;
+          processedContacts = parseCSV(csvText);
+          accessCode = generateAccessCode();
+          
+          elements.loading.classList.add('hidden');
+          
+          if (processedContacts.length === 0) {
+            showMessage('No valid contacts found in the CSV file', 'error');
+            elements.uploadBtn.disabled = false;
+            return;
+          }
+          
+          showMessage(`Successfully processed ${processedContacts.length} LinkedIn connections!`);
+          
+          // Show preview
+          const preview = processedContacts.slice(0, 3);
+          elements.contactsList.innerHTML = '';
+          
+          preview.forEach(contact => {
+            const div = document.createElement('div');
+            div.className = 'contact-preview';
+            div.innerHTML = `
+              <div class="contact-avatar">${(contact.name || 'N')[0].toUpperCase()}</div>
+              <div>
+                <div style="font-weight: bold;">${contact.name || 'Unknown'}</div>
+                <div style="color: #666; font-size: 14px;">${contact.company || ''} ${contact.title ? '• ' + contact.title : ''}</div>
+                <div style="color: #999; font-size: 12px;">${contact.tags.map(t => t.name).join(', ')}</div>
+              </div>
+            `;
+            elements.contactsList.appendChild(div);
+          });
+          
+          elements.preview.classList.remove('hidden');
+          
+          // Store locally
+          localStorage.setItem('linkedinContacts', JSON.stringify(processedContacts));
+          localStorage.setItem('linkedinAccessCode', accessCode);
+          
+        } catch (error) {
+          elements.loading.classList.add('hidden');
+          showMessage('Error processing CSV file: ' + error.message, 'error');
+          elements.uploadBtn.disabled = false;
+        }
+      };
+      
+      reader.readAsText(selectedFile);
+    };
+    
+    elements.downloadBtn.onclick = () => {
+      const dataStr = JSON.stringify(processedContacts, null, 2);
+      const dataBlob = new Blob([dataStr], {type: 'application/json'});
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'linkedin_contacts_processed.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    };
+    
+    elements.copyCodeBtn.onclick = () => {
+      navigator.clipboard.writeText(accessCode).then(() => {
+        showMessage('Access code copied to clipboard!');
+        setTimeout(() => hideMessage(), 2000);
+      });
+    };
+  </script>
+</body>
+</html>
