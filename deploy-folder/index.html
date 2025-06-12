@@ -295,30 +295,91 @@
     
     function parseCSV(text) {
       const lines = text.split('\n').filter(line => line.trim());
-      if (lines.length < 2) throw new Error('Invalid CSV file format');
+      if (lines.length < 2) throw new Error('CSV file appears to be empty or invalid');
       
-      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      // Handle different CSV formats with proper quote parsing
+      function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          const nextChar = line[i + 1];
+          
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              current += '"';
+              i++; // Skip next quote
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      }
+      
+      const headers = parseCSVLine(lines[0]);
       const contacts = [];
       
+      // Debug: log headers to help troubleshoot
+      console.log('CSV Headers found:', headers);
+      
+      // Common LinkedIn header variations
+      const fieldMappings = {
+        // Standard headers
+        'First Name': ['First Name', 'first name', 'firstName', 'FirstName'],
+        'Last Name': ['Last Name', 'last name', 'lastName', 'LastName'],
+        'Email Address': ['Email Address', 'email address', 'Email', 'email'],
+        'Company': ['Company', 'company', 'Organization', 'organization'],
+        'Position': ['Position', 'position', 'Title', 'title', 'Job Title'],
+        'Location': ['Location', 'location', 'Area', 'area'],
+        'Industry': ['Industry', 'industry'],
+        'Connected On': ['Connected On', 'connected on', 'Date', 'date']
+      };
+      
+      function findHeader(standardName, headers) {
+        const variations = fieldMappings[standardName] || [standardName];
+        return headers.find(h => variations.some(v => h.toLowerCase().includes(v.toLowerCase())));
+      }
+      
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        if (!lines[i].trim()) continue;
+        
+        const values = parseCSVLine(lines[i]);
         const contact = {};
         
         headers.forEach((header, index) => {
           contact[header] = values[index] || '';
         });
         
+        // Map to standard fields using flexible matching
+        const firstName = contact[findHeader('First Name', headers)] || '';
+        const lastName = contact[findHeader('Last Name', headers)] || '';
+        const email = contact[findHeader('Email Address', headers)] || '';
+        const company = contact[findHeader('Company', headers)] || '';
+        const position = contact[findHeader('Position', headers)] || '';
+        const location = contact[findHeader('Location', headers)] || '';
+        const industry = contact[findHeader('Industry', headers)] || '';
+        const connectedOn = contact[findHeader('Connected On', headers)] || '';
+        
         const processedContact = {
           id: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          name: `${contact['First Name'] || ''} ${contact['Last Name'] || ''}`.trim(),
-          firstName: contact['First Name'] || '',
-          lastName: contact['Last Name'] || '',
-          email: contact['Email Address'] || '',
-          company: contact['Company'] || '',
-          title: contact['Position'] || '',
-          location: contact['Location'] || '',
-          industry: contact['Industry'] || '',
-          connectedOn: contact['Connected On'] || '',
+          name: `${firstName} ${lastName}`.trim(),
+          firstName: firstName,
+          lastName: lastName,
+          email: email,
+          company: company,
+          title: position,
+          location: location,
+          industry: industry,
+          connectedOn: connectedOn,
           source: 'linkedin_import',
           tags: []
         };
@@ -331,9 +392,17 @@
         
         processedContact.tags = tags;
         
-        if (processedContact.name && processedContact.name.trim() !== '') {
+        // More lenient validation - accept contacts with any name or company
+        if ((processedContact.name && processedContact.name.trim() !== '') || 
+            (processedContact.company && processedContact.company.trim() !== '')) {
           contacts.push(processedContact);
         }
+      }
+      
+      console.log('Processed contacts:', contacts.length);
+      if (contacts.length === 0) {
+        console.log('Sample data:', lines.slice(0, 3));
+        throw new Error(`No valid contacts found. Found ${lines.length - 1} rows but no recognizable contact data. Please ensure this is a LinkedIn connections export CSV file.`);
       }
       
       return contacts;
@@ -384,7 +453,16 @@
           return;
         }
         selectedFile = file;
-        elements.selectedFile.innerHTML = `Selected: ${file.name}`;
+        // Preview first few lines to help with troubleshooting
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target.result;
+          const lines = text.split('\n').slice(0, 3);
+          const preview = lines.length > 1 ? `\nPreview: ${lines[0].substring(0, 100)}...` : '';
+          elements.selectedFile.innerHTML = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)${preview}`;
+        };
+        reader.readAsText(file.slice(0, 500)); // Read first 500 bytes for preview
+        
         elements.selectedFile.style.display = 'block';
         elements.processBtn.style.display = 'inline-block';
         hideMessage();
