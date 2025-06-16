@@ -171,6 +171,115 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
   }
 });
 
+// Authentication endpoints
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, email } = req.body;
+    
+    // Basic validation
+    if (!username || !password || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username, password, and email are required'
+      });
+    }
+    
+    // In a real app, you'd hash the password and store in database
+    // For demo purposes, we'll simulate successful registration
+    const user = {
+      id: Date.now(),
+      username,
+      email,
+      createdAt: new Date().toISOString()
+    };
+    
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      user: user
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required'
+      });
+    }
+    
+    // Demo authentication - accept any credentials for testing
+    // In production, you'd validate against database
+    if (username && password) {
+      const user = {
+        id: Date.now(),
+        username,
+        email: `${username}@example.com`,
+        loginAt: new Date().toISOString()
+      };
+      
+      res.json({
+        success: true,
+        message: 'Login successful',
+        user: user,
+        token: 'demo-jwt-token-' + Date.now()
+      });
+    } else {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed',
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Logout successful'
+  });
+});
+
+app.get('/api/auth/user', (req, res) => {
+  // For demo purposes, return a mock user if token exists
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    res.json({
+      success: true,
+      user: {
+        id: 1,
+        username: 'demo-user',
+        email: 'demo@example.com'
+      }
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Not authenticated'
+    });
+  }
+});
+
 // LinkedIn Import standalone page
 app.get('/li-import', (req, res) => {
   const importPath = path.join(__dirname, 'public', 'linkedin-import-standalone.html');

@@ -47,7 +47,7 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html',
-      inject: false // Don't automatically inject the bundle, we're doing it manually
+      inject: 'body' // Automatically inject bundle.js into body
     }),
     new webpack.DefinePlugin({
       // Define environment variables for client-side access
