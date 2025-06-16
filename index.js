@@ -488,6 +488,185 @@ app.post('/api/contacts', (req, res) => {
   }
 });
 
+// Search API endpoint
+app.post('/api/search/natural', (req, res) => {
+  try {
+    const { query, userId, context } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required'
+      });
+    }
+    
+    // Add demo contacts if none exist
+    if (contacts.length === 0) {
+      contacts = [
+        {
+          _id: 1,
+          name: 'John Smith',
+          phoneNumber: '+1234567890',
+          email: 'john.smith@google.com',
+          company: 'Google',
+          title: 'Software Engineer',
+          priorityData: {
+            employment: { current: { jobFunction: 'Software Engineer', employer: 'Google' } },
+            location: { current: 'San Francisco, CA' }
+          },
+          allTags: [
+            { name: 'JavaScript', category: 'skill' },
+            { name: 'React', category: 'skill' },
+            { name: 'Google', category: 'company' },
+            { name: 'Tech Industry', category: 'industry' }
+          ],
+          linkedinData: { id: 'john-smith-123' },
+          source: 'linkedin'
+        },
+        {
+          _id: 2,
+          name: 'Sarah Chen',
+          phoneNumber: '+1987654321',
+          email: 'sarah.chen@google.com',
+          company: 'Google',
+          title: 'Product Manager',
+          priorityData: {
+            employment: { current: { jobFunction: 'Product Manager', employer: 'Google' } },
+            location: { current: 'Mountain View, CA' }
+          },
+          allTags: [
+            { name: 'Product Management', category: 'skill' },
+            { name: 'Google', category: 'company' },
+            { name: 'Analytics', category: 'skill' }
+          ],
+          linkedinData: { id: 'sarah-chen-456' },
+          source: 'linkedin'
+        },
+        {
+          _id: 3,
+          name: 'Michael Rodriguez',
+          phoneNumber: '+1555123456',
+          email: 'michael.rodriguez@meta.com',
+          company: 'Meta',
+          title: 'Marketing Director',
+          priorityData: {
+            employment: { current: { jobFunction: 'Marketing Director', employer: 'Meta' } },
+            location: { current: 'Menlo Park, CA' }
+          },
+          allTags: [
+            { name: 'Digital Marketing', category: 'skill' },
+            { name: 'Meta', category: 'company' },
+            { name: 'Leadership', category: 'personality' }
+          ],
+          source: 'linkedin'
+        },
+        {
+          _id: 4,
+          name: 'Emily Wang',
+          phoneNumber: '+1555987654',
+          email: 'emily.wang@apple.com',
+          company: 'Apple',
+          title: 'UX Designer',
+          priorityData: {
+            employment: { current: { jobFunction: 'UX Designer', employer: 'Apple' } },
+            location: { current: 'Cupertino, CA' }
+          },
+          allTags: [
+            { name: 'UX Design', category: 'skill' },
+            { name: 'Apple', category: 'company' },
+            { name: 'Design', category: 'skill' }
+          ],
+          source: 'linkedin'
+        }
+      ];
+      contactIdCounter = 5;
+    }
+    
+    const normalizedQuery = query.toLowerCase().trim();
+    const results = [];
+    
+    contacts.forEach(contact => {
+      let score = 0;
+      let matches = false;
+      
+      // Natural language pattern matching
+      if (normalizedQuery.includes('who works at')) {
+        const companyMatch = normalizedQuery.match(/who works at (.+?)(\?|$)/);
+        if (companyMatch) {
+          const companyName = companyMatch[1].trim();
+          if (contact.company && contact.company.toLowerCase().includes(companyName)) {
+            score += 100;
+            matches = true;
+          }
+        }
+      } else if (normalizedQuery.includes('who knows')) {
+        const skillMatch = normalizedQuery.match(/who knows (.+?)(\?|$)/);
+        if (skillMatch) {
+          const skill = skillMatch[1].trim();
+          if (contact.allTags && contact.allTags.some(tag => 
+            tag.name.toLowerCase().includes(skill) || 
+            contact.title.toLowerCase().includes(skill)
+          )) {
+            score += 90;
+            matches = true;
+          }
+        }
+      } else if (normalizedQuery.includes('professionals') || normalizedQuery.includes('developers')) {
+        const roleMatch = normalizedQuery.replace(/professionals|developers/, '').trim();
+        if (contact.title && contact.title.toLowerCase().includes(roleMatch)) {
+          score += 85;
+          matches = true;
+        }
+      } else {
+        // General search across all fields
+        if (contact.name && contact.name.toLowerCase().includes(normalizedQuery)) {
+          score += 50;
+          matches = true;
+        }
+        if (contact.company && contact.company.toLowerCase().includes(normalizedQuery)) {
+          score += 40;
+          matches = true;
+        }
+        if (contact.title && contact.title.toLowerCase().includes(normalizedQuery)) {
+          score += 35;
+          matches = true;
+        }
+        if (contact.allTags && contact.allTags.some(tag => 
+          tag.name.toLowerCase().includes(normalizedQuery)
+        )) {
+          score += 30;
+          matches = true;
+        }
+      }
+      
+      if (matches) {
+        results.push({
+          ...contact,
+          searchScore: score / 100
+        });
+      }
+    });
+    
+    // Sort by score (highest first)
+    results.sort((a, b) => b.searchScore - a.searchScore);
+    
+    res.json({
+      success: true,
+      results: results,
+      total: results.length,
+      query: query
+    });
+    
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Search failed',
+      error: error.message
+    });
+  }
+});
+
 // LinkedIn Import standalone page
 app.get('/li-import', (req, res) => {
   const importPath = path.join(__dirname, 'public', 'linkedin-import-standalone.html');
