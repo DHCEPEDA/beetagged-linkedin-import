@@ -8,6 +8,7 @@ import ContactDetailPage from './pages/ContactDetailPage';
 import SearchPage from './pages/SearchPage';
 import RankPage from './pages/RankPage';
 import SettingsPage from './pages/SettingsPage';
+import SocialIntegration from './components/SocialIntegration';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
@@ -172,6 +173,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/integrations" 
+          element={
+            <ProtectedRoute>
+              <SocialIntegration />
             </ProtectedRoute>
           } 
         />
