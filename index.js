@@ -16,9 +16,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Static files
-app.use(express.static(path.join(__dirname, 'public')));
+// Static files - serve dist first for React app
 app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Upload configuration
 const storage = multer.diskStorage({
@@ -171,17 +171,23 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
   }
 });
 
-// Fallback routes
-app.get('/', (req, res) => {
-  res.redirect('/li-import');
+// LinkedIn Import standalone page
+app.get('/li-import', (req, res) => {
+  const importPath = path.join(__dirname, 'public', 'linkedin-import-standalone.html');
+  if (fs.existsSync(importPath)) {
+    res.sendFile(importPath);
+  } else {
+    res.status(404).send('LinkedIn import page not found');
+  }
 });
 
+// Serve React app for all other routes
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).send('Page not found');
+    res.status(404).send('Application not found - build may be missing');
   }
 });
 
