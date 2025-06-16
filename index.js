@@ -280,6 +280,214 @@ app.get('/api/auth/user', (req, res) => {
   }
 });
 
+// Contact and Tag management endpoints
+let contacts = [];
+let tags = [];
+let tagIdCounter = 1;
+let contactIdCounter = 1;
+
+// Tags API
+app.get('/api/tags', (req, res) => {
+  res.json({
+    success: true,
+    tags: tags
+  });
+});
+
+app.post('/api/tags', (req, res) => {
+  try {
+    const { name, color, category } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tag name is required'
+      });
+    }
+    
+    // Check if tag already exists
+    const existingTag = tags.find(tag => tag.name.toLowerCase() === name.toLowerCase());
+    if (existingTag) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tag already exists'
+      });
+    }
+    
+    const newTag = {
+      _id: tagIdCounter++,
+      name: name.trim(),
+      color: color || '#007bff',
+      category: category || 'general',
+      createdAt: new Date().toISOString(),
+      usageCount: 0
+    };
+    
+    tags.push(newTag);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Tag created successfully',
+      tag: newTag
+    });
+    
+  } catch (error) {
+    console.error('Create tag error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create tag',
+      error: error.message
+    });
+  }
+});
+
+app.put('/api/tags/:id', (req, res) => {
+  try {
+    const tagId = parseInt(req.params.id);
+    const { name, color, category } = req.body;
+    
+    const tagIndex = tags.findIndex(tag => tag._id === tagId);
+    if (tagIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tag not found'
+      });
+    }
+    
+    if (name) tags[tagIndex].name = name.trim();
+    if (color) tags[tagIndex].color = color;
+    if (category) tags[tagIndex].category = category;
+    tags[tagIndex].updatedAt = new Date().toISOString();
+    
+    res.json({
+      success: true,
+      message: 'Tag updated successfully',
+      tag: tags[tagIndex]
+    });
+    
+  } catch (error) {
+    console.error('Update tag error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update tag'
+    });
+  }
+});
+
+app.delete('/api/tags/:id', (req, res) => {
+  try {
+    const tagId = parseInt(req.params.id);
+    
+    const tagIndex = tags.findIndex(tag => tag._id === tagId);
+    if (tagIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tag not found'
+      });
+    }
+    
+    // Check if tag is being used by any contacts
+    const tagUsage = contacts.filter(contact => 
+      contact.tags && contact.tags.some(tag => tag._id === tagId)
+    ).length;
+    
+    if (tagUsage > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete tag. It is used by ${tagUsage} contacts.`
+      });
+    }
+    
+    tags.splice(tagIndex, 1);
+    
+    res.json({
+      success: true,
+      message: 'Tag deleted successfully'
+    });
+    
+  } catch (error) {
+    console.error('Delete tag error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete tag'
+    });
+  }
+});
+
+// Contacts API
+app.get('/api/contacts', (req, res) => {
+  res.json({
+    success: true,
+    contacts: contacts
+  });
+});
+
+app.get('/api/contacts/:id', (req, res) => {
+  try {
+    const contactId = parseInt(req.params.id);
+    const contact = contacts.find(c => c._id === contactId);
+    
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      contact: contact
+    });
+    
+  } catch (error) {
+    console.error('Get contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get contact'
+    });
+  }
+});
+
+app.post('/api/contacts', (req, res) => {
+  try {
+    const { name, email, phone, company, title, tags: contactTags } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact name is required'
+      });
+    }
+    
+    const newContact = {
+      _id: contactIdCounter++,
+      name: name.trim(),
+      email: email || '',
+      phoneNumber: phone || '',
+      company: company || '',
+      title: title || '',
+      tags: contactTags || [],
+      createdAt: new Date().toISOString(),
+      source: 'manual'
+    };
+    
+    contacts.push(newContact);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Contact created successfully',
+      contact: newContact
+    });
+    
+  } catch (error) {
+    console.error('Create contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create contact'
+    });
+  }
+});
+
 // LinkedIn Import standalone page
 app.get('/li-import', (req, res) => {
   const importPath = path.join(__dirname, 'public', 'linkedin-import-standalone.html');
