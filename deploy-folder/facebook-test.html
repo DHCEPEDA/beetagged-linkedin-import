@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Facebook OAuth Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .button {
+      background-color: #4267B2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+    }
+    .result {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Facebook SDK -->
+  <div id="fb-root"></div>
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId      : '1222790436230433',
+        cookie     : true,
+        xfbml      : true,
+        version    : 'v19.0'
+      });
+        
+      FB.AppEvents.logPageView();   
+      
+      // Check login status after SDK is loaded
+      FB.getLoginStatus(function(response) {
+        statusChangeCallback(response);
+      });
+    };
+
+    (function(d, s, id){
+       var js, fjs = d.getElementsByTagName(s)[0];
+       if (d.getElementById(id)) {return;}
+       js = d.createElement(s); js.id = id;
+       js.src = "https://connect.facebook.net/en_US/sdk.js";
+       fjs.parentNode.insertBefore(js, fjs);
+     }(document, 'script', 'facebook-jssdk'));
+  </script>
+
+  <h1>Facebook OAuth Test</h1>
+  <p>This page tests a direct Facebook authentication flow, bypassing any middleware complexities.</p>
+
+  <div>
+    <h2>Step 1: Start OAuth Flow</h2>
+    <button class="button" onclick="startAuth()">Authenticate with Facebook</button>
+    <button class="button" style="background-color: #3b5998;" onclick="startSDKAuth()">Login with Facebook SDK</button>
+    
+    <h3>Official Facebook Login Button:</h3>
+    <fb:login-button 
+      scope="public_profile,email"
+      onlogin="checkLoginState();">
+    </fb:login-button>
+  </div>
+
+  <div class="result">
+    <h2>Results:</h2>
+    <pre id="result">Click the button above to start the test...</pre>
+  </div>
+
+  <script>
+    // Configuration - these will be fetched from the server
+    let config = {
+      appId: null,
+      redirectUri: null,
+      state: null
+    };
+    
+    // Helper function to log information both to the UI and console
+    function logInfo(message, type = 'info') {
+      const result = document.getElementById('result');
+      const timestamp = new Date().toISOString();
+      const logMessage = `[${timestamp}] ${message}`;
+      
+      console.log(logMessage);
+      
+      if (type === 'error') {
+        console.error(message);
+        result.innerHTML += `\n❌ ${logMessage}`;
+      } else if (type === 'success') {
+        console.info(message);
+        result.innerHTML += `\n✅ ${logMessage}`;
+      } else {
+        result.innerHTML += `\n📝 ${logMessage}`;
+      }
+      
+      // Ensure newest logs are visible by scrolling to bottom
+      result.scrollTop = result.scrollHeight;
+    }
+    
+    // This function is called when checking the login status
+    function statusChangeCallback(response) {
+      logInfo('Received Facebook login status response');
+      
+      if (response.status === 'connected') {
+        // User is logged into Facebook and has authorized your app
+        logInfo(`User is logged in and authorized (ID: ${response.authResponse.userID})`, 'success');
+        logInfo(`Access Token: ${response.authResponse.accessToken.substring(0, 15)}...`, 'success');
+        logInfo(`Token expires in: ${response.authResponse.expiresIn} seconds`, 'success');
+        
+        // Get user information
+        fetchUserInfo();
+      } else if (response.status === 'authorization_expired') {
+        logInfo('User previously authorized but token expired', 'error');
+        logInfo('Please log in again', 'info');
+      } else if (response.status === 'not_authorized') {
+        logInfo('User logged into Facebook but has not authorized this app', 'error');
+        logInfo('Please authorize this application', 'info');
+      } else {
+        // status is likely 'unknown'
+        logInfo('User not logged into Facebook', 'error');
+        logInfo('Please log in to Facebook', 'info');
+      }
+    }
+    
+    // Fetch user information after successful login
+    function fetchUserInfo() {
+      FB.api('/me', {fields: 'name,email'}, function(userInfo) {
+        logInfo(`User name: ${userInfo.name}`, 'success');
+        if (userInfo.email) {
+          logInfo(`User email: ${userInfo.email}`, 'success');
+        }
+      });
+    }
+    
+    // Called when user clicks the official Facebook login button
+    function checkLoginState() {
+      logInfo('Login button clicked, checking login state...');
+      FB.getLoginStatus(function(response) {
+        statusChangeCallback(response);
+      });
+    }
+    
+    // Legacy function - kept for compatibility with existing code
+    function checkLoginStatus() {
+      if (typeof FB === 'undefined') {
+        logInfo('Facebook SDK not loaded yet', 'error');
+        return;
+      }
+      
+      logInfo('Checking Facebook login status...');
+      FB.getLoginStatus(function(response) {
+        statusChangeCallback(response);
+      });
+    }
+    
+    // Function to start Facebook login with the JavaScript SDK
+    function startSDKAuth() {
+      if (typeof FB === 'undefined') {
+        logInfo('Facebook SDK not loaded yet', 'error');
+        return;
+      }
+      
+      logInfo('Starting Facebook login with JavaScript SDK...');
+      
+      FB.login(function(response) {
+        if (response.authResponse) {
+          logInfo('User authorized the app', 'success');
+          logInfo(`Access Token: ${response.authResponse.accessToken.substring(0, 15)}...`, 'success');
+          logInfo(`User ID: ${response.authResponse.userID}`, 'success');
+          
+          // Get user information
+          FB.api('/me', {fields: 'name,email'}, function(userInfo) {
+            logInfo(`User name: ${userInfo.name}`, 'success');
+            if (userInfo.email) {
+              logInfo(`User email: ${userInfo.email}`, 'success');
+            }
+          });
+        } else {
+          logInfo('User cancelled login or did not fully authorize', 'error');
+        }
+      }, {scope: 'public_profile,email'});
+    }
+
+    async function fetchConfig() {
+      try {
+        const result = document.getElementById('result');
+        result.textContent = 'Fetching configuration...';
+        
+        logInfo('Fetching Facebook app configuration from server...');
+        
+        // Get the app ID from the server
+        const response = await fetch('/api/auth/facebook/config');
+        const data = await response.json();
+        
+        if (data.error) {
+          logInfo(`Error fetching config: ${data.error}`, 'error');
+          return false;
+        }
+        
+        config.appId = data.appId;
+        
+        if (config.appId === 'APP_ID_REQUIRED') {
+          logInfo('Facebook App ID is missing from server environment variables', 'error');
+          result.innerHTML += '\n\nPlease ensure the FACEBOOK_APP_ID environment variable is set on the server.';
+          return false;
+        }
+        
+        // Create a redirect URI that points back to this page
+        config.redirectUri = window.location.origin + '/facebook-test-callback.html';
+        config.state = Math.random().toString(36).substring(2, 15);
+        
+        logInfo(`App ID: ${config.appId.substring(0, 5)}...`, 'success');
+        logInfo(`Redirect URI: ${config.redirectUri}`, 'success');
+        logInfo(`State: ${config.state}`, 'success');
+        logInfo(`API Version: v19.0`, 'success');
+        
+        return true;
+      } catch (error) {
+        logInfo(`Network error: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    async function startAuth() {
+      const result = document.getElementById('result');
+      
+      // Clear previous content
+      result.textContent = 'Starting Facebook authentication flow...';
+      
+      // First fetch configuration
+      const configLoaded = await fetchConfig();
+      if (!configLoaded) return;
+      
+      try {
+        // Now construct and redirect to Facebook OAuth URL
+        const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${config.appId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&state=${config.state}&response_type=code&scope=email,public_profile`;
+        
+        logInfo(`Authentication URL constructed successfully`);
+        logInfo(`Full auth URL: ${oauthUrl}`);
+        
+        // Save state for verification when returning
+        localStorage.setItem('fb_auth_state', config.state);
+        logInfo(`State saved to localStorage for verification`);
+        
+        // Save timestamp to measure flow duration
+        localStorage.setItem('fb_auth_start_time', Date.now().toString());
+        
+        logInfo(`Redirecting to Facebook login page...`);
+        
+        // Actually redirect
+        window.location.href = oauthUrl;
+      } catch (error) {
+        logInfo(`Error in authentication flow: ${error.message}`, 'error');
+      }
+    }
+
+    // Check if we have code and state in the URL (from a redirect back)
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    
+    if (code && state) {
+      const result = document.getElementById('result');
+      result.textContent = `Received authorization code: ${code.substring(0, 10)}...\nState: ${state}\n\nProcessing...`;
+      
+      // Verify state matches what we sent
+      const savedState = localStorage.getItem('fb_auth_state');
+      if (state !== savedState) {
+        result.textContent += `\nError: State mismatch. Expected ${savedState}, got ${state}`;
+      } else {
+        result.textContent += `\nState verified successfully.`;
+        
+        // Here we would exchange the code for a token, but for simplicity,
+        // we'll just display the results
+        result.textContent += `\n\nAuthentication flow completed successfully!`;
+      }
+    }
+  </script>
+</body>
+</html>
