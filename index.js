@@ -143,7 +143,70 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
       });
     }
 
-    const contacts = await parseLinkedInCSV(req.file.path);
+    const importedContacts = await parseLinkedInCSV(req.file.path);
+    
+    // Clear existing LinkedIn imports to avoid duplicates
+    contacts = contacts.filter(c => c.source !== 'linkedin_import');
+    
+    // Convert imported contacts to the format expected by the contact system
+    importedContacts.forEach(contact => {
+      const newContact = {
+        _id: contactIdCounter++,
+        name: contact.name,
+        email: contact.email || '',
+        phoneNumber: contact.phone || '',
+        company: contact.company || '',
+        title: contact.title || '',
+        location: contact.location || '',
+        industry: contact.industry || '',
+        connectedOn: contact.connectedOn || '',
+        source: 'linkedin_import',
+        picture: contact.picture,
+        createdAt: new Date().toISOString(),
+        priorityData: {
+          employment: { 
+            current: { 
+              jobFunction: contact.title || '', 
+              employer: contact.company || '' 
+            } 
+          },
+          location: { current: contact.location || '' }
+        },
+        allTags: contact.tags.map(tag => ({
+          name: tag.name,
+          category: tag.type
+        })),
+        linkedinData: { id: contact.id },
+        tags: contact.tags
+      };
+      
+      contacts.push(newContact);
+    });
+    
+    // Create tags from imported contact data
+    const newTags = new Set();
+    importedContacts.forEach(contact => {
+      contact.tags.forEach(tag => {
+        const tagName = tag.name;
+        if (tagName && !tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())) {
+          newTags.add(JSON.stringify({
+            _id: tagIdCounter++,
+            name: tagName,
+            color: tag.type === 'company' ? '#1e40af' : 
+                   tag.type === 'location' ? '#059669' : 
+                   tag.type === 'position' ? '#dc2626' : '#7c2d12',
+            category: tag.type || 'general',
+            createdAt: new Date().toISOString(),
+            usageCount: 1,
+            source: 'linkedin_import'
+          }));
+        }
+      });
+    });
+    
+    newTags.forEach(tagStr => {
+      tags.push(JSON.parse(tagStr));
+    });
     
     fs.unlink(req.file.path, (err) => {
       if (err) console.error('File cleanup error:', err);
@@ -151,9 +214,11 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
     
     res.json({
       success: true,
-      message: `Successfully imported ${contacts.length} contacts from LinkedIn`,
-      contacts,
-      count: contacts.length
+      message: `Successfully imported ${importedContacts.length} contacts from LinkedIn`,
+      contacts: importedContacts,
+      count: importedContacts.length,
+      totalContacts: contacts.length,
+      newTags: Array.from(newTags).map(t => JSON.parse(t))
     });
     
   } catch (error) {
@@ -418,7 +483,33 @@ app.delete('/api/tags/:id', (req, res) => {
 app.get('/api/contacts', (req, res) => {
   res.json({
     success: true,
-    contacts: contacts
+    contacts: contacts,
+    total: contacts.length,
+    sources: {
+      linkedin_import: contacts.filter(c => c.source === 'linkedin_import').length,
+      manual: contacts.filter(c => c.source === 'manual').length,
+      other: contacts.filter(c => c.source && c.source !== 'linkedin_import' && c.source !== 'manual').length
+    }
+  });
+});
+
+app.get('/api/contacts/stats', (req, res) => {
+  const stats = {
+    total: contacts.length,
+    bySource: {
+      linkedin_import: contacts.filter(c => c.source === 'linkedin_import').length,
+      manual: contacts.filter(c => c.source === 'manual').length,
+      other: contacts.filter(c => c.source && c.source !== 'linkedin_import' && c.source !== 'manual').length
+    },
+    companies: [...new Set(contacts.map(c => c.company).filter(Boolean))].length,
+    tags: tags.length,
+    lastImport: contacts.filter(c => c.source === 'linkedin_import').length > 0 ? 
+      Math.max(...contacts.filter(c => c.source === 'linkedin_import').map(c => new Date(c.createdAt).getTime())) : null
+  };
+  
+  res.json({
+    success: true,
+    stats: stats
   });
 });
 
@@ -500,86 +591,15 @@ app.post('/api/search/natural', (req, res) => {
       });
     }
     
-    // Add demo contacts if none exist
+    // If no contacts exist, return empty results with helpful message
     if (contacts.length === 0) {
-      contacts = [
-        {
-          _id: 1,
-          name: 'John Smith',
-          phoneNumber: '+1234567890',
-          email: 'john.smith@google.com',
-          company: 'Google',
-          title: 'Software Engineer',
-          priorityData: {
-            employment: { current: { jobFunction: 'Software Engineer', employer: 'Google' } },
-            location: { current: 'San Francisco, CA' }
-          },
-          allTags: [
-            { name: 'JavaScript', category: 'skill' },
-            { name: 'React', category: 'skill' },
-            { name: 'Google', category: 'company' },
-            { name: 'Tech Industry', category: 'industry' }
-          ],
-          linkedinData: { id: 'john-smith-123' },
-          source: 'linkedin'
-        },
-        {
-          _id: 2,
-          name: 'Sarah Chen',
-          phoneNumber: '+1987654321',
-          email: 'sarah.chen@google.com',
-          company: 'Google',
-          title: 'Product Manager',
-          priorityData: {
-            employment: { current: { jobFunction: 'Product Manager', employer: 'Google' } },
-            location: { current: 'Mountain View, CA' }
-          },
-          allTags: [
-            { name: 'Product Management', category: 'skill' },
-            { name: 'Google', category: 'company' },
-            { name: 'Analytics', category: 'skill' }
-          ],
-          linkedinData: { id: 'sarah-chen-456' },
-          source: 'linkedin'
-        },
-        {
-          _id: 3,
-          name: 'Michael Rodriguez',
-          phoneNumber: '+1555123456',
-          email: 'michael.rodriguez@meta.com',
-          company: 'Meta',
-          title: 'Marketing Director',
-          priorityData: {
-            employment: { current: { jobFunction: 'Marketing Director', employer: 'Meta' } },
-            location: { current: 'Menlo Park, CA' }
-          },
-          allTags: [
-            { name: 'Digital Marketing', category: 'skill' },
-            { name: 'Meta', category: 'company' },
-            { name: 'Leadership', category: 'personality' }
-          ],
-          source: 'linkedin'
-        },
-        {
-          _id: 4,
-          name: 'Emily Wang',
-          phoneNumber: '+1555987654',
-          email: 'emily.wang@apple.com',
-          company: 'Apple',
-          title: 'UX Designer',
-          priorityData: {
-            employment: { current: { jobFunction: 'UX Designer', employer: 'Apple' } },
-            location: { current: 'Cupertino, CA' }
-          },
-          allTags: [
-            { name: 'UX Design', category: 'skill' },
-            { name: 'Apple', category: 'company' },
-            { name: 'Design', category: 'skill' }
-          ],
-          source: 'linkedin'
-        }
-      ];
-      contactIdCounter = 5;
+      return res.json({
+        success: true,
+        message: 'No contacts found. Please import your LinkedIn connections first.',
+        results: [],
+        total: 0,
+        query: query
+      });
     }
     
     const normalizedQuery = query.toLowerCase().trim();
