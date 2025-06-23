@@ -25,6 +25,7 @@ const MainNavigation = () => {
   const navButtons = [
     { id: 'contact', label: 'Contact', path: '/contacts' },
     { id: 'search', label: 'Search', path: '/search' },
+    { id: 'social', label: 'Social', path: '/social-connect' },
     { id: 'rank', label: 'Rank', path: '/rank' }
   ];
 
