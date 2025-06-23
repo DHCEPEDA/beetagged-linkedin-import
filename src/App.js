@@ -9,6 +9,7 @@ import SearchPage from './pages/SearchPage';
 import RankPage from './pages/RankPage';
 import SettingsPage from './pages/SettingsPage';
 import SocialIntegration from './components/SocialIntegration';
+import SocialConnect from './pages/SocialConnect';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
@@ -181,6 +182,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <SocialIntegration />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/social-connect" 
+          element={
+            <ProtectedRoute>
+              <SocialConnect />
             </ProtectedRoute>
           } 
         />

@@ -4,8 +4,10 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const csv = require('csv-parser');
+const FacebookAPI = require('./server/facebook-api');
 
 const app = express();
+const facebookAPI = new FacebookAPI();
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
@@ -323,6 +325,218 @@ app.post('/api/auth/logout', (req, res) => {
     success: true,
     message: 'Logout successful'
   });
+});
+
+// Facebook API endpoints
+app.get('/api/facebook/auth-url', (req, res) => {
+  try {
+    const redirectUri = req.query.redirect_uri || `${req.protocol}://${req.get('host')}/api/facebook/callback`;
+    const state = req.query.state || '';
+    
+    const authUrl = facebookAPI.generateAuthURL(redirectUri, state);
+    
+    res.json({
+      success: true,
+      authUrl: authUrl,
+      redirectUri: redirectUri
+    });
+  } catch (error) {
+    console.error('Facebook auth URL error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate Facebook auth URL',
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/facebook/callback', async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+    
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Facebook authorization failed',
+        error: error
+      });
+    }
+    
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'No authorization code received'
+      });
+    }
+    
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/facebook/callback`;
+    const accessToken = await facebookAPI.exchangeCodeForToken(code, redirectUri);
+    
+    // Get user profile and friends
+    const profile = await facebookAPI.getUserProfile(accessToken);
+    const friends = await facebookAPI.getFriends(accessToken);
+    const pages = await facebookAPI.getPages(accessToken);
+    
+    // Convert to contacts format
+    const userContact = facebookAPI.formatContactFromProfile(profile, 'facebook_user');
+    const friendContacts = friends.map(friend => 
+      facebookAPI.formatContactFromProfile(friend, 'facebook_friend')
+    );
+    
+    // Add to contacts storage
+    const existingFacebookContacts = contacts.filter(c => c.source && c.source.startsWith('facebook'));
+    contacts = contacts.filter(c => !c.source || !c.source.startsWith('facebook'));
+    
+    contacts.push(userContact);
+    friendContacts.forEach(contact => {
+      contact._id = contactIdCounter++;
+      contacts.push(contact);
+    });
+    
+    // Create tags from Facebook data
+    const newTags = new Set();
+    [userContact, ...friendContacts].forEach(contact => {
+      contact.tags.forEach(tag => {
+        const tagName = tag.name;
+        if (tagName && !tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())) {
+          newTags.add(JSON.stringify({
+            _id: tagIdCounter++,
+            name: tagName,
+            color: tag.category === 'company' ? '#1e40af' : 
+                   tag.category === 'location' ? '#059669' : 
+                   tag.category === 'education' ? '#dc2626' : 
+                   tag.category === 'source' ? '#4f46e5' : '#7c2d12',
+            category: tag.category || 'general',
+            createdAt: new Date().toISOString(),
+            usageCount: 1,
+            source: 'facebook_import'
+          }));
+        }
+      });
+    });
+    
+    newTags.forEach(tagStr => {
+      tags.push(JSON.parse(tagStr));
+    });
+    
+    res.json({
+      success: true,
+      message: `Successfully imported ${friendContacts.length + 1} Facebook contacts`,
+      user: userContact,
+      friends: friendContacts,
+      totalContacts: contacts.length,
+      newTags: Array.from(newTags).map(t => JSON.parse(t))
+    });
+    
+  } catch (error) {
+    console.error('Facebook callback error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process Facebook authorization',
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/facebook/import', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Facebook access token is required'
+      });
+    }
+    
+    // Get user data
+    const profile = await facebookAPI.getUserProfile(accessToken);
+    const friends = await facebookAPI.getFriends(accessToken);
+    const pages = await facebookAPI.getPages(accessToken);
+    const likedPages = await facebookAPI.getLikedPages(accessToken);
+    
+    // Clear existing Facebook contacts
+    contacts = contacts.filter(c => !c.source || !c.source.startsWith('facebook'));
+    
+    // Convert profile to contact
+    const userContact = facebookAPI.formatContactFromProfile(profile, 'facebook_user');
+    userContact._id = contactIdCounter++;
+    contacts.push(userContact);
+    
+    // Convert friends to contacts
+    const friendContacts = friends.map(friend => {
+      const contact = facebookAPI.formatContactFromProfile(friend, 'facebook_friend');
+      contact._id = contactIdCounter++;
+      return contact;
+    });
+    contacts.push(...friendContacts);
+    
+    // Add pages as business contacts
+    const pageContacts = pages.map(page => ({
+      _id: contactIdCounter++,
+      id: `fb_page_${page.id}`,
+      name: page.name,
+      company: page.name,
+      title: 'Page Manager',
+      source: 'facebook_page',
+      facebookId: page.id,
+      tags: [
+        { name: page.category, category: 'industry' },
+        { name: 'Facebook Page', category: 'source' }
+      ],
+      createdAt: new Date().toISOString(),
+      priorityData: {
+        employment: { current: { employer: page.name, jobFunction: 'Page Manager' } }
+      }
+    }));
+    contacts.push(...pageContacts);
+    
+    // Create tags from all contacts
+    const newTags = new Set();
+    [...[userContact], ...friendContacts, ...pageContacts].forEach(contact => {
+      contact.tags.forEach(tag => {
+        const tagName = tag.name;
+        if (tagName && !tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())) {
+          newTags.add(JSON.stringify({
+            _id: tagIdCounter++,
+            name: tagName,
+            color: tag.category === 'company' ? '#1e40af' : 
+                   tag.category === 'location' ? '#059669' : 
+                   tag.category === 'education' ? '#dc2626' : 
+                   tag.category === 'source' ? '#4f46e5' : '#7c2d12',
+            category: tag.category || 'general',
+            createdAt: new Date().toISOString(),
+            usageCount: 1,
+            source: 'facebook_import'
+          }));
+        }
+      });
+    });
+    
+    newTags.forEach(tagStr => {
+      tags.push(JSON.parse(tagStr));
+    });
+    
+    res.json({
+      success: true,
+      message: `Successfully imported ${friendContacts.length + pageContacts.length + 1} Facebook contacts`,
+      stats: {
+        user: 1,
+        friends: friendContacts.length,
+        pages: pageContacts.length,
+        total: contacts.length
+      },
+      newTags: Array.from(newTags).map(t => JSON.parse(t))
+    });
+    
+  } catch (error) {
+    console.error('Facebook import error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to import Facebook contacts',
+      error: error.message
+    });
+  }
 });
 
 app.get('/api/auth/user', (req, res) => {
