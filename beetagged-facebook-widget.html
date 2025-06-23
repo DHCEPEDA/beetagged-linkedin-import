@@ -1,0 +1,368 @@
+<!-- BeeTagged Facebook Connect Widget -->
+<!-- Copy this entire code into a Squarespace Code Block -->
+
+<div id="beetagged-widget" style="max-width: 600px; margin: 20px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+    <style>
+        #beetagged-widget {
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .bt-header {
+            background: linear-gradient(135deg, #1877f2 0%, #42a5f5 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .bt-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .bt-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .bt-content {
+            padding: 24px;
+        }
+        
+        .bt-connect-section {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .bt-fb-icon {
+            width: 48px;
+            height: 48px;
+            background: #1877f2;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+        
+        .bt-connect-text {
+            flex: 1;
+        }
+        
+        .bt-connect-text h3 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            color: #1a1a1a;
+        }
+        
+        .bt-connect-text p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .bt-button {
+            background: #1877f2;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .bt-button:hover:not(:disabled) {
+            background: #166fe5;
+            transform: translateY(-1px);
+        }
+        
+        .bt-button:disabled {
+            background: #8a8d91;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .bt-status {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .bt-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .bt-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .bt-info {
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .bt-features {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .bt-features h4 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #1a1a1a;
+        }
+        
+        .bt-features ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #666;
+        }
+        
+        .bt-features li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        
+        .bt-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: bt-spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes bt-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .bt-powered {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+    
+    <div class="bt-header">
+        <h2>🐝 BeeTagged Facebook Connect</h2>
+        <p>Import your Facebook network for intelligent contact search</p>
+    </div>
+    
+    <div class="bt-content">
+        <div class="bt-connect-section">
+            <div class="bt-fb-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+            </div>
+            <div class="bt-connect-text">
+                <h3>Connect Your Facebook Account</h3>
+                <p>Securely import your first-degree connections with work history and education data</p>
+            </div>
+        </div>
+        
+        <div id="bt-status-container"></div>
+        
+        <button id="bt-connect-btn" class="bt-button" onclick="startFacebookConnection()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            Connect Facebook Account
+        </button>
+        
+        <div class="bt-features">
+            <h4>What you'll get:</h4>
+            <ul>
+                <li><strong>Smart Contact Import:</strong> Your Facebook friends with professional details</li>
+                <li><strong>Work History Integration:</strong> Current employers and job titles</li>
+                <li><strong>Education Data:</strong> Schools and academic background</li>
+                <li><strong>Intelligent Search:</strong> Find contacts by company, role, or location</li>
+                <li><strong>Auto-Tagging:</strong> Organized contact categories and filters</li>
+            </ul>
+        </div>
+        
+        <div class="bt-powered">
+            Powered by BeeTagged | Secure OAuth 2.0 Authentication
+        </div>
+    </div>
+</div>
+
+<script>
+// Configuration - Update these URLs to match your deployment
+const BEETAGGED_CONFIG = {
+    // Replace with your BeeTagged server URL (Heroku, Replit, etc.)
+    serverUrl: 'https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000',
+    
+    // Replace with your main BeeTagged app URL  
+    appUrl: 'https://beetagged.com'
+};
+
+let connectionInProgress = false;
+
+function showStatus(message, type = 'info') {
+    const container = document.getElementById('bt-status-container');
+    container.innerHTML = `<div class="bt-status bt-${type}">${message}</div>`;
+}
+
+function updateButton(text, disabled = false, loading = false) {
+    const btn = document.getElementById('bt-connect-btn');
+    btn.disabled = disabled;
+    
+    if (loading) {
+        btn.innerHTML = `<span class="bt-spinner"></span>${text}`;
+    } else {
+        btn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>${text}
+        `;
+    }
+}
+
+async function startFacebookConnection() {
+    if (connectionInProgress) return;
+    
+    try {
+        connectionInProgress = true;
+        updateButton('Connecting...', true, true);
+        showStatus('Initializing Facebook connection...', 'info');
+
+        // Get Facebook authorization URL from BeeTagged server
+        const response = await fetch(`${BEETAGGED_CONFIG.serverUrl}/api/facebook/auth-url`);
+        
+        if (!response.ok) {
+            throw new Error('Unable to connect to BeeTagged server. Please try again later.');
+        }
+        
+        const data = await response.json();
+
+        if (data.success) {
+            showStatus('Opening Facebook authorization. Please complete the login process.', 'info');
+            
+            // Open Facebook OAuth in popup window
+            const authPopup = window.open(
+                data.authUrl,
+                'facebook-beetagged-auth',
+                'width=650,height=650,scrollbars=yes,resizable=yes,location=yes'
+            );
+
+            if (!authPopup) {
+                throw new Error('Popup blocked. Please allow popups for this site and try again.');
+            }
+
+            // Monitor popup for completion
+            const checkAuthComplete = setInterval(() => {
+                if (authPopup.closed) {
+                    clearInterval(checkAuthComplete);
+                    handleConnectionComplete();
+                }
+            }, 1000);
+
+            // Timeout after 5 minutes
+            setTimeout(() => {
+                if (!authPopup.closed) {
+                    clearInterval(checkAuthComplete);
+                    authPopup.close();
+                    handleConnectionError('Authentication timed out. Please try again.');
+                }
+            }, 300000);
+
+        } else {
+            throw new Error(data.message || 'Unable to generate Facebook authorization URL');
+        }
+        
+    } catch (error) {
+        console.error('Facebook connection error:', error);
+        handleConnectionError(error.message);
+    }
+}
+
+function handleConnectionComplete() {
+    showStatus(
+        '✅ Facebook connected successfully! Your contacts have been imported into BeeTagged. You can now search your network intelligently.',
+        'success'
+    );
+    
+    updateButton('Open BeeTagged App', false, false);
+    
+    // Change button to open main BeeTagged application
+    document.getElementById('bt-connect-btn').onclick = () => {
+        window.open(BEETAGGED_CONFIG.appUrl, '_blank');
+    };
+    
+    // Store connection status
+    localStorage.setItem('beetagged_facebook_connected', 'true');
+    localStorage.setItem('beetagged_connection_time', new Date().toISOString());
+    
+    connectionInProgress = false;
+}
+
+function handleConnectionError(errorMessage) {
+    showStatus(`❌ Connection failed: ${errorMessage}`, 'error');
+    updateButton('Try Again', false, false);
+    connectionInProgress = false;
+}
+
+// Check existing connection status on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const isConnected = localStorage.getItem('beetagged_facebook_connected');
+    const connectionTime = localStorage.getItem('beetagged_connection_time');
+    
+    if (isConnected === 'true') {
+        const timeStr = connectionTime ? 
+            new Date(connectionTime).toLocaleDateString() : 'recently';
+        
+        showStatus(
+            `✅ Facebook account already connected (${timeStr}). Your network is available in BeeTagged.`,
+            'success'
+        );
+        
+        updateButton('Open BeeTagged App', false, false);
+        
+        document.getElementById('bt-connect-btn').onclick = () => {
+            window.open(BEETAGGED_CONFIG.appUrl, '_blank');
+        };
+    }
+});
+
+// Health check function (optional - for debugging)
+async function checkBeeTaggedServer() {
+    try {
+        const response = await fetch(`${BEETAGGED_CONFIG.serverUrl}/health`);
+        return response.ok;
+    } catch (error) {
+        return false;
+    }
+}
+</script>
