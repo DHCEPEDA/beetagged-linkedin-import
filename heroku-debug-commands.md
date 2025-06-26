@@ -1,70 +1,52 @@
-# Heroku Debug Commands for BeeTagged
+# Heroku Debug Commands - Run These on Your PC
 
-## Get Current Error Details
-Run these commands to see the exact error:
-
+## Get Error Details
 ```bash
-# View recent build logs
 heroku logs --tail -a beetagged-app
+```
 
-# Check app status
+## Check App Status
+```bash
 heroku ps -a beetagged-app
-
-# View build logs specifically
-heroku builds -a beetagged-app
-heroku builds:output [BUILD_ID] -a beetagged-app
 ```
 
-## Fix Common Issues
+## Common Runtime Issues & Fixes
 
-### 1. Clear and Reset Buildpack
+### Issue 1: Missing Environment Variables
 ```bash
-heroku buildpacks:clear -a beetagged-app
-heroku buildpacks:set heroku/nodejs -a beetagged-app
-```
-
-### 2. Fix Missing Dependencies
-```bash
-heroku config:set NPM_CONFIG_PRODUCTION=false -a beetagged-app
-heroku config:set NODE_ENV=production -a beetagged-app
-```
-
-### 3. Force Rebuild
-```bash
-heroku repo:purge_cache -a beetagged-app
-git commit --allow-empty -m "Force rebuild"
-git push heroku main
-```
-
-### 4. Check Environment Variables
-```bash
+# Check current config
 heroku config -a beetagged-app
+
+# Add missing MongoDB connection
+heroku config:set MONGODB_URI="your-mongodb-connection-string" -a beetagged-app
 ```
 
-## If Build Still Fails
+### Issue 2: Port Binding Error
+The app might be trying to use the wrong port. Check if your `index.js` has:
+```javascript
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+});
+```
 
-Create a minimal test deployment:
-
-1. Create new folder: `beetagged-minimal`
-2. Copy only these files:
-   - `package-heroku.json` (rename to `package.json`)
-   - `index.js`
-   - `Procfile`
-   - Basic `server/` folder content
-
-3. Deploy minimal version:
+### Issue 3: Database Connection Failure
 ```bash
-git init
-git add .
-git commit -m "Minimal BeeTagged deployment"
-heroku git:remote -a beetagged-app
-git push heroku main
+# Set MongoDB URI if missing
+heroku config:set MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/beetagged" -a beetagged-app
 ```
 
-## Debug on Heroku
-If deployment succeeds but app crashes:
+### Issue 4: File Path Issues
+Check if `server/` folder files are being found correctly.
+
+## Restart App After Fixes
 ```bash
-heroku run bash -a beetagged-app
-# Then inside the dyno:
-node index.js
+heroku restart -a beetagged-app
 ```
+
+## View Real-time Logs
+```bash
+heroku logs --tail -a beetagged-app
+```
+
+Run the first command to see the actual error message, then we can fix it specifically.
