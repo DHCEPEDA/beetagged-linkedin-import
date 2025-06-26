@@ -53,14 +53,52 @@ heroku config:set FACEBOOK_APP_SECRET="your-facebook-app-secret" -a beetagged-ap
 ```
 
 ### Deploy Your Code
+
+**First, fix the package.json issue:**
+
+1. **Download the corrected package.json from Replit:**
+   - In Replit, find the file `package-heroku.json`
+   - Download it to your PC
+   - Rename it to `package.json`
+
+2. **Create a new folder on your PC for deployment:**
 ```bash
-# Initialize git if not already done
+mkdir beetagged-deploy
+cd beetagged-deploy
+```
+
+3. **Copy essential files to the deployment folder:**
+   - Copy your corrected `package.json` 
+   - Copy `index.js`
+   - Copy `Procfile`
+   - Copy the entire `server/` folder
+   - Copy the entire `src/` folder  
+   - Copy the entire `public/` folder
+   - Copy `webpack.config.js`
+   - Copy `.babelrc`
+
+4. **Initialize git and deploy:**
+```bash
 git init
 git add .
 git commit -m "Initial BeeTagged deployment"
 
 # Connect to Heroku and deploy
 heroku git:remote -a beetagged-app
+git push heroku main
+```
+
+**Alternative Method - Direct from Replit:**
+If you prefer to deploy directly from Replit, run these commands in the Replit shell:
+
+```bash
+# Replace the problematic package.json
+cp package-heroku.json package.json
+
+# Deploy to Heroku
+heroku git:remote -a beetagged-app
+git add package.json
+git commit -m "Fix package.json for Heroku deployment"
 git push heroku main
 ```
 
