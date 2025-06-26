@@ -18,6 +18,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Storage arrays for contacts and tags (must be declared early)
+let contacts = [];
+let tags = [];
+let contactIdCounter = 1;
+let tagIdCounter = 1;
+
 // Static files - serve dist first for React app
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -660,10 +666,7 @@ app.get('/api/auth/user', (req, res) => {
 });
 
 // Contact and Tag management endpoints
-let contacts = [];
-let tags = [];
-let tagIdCounter = 1;
-let contactIdCounter = 1;
+// Note: Storage variables declared at top of file
 
 // Tags API
 app.get('/api/tags', (req, res) => {
