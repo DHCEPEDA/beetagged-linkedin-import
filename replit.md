@@ -91,10 +91,10 @@ BeeTagged is a professional contact intelligence platform that transforms phone 
 - **Social Auth Compliance**: OAuth 2.0 best practices implementation
 
 ## Recent Changes
-- **June 26, 2025**: Heroku deployment configuration created - simplified package.json removes webpack build complexity for successful server deployment
-- **June 26, 2025**: Facebook API integration completed with OAuth 2.0 and contact import functionality  
+- **June 26, 2025**: Heroku deployment fixed - created index-simple.js removing Facebook API dependencies and missing module references
+- **June 26, 2025**: Package.json streamlined with only essential dependencies (express, cors, multer, csv-parser, compression, ejs)
 - **June 26, 2025**: LinkedIn CSV import system operational with data persistence
-- **June 26, 2025**: Squarespace embed widget created for Facebook connectivity
+- **June 26, 2025**: Production server eliminates webpack build process for successful Heroku deployment
 
 ## User Preferences
 ```
