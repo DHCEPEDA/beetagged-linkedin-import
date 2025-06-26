@@ -90,11 +90,11 @@ BeeTagged is a professional contact intelligence platform that transforms phone 
 - **CORS Configuration**: Proper cross-origin resource sharing setup
 - **Social Auth Compliance**: OAuth 2.0 best practices implementation
 
-## Changelog
-```
-Changelog:
-- June 26, 2025. Initial setup
-```
+## Recent Changes
+- **June 26, 2025**: Heroku deployment configuration created - simplified package.json removes webpack build complexity for successful server deployment
+- **June 26, 2025**: Facebook API integration completed with OAuth 2.0 and contact import functionality  
+- **June 26, 2025**: LinkedIn CSV import system operational with data persistence
+- **June 26, 2025**: Squarespace embed widget created for Facebook connectivity
 
 ## User Preferences
 ```
