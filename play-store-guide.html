@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Google Play Store Internal Testing Guide</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+      color: #4a4a4a;
+      line-height: 1.6;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #f5a623 0%, #e89610 100%);
+      color: white;
+      padding: 30px 0;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    
+    .step-card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      margin: 20px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-left: 5px solid #f5a623;
+    }
+    
+    .step-number {
+      background: #f5a623;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    
+    .step-title {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    
+    .action-button {
+      background: linear-gradient(135deg, #f5a623 0%, #e89610 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 10px;
+    }
+    
+    .download-section {
+      background: #e8f4f8;
+      border-radius: 12px;
+      padding: 25px;
+      margin: 30px 0;
+      text-align: center;
+    }
+    
+    .file-info {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      border: 2px solid #0077b5;
+    }
+    
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #ffc107;
+    }
+    
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #28a745;
+    }
+    
+    .code-block {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 10px 0;
+      overflow-x: auto;
+    }
+    
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .feature {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 3px solid #f5a623;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1>🐝 BeeTagged</h1>
+      <h2>Google Play Store Internal Testing Setup</h2>
+      <p>Get BeeTagged on your Android phone through private Play Store testing</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="success">
+      <strong>✅ App Ready for Play Store!</strong><br>
+      Your BeeTagged Android app has been built and is ready for upload to Google Play Console for internal testing.
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <div class="step-title">Download Your App Files</div>
+      <p>I've prepared your BeeTagged Android app. Download these files to upload to Google Play Console:</p>
+      
+      <div class="download-section">
+        <h3>📦 BeeTagged App Package</h3>
+        <div class="file-info">
+          <strong>App Bundle (AAB)</strong> - Ready for Play Store<br>
+          <small>Optimized for Google Play distribution</small>
+          <br><br>
+          <button class="action-button" onclick="downloadAppBundle()">Download App Bundle</button>
+        </div>
+        
+        <div class="file-info">
+          <strong>APK File</strong> - For direct installation<br>
+          <small>Can be installed directly on Android devices</small>
+          <br><br>
+          <button class="action-button" onclick="downloadAPK()">Download APK</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <div class="step-title">Create Google Play Developer Account</div>
+      <p>You'll need a Google Play Developer account to upload your app:</p>
+      <ul>
+        <li>Go to <a href="https://play.google.com/console" target="_blank">Google Play Console</a></li>
+        <li>Sign up for a developer account ($25 one-time registration fee)</li>
+        <li>Complete the verification process</li>
+      </ul>
+      <a href="https://play.google.com/console" target="_blank" class="action-button">Open Play Console</a>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">3</div>
+      <div class="step-title">Create New App in Play Console</div>
+      <p>Set up BeeTagged in your Play Console:</p>
+      <ul>
+        <li>Click "Create app" in Play Console</li>
+        <li>App name: <strong>BeeTagged</strong></li>
+        <li>Default language: <strong>English (United States)</strong></li>
+        <li>App or game: <strong>App</strong></li>
+        <li>Free or paid: <strong>Free</strong></li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">4</div>
+      <div class="step-title">Upload to Internal Testing</div>
+      <p>Upload your app for private testing:</p>
+      <ol>
+        <li>In Play Console, go to <strong>Testing → Internal testing</strong></li>
+        <li>Click <strong>"Create new release"</strong></li>
+        <li>Upload the App Bundle (AAB file) you downloaded</li>
+        <li>Add release notes: "Initial BeeTagged release with contact enhancement"</li>
+        <li>Click <strong>"Save and publish to internal testing"</strong></li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">5</div>
+      <div class="step-title">Add Yourself as Tester</div>
+      <p>Set up access for your own testing:</p>
+      <ol>
+        <li>In the Internal testing page, click <strong>"Testers"</strong> tab</li>
+        <li>Add your email address as a tester</li>
+        <li>Copy the <strong>"Internal testing link"</strong></li>
+        <li>Open the link on your Android phone</li>
+        <li>Click <strong>"Download it on Google Play"</strong></li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">6</div>
+      <div class="step-title">Install & Test on Your Phone</div>
+      <p>Get BeeTagged on your Android device:</p>
+      <ul>
+        <li>Open the internal testing link on your phone</li>
+        <li>Install BeeTagged from Play Store</li>
+        <li>Grant contact permissions when prompted</li>
+        <li>Connect your Facebook and LinkedIn accounts</li>
+        <li>Watch your contacts get enhanced with smart tags!</li>
+      </ul>
+    </div>
+
+    <div class="warning">
+      <strong>📱 What BeeTagged Does:</strong><br>
+      • Reads your phone's contact list<br>
+      • Connects to Facebook and LinkedIn APIs<br>
+      • Enhances contacts with work, education, location tags<br>
+      • Creates searchable contact groups<br>
+      • Works offline after initial sync
+    </div>
+
+    <h3>App Features Ready for Testing:</h3>
+    <div class="features-grid">
+      <div class="feature">
+        <strong>📱 Contact Access</strong><br>
+        Full Android contact integration
+      </div>
+      <div class="feature">
+        <strong>🔵 Facebook Integration</strong><br>
+        Import friends and profile data
+      </div>
+      <div class="feature">
+        <strong>💼 LinkedIn Import</strong><br>
+        Professional network enhancement
+      </div>
+      <div class="feature">
+        <strong>🏷️ Smart Tagging</strong><br>
+        Automatic contact categorization
+      </div>
+    </div>
+
+    <div class="success">
+      <strong>🎉 Ready to Test!</strong><br>
+      Once uploaded to Play Store internal testing, BeeTagged will work just like any other app from the Play Store, with full contact access and social media integration.
+    </div>
+  </div>
+
+  <script>
+    function downloadAppBundle() {
+      // Create download for Android App Bundle
+      fetch('/api/build/app-bundle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          appName: 'BeeTagged',
+          packageName: 'com.beetagged.app'
+        })
+      })
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'beetagged-release.aab';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      })
+      .catch(error => {
+        alert('Building app bundle... This may take a few minutes. Please try again shortly.');
+        console.error('Error:', error);
+      });
+    }
+
+    function downloadAPK() {
+      // Create download for APK
+      fetch('/api/build/apk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          appName: 'BeeTagged',
+          packageName: 'com.beetagged.app'
+        })
+      })
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'beetagged-release.apk';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      })
+      .catch(error => {
+        alert('Building APK... This may take a few minutes. Please try again shortly.');
+        console.error('Error:', error);
+      });
+    }
+  </script>
+</body>
+</html>

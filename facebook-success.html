@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facebook Authentication Success</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+      color: #4a4a4a;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: white;
+      padding: 15px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo img {
+      height: 40px;
+      margin-right: 10px;
+    }
+    
+    .logo h1 {
+      font-size: 24px;
+      margin: 0;
+      color: #f5a623;
+    }
+    
+    .success-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-top: 30px;
+      text-align: center;
+    }
+    
+    .success-icon {
+      font-size: 60px;
+      color: #1877F2;
+      margin-bottom: 20px;
+    }
+    
+    .success-title {
+      font-size: 24px;
+      margin-bottom: 15px;
+      color: #1877F2;
+    }
+    
+    .profile-info {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    
+    .profile-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-right: 15px;
+      border: 3px solid #1877F2;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #e0e0e0;
+    }
+    
+    .profile-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .profile-name {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    .token-info {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f0f7ff;
+      border: 1px solid #c6d6f5;
+      border-radius: 8px;
+      text-align: left;
+    }
+    
+    .token-value {
+      font-family: monospace;
+      word-break: break-all;
+    }
+    
+    .action-buttons {
+      margin-top: 30px;
+    }
+    
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #1877F2;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: 500;
+      margin: 0 10px;
+    }
+    
+    .button.secondary {
+      background-color: #f5a623;
+    }
+    
+    .data-section {
+      margin-top: 20px;
+      text-align: left;
+      transition: max-height 0.3s ease-out;
+      max-height: 0;
+      overflow: hidden;
+    }
+    
+    .data-section.expanded {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .data-toggle {
+      cursor: pointer;
+      color: #1877F2;
+      text-decoration: underline;
+      display: inline-block;
+      margin: 15px 0;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(24, 119, 242, 0.3);
+      border-radius: 50%;
+      border-top-color: #1877F2;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <div class="logo">
+        <img src="/images/bee-logo.svg" alt="BeeTagged Logo">
+        <h1>BeeTagged</h1>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="success-card">
+        <div class="success-icon">✓</div>
+        <h2 class="success-title">Facebook Authentication Successful!</h2>
+        <p>You have successfully connected your Facebook account.</p>
+        
+        <div class="profile-info">
+          <div class="profile-image">
+            <img id="profile-picture" src="https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/facebook.svg" alt="Profile Picture">
+          </div>
+          <div class="profile-name" id="profile-name">Loading...</div>
+        </div>
+        
+        <div class="token-info">
+          <p><strong>Access Token:</strong></p>
+          <p class="token-value" id="access-token">Loading...</p>
+          <p><small>This token allows BeeTagged to access your Facebook data.</small></p>
+        </div>
+        
+        <div id="contacts-loading" style="display: none;">
+          <span class="loading"></span> Importing your Facebook contacts...
+        </div>
+        
+        <div id="metadata-section" style="display: none;">
+          <span class="data-toggle" id="toggle-metadata">Show Facebook Data ▼</span>
+          <div class="data-section" id="metadata-content">
+            <pre id="metadata-json">Loading...</pre>
+          </div>
+        </div>
+        
+        <div class="action-buttons">
+          <a href="/contact-manager-standalone.html" class="button" id="fetch-contacts-btn">Import Facebook Contacts</a>
+          <a href="/" class="button secondary">Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Get data from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const name = urlParams.get('name');
+      const id = urlParams.get('id');
+      
+      if (token) {
+        // Display the token (truncated for security)
+        const tokenEl = document.getElementById('access-token');
+        tokenEl.textContent = token.substring(0, 15) + '...' + token.substring(token.length - 10);
+        
+        // Display profile name
+        if (name) {
+          document.getElementById('profile-name').textContent = name;
+        }
+        
+        // Try to get profile picture
+        if (id) {
+          fetch(`https://graph.facebook.com/${id}/picture?type=large&access_token=${token}`)
+            .then(response => {
+              if (response.ok) {
+                document.getElementById('profile-picture').src = response.url;
+              }
+            })
+            .catch(error => console.error('Error fetching profile picture:', error));
+        }
+        
+        // Store token in localStorage
+        localStorage.setItem('facebookToken', token);
+        localStorage.setItem('facebookUserId', id);
+        localStorage.setItem('authStatus', 'authenticated');
+        localStorage.setItem('authProvider', 'facebook');
+        
+        // Update metadata toggle
+        const metadataSection = document.getElementById('metadata-section');
+        const toggleMetadata = document.getElementById('toggle-metadata');
+        const metadataContent = document.getElementById('metadata-content');
+        
+        metadataSection.style.display = 'block';
+        
+        toggleMetadata.addEventListener('click', () => {
+          if (metadataContent.classList.contains('expanded')) {
+            metadataContent.classList.remove('expanded');
+            toggleMetadata.textContent = 'Show Facebook Data ▼';
+          } else {
+            metadataContent.classList.add('expanded');
+            toggleMetadata.textContent = 'Hide Facebook Data ▲';
+          }
+        });
+        
+        // Update fetch contacts button
+        const fetchContactsBtn = document.getElementById('fetch-contacts-btn');
+        fetchContactsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          
+          // Show loading indicator
+          document.getElementById('contacts-loading').style.display = 'block';
+          
+          // Fetch Facebook contacts
+          fetch(`/api/auth/facebook/contacts?token=${token}`)
+            .then(response => response.json())
+            .then(data => {
+              console.log('Facebook contacts retrieved:', data);
+              
+              // Store contacts in localStorage
+              localStorage.setItem('facebookContacts', JSON.stringify(data.contacts));
+              
+              // Navigate to contact manager
+              window.location.href = '/contact-manager-standalone.html';
+            })
+            .catch(error => {
+              console.error('Error fetching Facebook contacts:', error);
+              document.getElementById('contacts-loading').innerHTML = `
+                <p style="color: #e53e3e;">Error importing contacts. Facebook may restrict access to friends' data. Try using sample data instead.</p>
+              `;
+              
+              // Still allow navigation to contact manager
+              setTimeout(() => {
+                window.location.href = '/contact-manager-standalone.html';
+              }, 3000);
+            });
+        });
+        
+        // Fetch and display user profile data
+        fetch(`https://graph.facebook.com/me?fields=id,name,email,location,picture&access_token=${token}`)
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('metadata-json').textContent = JSON.stringify(data, null, 2);
+          })
+          .catch(error => {
+            console.error('Error fetching metadata:', error);
+            document.getElementById('metadata-json').textContent = 'Error loading data: ' + error.message;
+          });
+        
+        console.log('Facebook authentication successful');
+      } else {
+        document.getElementById('access-token').textContent = 'No token received';
+        document.getElementById('profile-name').textContent = 'Authentication failed';
+      }
+    });
+  </script>
+</body>
+</html>

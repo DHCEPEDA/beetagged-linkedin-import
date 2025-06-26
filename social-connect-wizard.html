@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Social Connection Wizard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 0;
+    }
+    .wizard-container {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .wizard-header {
+      background-color: #FD9E31;
+      color: white;
+      padding: 20px 30px;
+      position: relative;
+    }
+    .wizard-logo {
+      width: 80px;
+      height: 80px;
+      position: absolute;
+      right: 30px;
+      top: 10px;
+    }
+    .wizard-steps {
+      display: flex;
+      margin-top: 15px;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      position: relative;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+    }
+    .step::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: 0;
+      width: 100%;
+      height: 2px;
+      background-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+    .step:last-child::after {
+      display: none;
+    }
+    .step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+      position: relative;
+      z-index: 2;
+      font-weight: bold;
+    }
+    .step.active {
+      color: white;
+    }
+    .step.active .step-number {
+      background-color: white;
+      color: #FD9E31;
+    }
+    .step.completed .step-number {
+      background-color: white;
+      color: #28a745;
+    }
+    .step.completed .step-number::after {
+      content: '✓';
+      position: absolute;
+    }
+    .wizard-body {
+      padding: 30px;
+    }
+    .step-content {
+      display: none;
+    }
+    .step-content.active {
+      display: block;
+    }
+    .wizard-footer {
+      padding: 20px 30px;
+      border-top: 1px solid #e9ecef;
+      background-color: #f8f9fa;
+      display: flex;
+      justify-content: space-between;
+    }
+    .social-button {
+      display: block;
+      padding: 15px;
+      border-radius: 8px;
+      color: white;
+      margin-bottom: 15px;
+      text-align: center;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .social-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .facebook-btn {
+      background-color: #1877F2;
+    }
+    .linkedin-btn {
+      background-color: #0A66C2;
+    }
+    .platform-card {
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: all 0.2s;
+    }
+    .platform-card:hover {
+      border-color: #FD9E31;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .platform-card.selected {
+      border-color: #FD9E31;
+      background-color: rgba(253, 158, 49, 0.05);
+    }
+    .platform-logo {
+      width: 40px;
+      height: 40px;
+      margin-right: 15px;
+    }
+    .result-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      color: #28a745;
+    }
+    .error-icon {
+      color: #dc3545;
+    }
+    .platform-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .status-connected {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .import-results {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+    }
+    .progress-container {
+      margin-top: 20px;
+    }
+    .auth-token {
+      font-family: monospace;
+      word-break: break-all;
+      font-size: 12px;
+      background-color: #f8f9fa;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    .btn-next {
+      background-color: #FD9E31;
+      color: white;
+      border: none;
+    }
+    .btn-next:hover {
+      background-color: #e08c2a;
+      color: white;
+    }
+    .login-section {
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="wizard-container">
+      <div class="wizard-header">
+        <h2>BeeTagged Social Connection Wizard</h2>
+        <p>Connect your social networks to import and tag contacts</p>
+        <img src="/images/beelogo-actual.svg" alt="BeeTagged Logo" class="wizard-logo">
+        
+        <div class="wizard-steps">
+          <div class="step active" data-step="1">
+            <div class="step-number">1</div>
+            <div>Authentication</div>
+          </div>
+          <div class="step" data-step="2">
+            <div class="step-number">2</div>
+            <div>Select Platforms</div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="step-number">3</div>
+            <div>Connect</div>
+          </div>
+          <div class="step" data-step="4">
+            <div class="step-number">4</div>
+            <div>Import Contacts</div>
+          </div>
+          <div class="step" data-step="5">
+            <div class="step-number">5</div>
+            <div>Complete</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="wizard-body">
+        <!-- Step 1: Authentication -->
+        <div class="step-content active" data-step="1">
+          <h3>Step 1: Authentication</h3>
+          <p>First, log in to your BeeTagged account to connect your social media platforms.</p>
+          
+          <div class="login-section" id="loginSection">
+            <form id="loginForm" class="mb-3">
+              <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" value="testuser">
+              </div>
+              <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" value="password123">
+              </div>
+              <button type="submit" class="btn btn-primary">Login</button>
+              <button type="button" class="btn btn-success ms-2" id="registerBtn">Register New User</button>
+            </form>
+            
+            <div id="tokenDisplay" style="display: none;">
+              <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i> Logged in successfully!
+              </div>
+              <p>Your auth token:</p>
+              <div class="auth-token"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Step 2: Select Platforms -->
+        <div class="step-content" data-step="2">
+          <h3>Step 2: Select Social Platforms</h3>
+          <p>Choose which social networks you want to connect for contact import:</p>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="platform-card d-flex align-items-center" data-platform="facebook">
+                <i class="fab fa-facebook platform-logo" style="color: #1877F2;"></i>
+                <div>
+                  <h5 class="mb-0">Facebook</h5>
+                  <p class="text-muted mb-0">Import friends and their details</p>
+                </div>
+                <div class="form-check ms-auto">
+                  <input class="form-check-input" type="checkbox" id="facebookCheck" checked>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="platform-card d-flex align-items-center" data-platform="linkedin">
+                <i class="fab fa-linkedin platform-logo" style="color: #0A66C2;"></i>
+                <div>
+                  <h5 class="mb-0">LinkedIn</h5>
+                  <p class="text-muted mb-0">Import professional connections</p>
+                </div>
+                <div class="form-check ms-auto">
+                  <input class="form-check-input" type="checkbox" id="linkedinCheck" checked>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Step 3: Connect -->
+        <div class="step-content" data-step="3">
+          <h3>Step 3: Connect to Social Networks</h3>
+          <p>Click the buttons below to authorize access to your social accounts:</p>
+          
+          <div id="connectFacebook" style="display: none;">
+            <button class="social-button facebook-btn" id="facebookConnectBtn">
+              <i class="fab fa-facebook me-2"></i> Connect with Facebook
+            </button>
+          </div>
+          
+          <div id="connectLinkedIn" style="display: none;">
+            <button class="social-button linkedin-btn" id="linkedinConnectBtn">
+              <i class="fab fa-linkedin me-2"></i> Connect with LinkedIn
+            </button>
+          </div>
+          
+          <div id="connectStatus" class="mt-4">
+            <h5>Connection Status:</h5>
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between align-items-center" id="facebookStatus">
+                Facebook
+                <span class="platform-status status-pending">Pending</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center" id="linkedinStatus">
+                LinkedIn
+                <span class="platform-status status-pending">Pending</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        
+        <!-- Step 4: Import Contacts -->
+        <div class="step-content" data-step="4">
+          <h3>Step 4: Import Contacts</h3>
+          <p>Now let's import your contacts from the connected platforms. This will also create tags based on metadata.</p>
+          
+          <div id="importButtons">
+            <div id="importFacebook" style="display: none;" class="mb-3">
+              <button class="btn btn-primary" id="facebookImportBtn">
+                <i class="fas fa-cloud-download-alt me-2"></i> Import Facebook Contacts
+              </button>
+            </div>
+            
+            <div id="importLinkedIn" style="display: none;" class="mb-3">
+              <button class="btn btn-primary" id="linkedinImportBtn">
+                <i class="fas fa-cloud-download-alt me-2"></i> Import LinkedIn Contacts
+              </button>
+            </div>
+            
+            <button class="btn btn-success" id="importAllBtn">
+              <i class="fas fa-cloud-download-alt me-2"></i> Import All Contacts
+            </button>
+          </div>
+          
+          <div id="importProgress" style="display: none;" class="progress-container">
+            <div class="alert alert-info">
+              <i class="fas fa-spinner fa-spin me-2"></i> Importing contacts...
+            </div>
+            <div class="progress">
+              <div id="progressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+            </div>
+          </div>
+          
+          <div id="importResults" class="import-results" style="display: none;">
+            <h5>Import Results:</h5>
+            <div id="facebookResults" style="display: none;">
+              <h6><i class="fab fa-facebook me-2"></i> Facebook</h6>
+              <div class="results-content"></div>
+            </div>
+            <div id="linkedinResults" style="display: none;">
+              <h6><i class="fab fa-linkedin me-2"></i> LinkedIn</h6>
+              <div class="results-content"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Step 5: Complete -->
+        <div class="step-content" data-step="5">
+          <div class="text-center">
+            <i class="fas fa-check-circle result-icon"></i>
+            <h3>Setup Complete!</h3>
+            <p>Your social networks have been connected and contacts imported successfully.</p>
+            
+            <div id="completionSummary" class="mt-4 text-start">
+              <h5>Summary:</h5>
+              <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Connected Platforms
+                  <span id="platformCount" class="badge bg-primary rounded-pill">0</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Contacts Imported
+                  <span id="contactCount" class="badge bg-primary rounded-pill">0</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Tags Created
+                  <span id="tagCount" class="badge bg-primary rounded-pill">0</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div class="mt-4">
+              <a href="/tag-search-test.html" class="btn btn-primary me-2" id="searchContactsBtn">
+                <i class="fas fa-search me-2"></i> Search Contacts by Tags
+              </a>
+              <a href="/" class="btn btn-outline-primary" id="goHomeBtn">
+                <i class="fas fa-home me-2"></i> Go to Homepage
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="wizard-footer">
+        <button class="btn btn-secondary" id="prevBtn" style="display: none;">Previous</button>
+        <button class="btn btn-next" id="nextBtn">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Variables to track state
+    let currentStep = 1;
+    let authToken = null;
+    let selectedPlatforms = {
+      facebook: true,
+      linkedin: true
+    };
+    let connectedPlatforms = {
+      facebook: false,
+      linkedin: false
+    };
+    let importResults = {
+      facebook: null,
+      linkedin: null
+    };
+    
+    // DOM Elements
+    const loginForm = document.getElementById('loginForm');
+    const registerBtn = document.getElementById('registerBtn');
+    const tokenDisplay = document.getElementById('tokenDisplay');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    
+    // Initialization on DOM load
+    document.addEventListener('DOMContentLoaded', () => {
+      // Add event listeners for platform selection
+      document.querySelectorAll('.platform-card').forEach(card => {
+        const platform = card.dataset.platform;
+        const checkbox = card.querySelector('input[type="checkbox"]');
+        
+        card.addEventListener('click', () => {
+          checkbox.checked = !checkbox.checked;
+          selectedPlatforms[platform] = checkbox.checked;
+          
+          if (checkbox.checked) {
+            card.classList.add('selected');
+          } else {
+            card.classList.remove('selected');
+          }
+        });
+        
+        checkbox.addEventListener('change', () => {
+          selectedPlatforms[platform] = checkbox.checked;
+          
+          if (checkbox.checked) {
+            card.classList.add('selected');
+          } else {
+            card.classList.remove('selected');
+          }
+        });
+        
+        // Initialize selection state
+        if (selectedPlatforms[platform]) {
+          card.classList.add('selected');
+          checkbox.checked = true;
+        }
+      });
+      
+      // Facebook connect button
+      document.getElementById('facebookConnectBtn').addEventListener('click', connectFacebook);
+      
+      // LinkedIn connect button
+      document.getElementById('linkedinConnectBtn').addEventListener('click', connectLinkedIn);
+      
+      // Import buttons
+      document.getElementById('facebookImportBtn').addEventListener('click', () => importContacts('facebook'));
+      document.getElementById('linkedinImportBtn').addEventListener('click', () => importContacts('linkedin'));
+      document.getElementById('importAllBtn').addEventListener('click', importAllContacts);
+      
+      // Check URL for auth token
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      
+      if (token) {
+        // Auto-login with token
+        authToken = token;
+        tokenDisplay.style.display = 'block';
+        tokenDisplay.querySelector('.auth-token').textContent = authToken;
+        loginForm.style.display = 'none';
+        
+        // Update search contacts link with token
+        document.getElementById('searchContactsBtn').href = `/tag-search-test.html?token=${authToken}`;
+        
+        // Clean up URL
+        window.history.replaceState({}, document.title, '/social-connect-wizard.html');
+      }
+      
+      // Check URL for callback parameters from social login
+      handleSocialCallback();
+    });
+    
+    // Handle login form submission
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Store auth token
+          authToken = data.token;
+          
+          // Show token in the UI
+          tokenDisplay.style.display = 'block';
+          tokenDisplay.querySelector('.auth-token').textContent = authToken;
+          loginForm.style.display = 'none';
+          
+          // Update search contacts link with token
+          document.getElementById('searchContactsBtn').href = `/tag-search-test.html?token=${authToken}`;
+        } else {
+          alert(`Login failed: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed. Please try again.');
+      }
+    });
+    
+    // Handle register button click
+    registerBtn.addEventListener('click', async () => {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      if (!username || !password) {
+        alert('Please enter both username and password.');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            username, 
+            password,
+            email: `${username}@example.com`
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Store auth token
+          authToken = data.token;
+          
+          // Show token in the UI
+          tokenDisplay.style.display = 'block';
+          tokenDisplay.querySelector('.auth-token').textContent = authToken;
+          loginForm.style.display = 'none';
+          
+          // Update search contacts link with token
+          document.getElementById('searchContactsBtn').href = `/tag-search-test.html?token=${authToken}`;
+        } else {
+          alert(`Registration failed: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        alert('Registration failed. Please try again.');
+      }
+    });
+    
+    // Connect Facebook
+    async function connectFacebook() {
+      if (!authToken) {
+        alert('Please log in first.');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/auth/facebook/url', {
+          headers: {
+            'x-auth-token': authToken
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.url) {
+          // Save the current step in sessionStorage
+          sessionStorage.setItem('wizardStep', currentStep);
+          sessionStorage.setItem('authToken', authToken);
+          sessionStorage.setItem('returnPlatform', 'facebook');
+          
+          // Redirect to Facebook login
+          window.location.href = data.url;
+        } else {
+          updatePlatformStatus('facebook', 'error', 'Failed to generate auth URL');
+        }
+      } catch (error) {
+        console.error('Facebook connect error:', error);
+        updatePlatformStatus('facebook', 'error', 'Connection error');
+      }
+    }
+    
+    // Connect LinkedIn
+    async function connectLinkedIn() {
+      if (!authToken) {
+        alert('Please log in first.');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/auth/linkedin/url', {
+          headers: {
+            'x-auth-token': authToken
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.url) {
+          // Save the current step in sessionStorage
+          sessionStorage.setItem('wizardStep', currentStep);
+          sessionStorage.setItem('authToken', authToken);
+          sessionStorage.setItem('returnPlatform', 'linkedin');
+          
+          // Redirect to LinkedIn login
+          window.location.href = data.url;
+        } else {
+          updatePlatformStatus('linkedin', 'error', 'Failed to generate auth URL');
+        }
+      } catch (error) {
+        console.error('LinkedIn connect error:', error);
+        updatePlatformStatus('linkedin', 'error', 'Connection error');
+      }
+    }
+    
+    // Import contacts from a platform
+    async function importContacts(platform) {
+      if (!authToken) {
+        alert('Please log in first.');
+        return;
+      }
+      
+      if (!connectedPlatforms[platform]) {
+        alert(`Please connect to ${platform} first.`);
+        return;
+      }
+      
+      // Show progress bar
+      document.getElementById('importProgress').style.display = 'block';
+      document.getElementById('importButtons').style.display = 'none';
+      
+      try {
+        // Simulate progress
+        let progress = 0;
+        const progressBar = document.getElementById('progressBar');
+        const progressInterval = setInterval(() => {
+          progress += 5;
+          progressBar.style.width = `${Math.min(progress, 95)}%`;
+          if (progress >= 95) clearInterval(progressInterval);
+        }, 200);
+        
+        // Make API call to import contacts
+        const response = await fetch(`/api/contacts/import/${platform}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': authToken
+          }
+        });
+        
+        const data = await response.json();
+        
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        if (response.ok) {
+          // Store results
+          importResults[platform] = data.data;
+          
+          // Update results section
+          document.getElementById('importResults').style.display = 'block';
+          const resultsElement = document.getElementById(`${platform}Results`);
+          resultsElement.style.display = 'block';
+          
+          resultsElement.querySelector('.results-content').innerHTML = `
+            <div class="alert alert-success">
+              <strong>Success!</strong> Imported contacts from ${platform}.
+            </div>
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Total Contacts
+                <span class="badge bg-primary rounded-pill">${data.data.total}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                New Contacts
+                <span class="badge bg-success rounded-pill">${data.data.added}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Updated Contacts
+                <span class="badge bg-info rounded-pill">${data.data.updated}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Tags Created
+                <span class="badge bg-warning text-dark rounded-pill">${data.data.tagsCreated || 0}</span>
+              </li>
+            </ul>
+          `;
+          
+          // Update summary for completion step
+          updateCompletionSummary();
+          
+          // Show import buttons again for other platforms
+          setTimeout(() => {
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importButtons').style.display = 'block';
+          }, 1000);
+        } else {
+          throw new Error(data.message || 'Import failed');
+        }
+      } catch (error) {
+        console.error(`${platform} import error:`, error);
+        
+        document.getElementById('importResults').style.display = 'block';
+        const resultsElement = document.getElementById(`${platform}Results`);
+        resultsElement.style.display = 'block';
+        
+        resultsElement.querySelector('.results-content').innerHTML = `
+          <div class="alert alert-danger">
+            <strong>Error!</strong> Failed to import contacts: ${error.message}
+          </div>
+        `;
+        
+        // Show import buttons again
+        document.getElementById('importProgress').style.display = 'none';
+        document.getElementById('importButtons').style.display = 'block';
+      }
+    }
+    
+    // Import all contacts
+    function importAllContacts() {
+      // Create an array of platforms to import
+      const platformsToImport = Object.keys(selectedPlatforms).filter(
+        platform => selectedPlatforms[platform] && connectedPlatforms[platform]
+      );
+      
+      if (platformsToImport.length === 0) {
+        alert('Please connect to at least one platform first.');
+        return;
+      }
+      
+      // Import first platform, then proceed to next
+      const importNext = (index) => {
+        if (index >= platformsToImport.length) {
+          // All imports completed
+          return;
+        }
+        
+        const platform = platformsToImport[index];
+        importContacts(platform).then(() => {
+          // Proceed to next platform
+          setTimeout(() => importNext(index + 1), 1000);
+        });
+      };
+      
+      // Start with first platform
+      importNext(0);
+    }
+    
+    // Handle social callback
+    function handleSocialCallback() {
+      // Check for code parameter in URL
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      
+      if (code) {
+        // Restore wizard state
+        const savedStep = sessionStorage.getItem('wizardStep');
+        const savedToken = sessionStorage.getItem('authToken');
+        const returnPlatform = sessionStorage.getItem('returnPlatform');
+        
+        if (savedToken) {
+          authToken = savedToken;
+          tokenDisplay.style.display = 'block';
+          tokenDisplay.querySelector('.auth-token').textContent = authToken;
+          loginForm.style.display = 'none';
+          
+          // Update search contacts link with token
+          document.getElementById('searchContactsBtn').href = `/tag-search-test.html?token=${authToken}`;
+        }
+        
+        if (savedStep) {
+          goToStep(parseInt(savedStep));
+        }
+        
+        if (returnPlatform) {
+          updatePlatformStatus(returnPlatform, 'connected');
+          connectedPlatforms[returnPlatform] = true;
+          
+          // Clean sessionStorage
+          sessionStorage.removeItem('wizardStep');
+          sessionStorage.removeItem('authToken');
+          sessionStorage.removeItem('returnPlatform');
+        }
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, '/social-connect-wizard.html');
+      }
+    }
+    
+    // Update platform status in UI
+    function updatePlatformStatus(platform, status, message = '') {
+      const statusElement = document.getElementById(`${platform}Status`);
+      const statusBadge = statusElement.querySelector('.platform-status');
+      
+      statusBadge.className = 'platform-status';
+      
+      switch (status) {
+        case 'connected':
+          statusBadge.classList.add('status-connected');
+          statusBadge.textContent = 'Connected';
+          // Show import button
+          document.getElementById(`import${platform.charAt(0).toUpperCase() + platform.slice(1)}`).style.display = 'block';
+          break;
+        case 'pending':
+          statusBadge.classList.add('status-pending');
+          statusBadge.textContent = 'Pending';
+          break;
+        case 'error':
+          statusBadge.classList.add('status-error');
+          statusBadge.textContent = message || 'Error';
+          break;
+      }
+    }
+    
+    // Update completion summary
+    function updateCompletionSummary() {
+      let totalContacts = 0;
+      let totalTags = 0;
+      let platformCount = 0;
+      
+      for (const platform in importResults) {
+        if (importResults[platform]) {
+          platformCount++;
+          totalContacts += importResults[platform].added + importResults[platform].updated;
+          totalTags += importResults[platform].tagsCreated || 0;
+        }
+      }
+      
+      document.getElementById('platformCount').textContent = platformCount;
+      document.getElementById('contactCount').textContent = totalContacts;
+      document.getElementById('tagCount').textContent = totalTags;
+    }
+    
+    // Next button handler
+    nextBtn.addEventListener('click', () => {
+      const nextStep = currentStep + 1;
+      
+      // Validation before proceeding
+      if (nextStep === 2 && !authToken) {
+        alert('Please log in first.');
+        return;
+      }
+      
+      if (nextStep === 3) {
+        // Make sure at least one platform is selected
+        const hasSelected = Object.values(selectedPlatforms).some(selected => selected);
+        if (!hasSelected) {
+          alert('Please select at least one platform.');
+          return;
+        }
+        
+        // Show/hide platform connect buttons based on selection
+        document.getElementById('connectFacebook').style.display = selectedPlatforms.facebook ? 'block' : 'none';
+        document.getElementById('connectLinkedIn').style.display = selectedPlatforms.linkedin ? 'block' : 'none';
+      }
+      
+      if (nextStep === 4) {
+        // Make sure at least one platform is connected
+        const hasConnected = Object.values(connectedPlatforms).some(connected => connected);
+        if (!hasConnected) {
+          alert('Please connect at least one platform.');
+          return;
+        }
+      }
+      
+      if (nextStep === 5) {
+        // Make sure at least one platform has been imported
+        const hasImported = Object.values(importResults).some(result => result !== null);
+        if (!hasImported) {
+          alert('Please import contacts from at least one platform.');
+          return;
+        }
+        
+        // Update summary
+        updateCompletionSummary();
+      }
+      
+      if (nextStep <= 5) {
+        goToStep(nextStep);
+      }
+    });
+    
+    // Previous button handler
+    prevBtn.addEventListener('click', () => {
+      const prevStep = currentStep - 1;
+      if (prevStep >= 1) {
+        goToStep(prevStep);
+      }
+    });
+    
+    // Go to specific step
+    function goToStep(step) {
+      // Hide all steps
+      document.querySelectorAll('.step-content').forEach(el => {
+        el.classList.remove('active');
+      });
+      
+      // Show target step
+      document.querySelector(`.step-content[data-step="${step}"]`).classList.add('active');
+      
+      // Update step indicators
+      document.querySelectorAll('.step').forEach(el => {
+        const stepNum = parseInt(el.dataset.step);
+        el.classList.remove('active', 'completed');
+        
+        if (stepNum === step) {
+          el.classList.add('active');
+        } else if (stepNum < step) {
+          el.classList.add('completed');
+        }
+      });
+      
+      // Update buttons
+      prevBtn.style.display = step > 1 ? 'block' : 'none';
+      nextBtn.style.display = step < 5 ? 'block' : 'none';
+      
+      // Update current step
+      currentStep = step;
+    }
+  </script>
+</body>
+</html>

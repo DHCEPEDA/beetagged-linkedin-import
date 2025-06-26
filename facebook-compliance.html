@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BeeTagged Facebook Compliance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      max-width: 150px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #f5a623;
+    }
+    .section {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border: 1px solid #eee;
+    }
+    .compliance-item {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .compliance-item:last-child {
+      border-bottom: none;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .fb-login-button {
+      margin: 20px 0;
+    }
+    .fb-root {
+      text-align: center;
+    }
+    .step {
+      background-color: #f5f8ff;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-left: 4px solid #4267B2;
+      border-radius: 4px;
+    }
+    .step img {
+      max-width: 100%;
+      height: auto;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .permissions {
+      background-color: #edf2fa;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .permission-item {
+      margin-bottom: 10px;
+      padding-left: 20px;
+      position: relative;
+    }
+    .permission-item:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #4267B2;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/images/bee-logo.svg" alt="BeeTagged Logo" class="logo">
+    <h1>BeeTagged Facebook Compliance</h1>
+    <p>This page documents our Facebook integration and compliance with Facebook's usage guidelines.</p>
+  </header>
+
+  <div class="section">
+    <h2>1. Facebook Login Implementation</h2>
+    
+    <div class="compliance-item">
+      <h3>Official Facebook Login Button</h3>
+      <p>BeeTagged implements the official Facebook Login button according to Facebook's brand guidelines:</p>
+      
+      <!-- Facebook SDK -->
+      <div id="fb-root"></div>
+      <script>
+        window.fbAsyncInit = function() {
+          FB.init({
+            appId      : '1222790436230433',
+            cookie     : true,
+            xfbml      : true,
+            version    : 'v19.0'
+          });
+            
+          FB.AppEvents.logPageView();   
+            
+        };
+
+        (function(d, s, id){
+           var js, fjs = d.getElementsByTagName(s)[0];
+           if (d.getElementById(id)) {return;}
+           js = d.createElement(s); js.id = id;
+           js.src = "https://connect.facebook.net/en_US/sdk.js";
+           fjs.parentNode.insertBefore(js, fjs);
+         }(document, 'script', 'facebook-jssdk'));
+      </script>
+      
+      <!-- Facebook Login Button with Permissions -->
+      <fb:login-button 
+        scope="public_profile,email"
+        onlogin="checkLoginState();"
+        data-size="large"
+        data-button-type="continue_with"
+        data-layout="rounded"
+        data-use-continue-as="true">
+      </fb:login-button>
+      
+      <script>
+        function checkLoginState() {
+          FB.getLoginStatus(function(response) {
+            if (response.status === 'connected') {
+              console.log('User is logged in and connected to app');
+            } else {
+              console.log('User is not fully connected');
+            }
+          });
+        }
+      </script>
+      
+      <p>Implementation code:</p>
+      <pre><code>&lt;!-- Facebook SDK --&gt;
+&lt;div id="fb-root"&gt;&lt;/div&gt;
+&lt;script&gt;
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId      : 'YOUR_APP_ID',
+      cookie     : true,
+      xfbml      : true,
+      version    : 'v19.0'
+    });
+      
+    FB.AppEvents.logPageView();   
+      
+  };
+
+  (function(d, s, id){
+     var js, fjs = d.getElementsByTagName(s)[0];
+     if (d.getElementById(id)) {return;}
+     js = d.createElement(s); js.id = id;
+     js.src = "https://connect.facebook.net/en_US/sdk.js";
+     fjs.parentNode.insertBefore(js, fjs);
+   }(document, 'script', 'facebook-jssdk'));
+&lt;/script&gt;
+
+&lt;!-- Facebook Login Button with Permissions --&gt;
+&lt;fb:login-button 
+  scope="public_profile,email"
+  onlogin="checkLoginState();"
+  data-size="large"
+  data-button-type="continue_with"
+  data-layout="rounded"
+  data-use-continue-as="true"&gt;
+&lt;/fb:login-button&gt;
+
+&lt;script&gt;
+  function checkLoginState() {
+    FB.getLoginStatus(function(response) {
+      if (response.status === 'connected') {
+        console.log('User is logged in and connected to app');
+        // Handle successful login
+      } else {
+        console.log('User is not fully connected');
+        // Handle login issues
+      }
+    });
+  }
+&lt;/script&gt;</code></pre>
+    </div>
+    
+    <div class="compliance-item">
+      <h3>Server-Side Implementation</h3>
+      <p>Our server handles Facebook authentication using OAuth 2.0 with proper security measures:</p>
+      <ul>
+        <li>HTTPS for all communications</li>
+        <li>State parameter for CSRF protection</li>
+        <li>Secure storage of access tokens</li>
+        <li>Error handling and logging</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>2. User Flow Documentation</h2>
+    <p>Step-by-step flow of how a person uses BeeTagged with Facebook Login:</p>
+    
+    <div class="step">
+      <h3>Step 1: User Initiates Login</h3>
+      <p>User clicks the "Continue with Facebook" button on the BeeTagged application login screen.</p>
+    </div>
+    
+    <div class="step">
+      <h3>Step 2: Authentication</h3>
+      <p>User is redirected to Facebook to authenticate and authorize the requested permissions.</p>
+    </div>
+    
+    <div class="step">
+      <h3>Step 3: Permission Authorization</h3>
+      <p>User reviews and grants permissions for BeeTagged to access their basic profile information and email.</p>
+    </div>
+    
+    <div class="step">
+      <h3>Step 4: Return to Application</h3>
+      <p>After successful authentication, user is redirected back to BeeTagged with an authorization code.</p>
+    </div>
+    
+    <div class="step">
+      <h3>Step 5: Account Creation/Linking</h3>
+      <p>BeeTagged creates a new account or links to an existing account using the Facebook profile information.</p>
+    </div>
+    
+    <div class="step">
+      <h3>Step 6: Contact Syncing (Optional)</h3>
+      <p>User has the option to import contacts from Facebook to enhance their BeeTagged contact network.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>3. Permission Usage Documentation</h2>
+    
+    <div class="compliance-item">
+      <h3>public_profile Usage</h3>
+      <p>BeeTagged uses the <code>public_profile</code> permission for the following purposes:</p>
+      
+      <div class="permissions">
+        <div class="permission-item">
+          <strong>User Identification:</strong> We use the Facebook user ID to uniquely identify users who login with Facebook.
+        </div>
+        <div class="permission-item">
+          <strong>Profile Display:</strong> We display the user's name and profile picture in their BeeTagged profile, clearly labeled as imported from Facebook.
+        </div>
+        <div class="permission-item">
+          <strong>Contact Matching:</strong> We use public profile information to help users identify and connect with their Facebook contacts who also use BeeTagged.
+        </div>
+      </div>
+      
+      <p>This usage complies with Facebook's guidelines as we:</p>
+      <ul>
+        <li>Only use the data for the purposes disclosed to the user</li>
+        <li>Provide clear attribution to Facebook for imported data</li>
+        <li>Allow users to remove Facebook-connected data at any time</li>
+        <li>Never share or sell this data to third parties</li>
+      </ul>
+    </div>
+    
+    <div class="compliance-item">
+      <h3>email Usage</h3>
+      <p>BeeTagged uses the <code>email</code> permission for the following purposes:</p>
+      
+      <div class="permissions">
+        <div class="permission-item">
+          <strong>Account Management:</strong> We use the email address as a unique identifier for the user's BeeTagged account.
+        </div>
+        <div class="permission-item">
+          <strong>Communication:</strong> We send essential account notifications and updates to this email address.
+        </div>
+        <div class="permission-item">
+          <strong>Contact Discovery:</strong> With user consent, we match email addresses to help users find their contacts who already use BeeTagged.
+        </div>
+      </div>
+      
+      <p>This usage complies with Facebook's guidelines as we:</p>
+      <ul>
+        <li>Only use the email for the purposes explicitly disclosed to the user</li>
+        <li>Provide clear opt-out mechanisms for all email communications</li>
+        <li>Never share or sell email addresses to third parties</li>
+        <li>Maintain appropriate security measures to protect email addresses</li>
+        <li>Allow users to change or remove their email at any time</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4. Data Deletion Compliance</h2>
+    <p>BeeTagged complies with Facebook's Data Deletion requirements:</p>
+    
+    <div class="compliance-item">
+      <h3>Account Deletion Process</h3>
+      <p>When a user deletes their BeeTagged account or disconnects their Facebook account:</p>
+      <ul>
+        <li>All Facebook-sourced data is permanently deleted from our systems</li>
+        <li>Any cached Facebook data is immediately purged</li>
+        <li>The Facebook connection is fully severed in our database</li>
+      </ul>
+      
+      <p>Users can initiate account deletion or Facebook disconnection from their account settings page at any time.</p>
+    </div>
+    
+    <div class="compliance-item">
+      <h3>Data Retention Policy</h3>
+      <p>BeeTagged has a clear data retention policy that complies with Facebook's requirements:</p>
+      <ul>
+        <li>We only retain Facebook data for as long as necessary to provide our services</li>
+        <li>We clearly disclose to users what data is retained and for how long</li>
+        <li>We provide tools for users to view and export their data</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="/" class="button" style="background-color: #f5a623; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Return to Home</a>
+  </div>
+
+  <script>
+    // Detect if Facebook SDK loads successfully
+    window.fbAsyncInit = function() {
+      console.log("Facebook SDK loaded successfully");
+    };
+  </script>
+</body>
+</html>

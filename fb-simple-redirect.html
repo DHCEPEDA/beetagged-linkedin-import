@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Facebook Simple Redirect Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #1877f2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Facebook Simple Redirect Test</h1>
+  
+  <div id="status">Ready to test Facebook authentication...</div>
+  
+  <p>This is a simplified test that uses direct OAuth without any complex JavaScript.</p>
+  
+  <button onclick="startAuth()">Start Facebook Authentication</button>
+  
+  <div style="margin-top: 20px;">
+    <h3>OAuth Response:</h3>
+    <pre id="response">Click the button above to begin...</pre>
+  </div>
+  
+  <script>
+    function logOutput(message, isError) {
+      const outputDiv = document.getElementById('response');
+      const timestamp = new Date().toISOString();
+      outputDiv.innerHTML += `\n[${timestamp}] ${message}`;
+      console.log(`[${timestamp}] ${message}`);
+      
+      if (isError) {
+        document.getElementById('status').className = 'error';
+        console.error(message);
+      }
+    }
+    
+    // Start authentication process
+    function startAuth() {
+      const statusDiv = document.getElementById('status');
+      const responseDiv = document.getElementById('response');
+      
+      statusDiv.innerHTML = 'Starting Facebook authentication...';
+      responseDiv.innerHTML = 'Requesting authentication URL from server...';
+      
+      // Generate a state parameter to prevent CSRF
+      const state = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('fb_simple_state', state);
+      localStorage.setItem('fb_auth_start_time', Date.now().toString());
+      
+      // Call the server to get the authentication URL
+      fetch('/api/auth/facebook/url')
+        .then(response => response.json())
+        .then(data => {
+          if (!data.url) {
+            statusDiv.className = 'error';
+            statusDiv.innerHTML = 'Error: No authentication URL received from server';
+            logOutput('Server did not return a valid authentication URL', true);
+            return;
+          }
+          
+          logOutput(`Auth URL received: ${data.url}`);
+          logOutput('Redirecting to Facebook login...');
+          
+          // Redirect to Facebook
+          window.location.href = data.url;
+        })
+        .catch(error => {
+          statusDiv.className = 'error';
+          statusDiv.innerHTML = `Error: ${error.message}`;
+          logOutput(`Failed to get authentication URL: ${error.message}`, true);
+        });
+    }
+    
+    // Check URL parameters when the page loads (after redirect from Facebook)
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+      const errorReason = urlParams.get('error_reason');
+      const errorDescription = urlParams.get('error_description');
+      
+      // If there are URL parameters, we're returning from Facebook
+      if (code || error) {
+        const responseDiv = document.getElementById('response');
+        responseDiv.innerHTML = '';
+        
+        // Calculate flow duration if we have a start time
+        const startTime = localStorage.getItem('fb_auth_start_time');
+        if (startTime) {
+          const duration = Math.round((Date.now() - parseInt(startTime)) / 1000);
+          logOutput(`OAuth flow duration: ${duration} seconds`);
+        }
+        
+        logOutput('Processing Facebook OAuth response...');
+        
+        // Handle error case
+        if (error) {
+          document.getElementById('status').className = 'error';
+          document.getElementById('status').innerHTML = `<strong>Error:</strong> ${error}`;
+          
+          logOutput(`Facebook returned an error: ${error}`, true);
+          logOutput(`Error reason: ${errorReason || 'Not provided'}`);
+          logOutput(`Error description: ${errorDescription || 'Not provided'}`);
+          return;
+        }
+        
+        // Handle successful case
+        if (code) {
+          logOutput(`Authorization code received from Facebook (${code.length} characters)`);
+          
+          // Verify state parameter to prevent CSRF attacks
+          const savedState = localStorage.getItem('fb_simple_state');
+          if (state !== savedState) {
+            document.getElementById('status').className = 'error';
+            document.getElementById('status').innerHTML = '<strong>Error:</strong> State parameter mismatch (possible CSRF attack)';
+            
+            logOutput('State parameter validation failed', true);
+            logOutput(`Expected: ${savedState || 'Not found'}`);
+            logOutput(`Received: ${state}`);
+            return;
+          }
+          
+          // State verified, authentication successful
+          document.getElementById('status').className = 'success';
+          document.getElementById('status').innerHTML = '<strong>Success!</strong> Authentication code received and state verified';
+          
+          logOutput('State parameter verification successful');
+          logOutput('Authentication flow completed successfully');
+          logOutput('In a production app, the server would now exchange this code for an access token');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Version Check</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>React Version Check</h1>
+  <p>This page will check your React setup and display version information.</p>
+  
+  <div id="results" class="result">
+    <p>Loading React version information...</p>
+  </div>
+  
+  <div id="test-mount">
+    <!-- React will attempt to mount here -->
+  </div>
+  
+  <!-- Load React and ReactDOM -->
+  <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  
+  <script>
+    // Function to display results
+    function displayResults(info) {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+      
+      Object.entries(info).forEach(([key, value]) => {
+        const p = document.createElement('p');
+        p.innerHTML = `<strong>${key}:</strong> ${value}`;
+        if (value === 'OK') {
+          p.classList.add('success');
+        } else if (value === 'ERROR') {
+          p.classList.add('error');
+        }
+        resultsDiv.appendChild(p);
+      });
+    }
+    
+    // Perform checks
+    window.onload = function() {
+      const results = {
+        'React Version': React ? React.version : 'Not loaded',
+        'ReactDOM Version': ReactDOM ? ReactDOM.version : 'Not loaded'
+      };
+      
+      // Check if React can render
+      try {
+        const element = React.createElement('div', null, 'Test React Rendering');
+        ReactDOM.render(element, document.getElementById('test-mount'));
+        results['React Rendering'] = 'OK';
+      } catch (error) {
+        results['React Rendering'] = 'ERROR';
+        results['Rendering Error'] = error.message;
+      }
+      
+      // Check if DOM is ready
+      results['DOM Ready'] = document.readyState;
+      
+      // Check for process polyfill
+      results['process.env Available'] = (typeof process !== 'undefined' && process.env) ? 'Yes' : 'No';
+      
+      // Display results
+      displayResults(results);
+    };
+  </script>
+</body>
+</html>

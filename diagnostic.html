@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged System Diagnostic</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .diagnostic-section {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .status-success {
+      background-color: #28a745;
+    }
+    
+    .status-warning {
+      background-color: #ffc107;
+    }
+    
+    .status-error {
+      background-color: #dc3545;
+    }
+    
+    .status-pending {
+      background-color: #6c757d;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .status-text {
+      margin-left: 10px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    
+    th {
+      background-color: #f5f5f5;
+      font-weight: bold;
+    }
+    
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .header img {
+      width: 40px;
+      height: 40px;
+      margin-right: 15px;
+    }
+    
+    .refresh-button {
+      margin-left: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="/images/bee-logo.svg" alt="BeeTagged Logo">
+      <h1>System Diagnostic</h1>
+      <button class="button refresh-button" onclick="refreshDiagnostics()">Refresh</button>
+    </div>
+    
+    <div class="diagnostic-section">
+      <h2>System Status</h2>
+      <div id="systemStatus">Loading...</div>
+    </div>
+    
+    <div class="diagnostic-section">
+      <h2>API Endpoints</h2>
+      <div id="apiStatus">Loading...</div>
+    </div>
+    
+    <div class="diagnostic-section">
+      <h2>Authentication Providers</h2>
+      <div id="authStatus">Loading...</div>
+      <div style="margin-top: 15px;">
+        <h3>Test Authentication Flows</h3>
+        <div class="auth-test-buttons" style="display: flex; gap: 10px; margin-top: 10px;">
+          <button class="button" onclick="testFacebookAuth()">Test Facebook Auth</button>
+          <button class="button" onclick="testLinkedInAuth()">Test LinkedIn Auth</button>
+        </div>
+        <div id="authTestResult" style="margin-top: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 4px; display: none;"></div>
+      </div>
+    </div>
+    
+    <div class="diagnostic-section">
+      <h2>Environment</h2>
+      <div id="environmentInfo">Loading...</div>
+    </div>
+    
+    <div class="diagnostic-section">
+      <h2>Recent Logs</h2>
+      <div id="recentLogs">Loading...</div>
+    </div>
+    
+    <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+      <a href="/" class="button">Back to Home</a>
+      <button class="button" onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+    </div>
+  </div>
+
+  <script>
+    // Helper function to create status indicators
+    function createStatusIndicator(status, message) {
+      const statusClass = 
+        status === 'success' ? 'status-success' :
+        status === 'warning' ? 'status-warning' :
+        status === 'error' ? 'status-error' : 'status-pending';
+      
+      return `
+        <div class="status-item">
+          <span class="status-indicator ${statusClass}"></span>
+          <span class="status-text">${message}</span>
+        </div>
+      `;
+    }
+    
+    // Test system components
+    async function testSystemComponents() {
+      const systemStatusEl = document.getElementById('systemStatus');
+      systemStatusEl.innerHTML = 'Testing system components...';
+      
+      try {
+        // Test API connection
+        const apiResponse = await fetch('/api/ping');
+        const apiData = await apiResponse.json();
+        
+        // Test database connection (if available)
+        let dbStatus = 'pending';
+        let dbMessage = 'Database status unknown';
+        
+        try {
+          const dbResponse = await fetch('/api/database/status');
+          if (dbResponse.ok) {
+            const dbData = await dbResponse.json();
+            dbStatus = dbData.connected ? 'success' : 'error';
+            dbMessage = dbData.connected ? 'Database connected' : 'Database disconnected';
+          } else {
+            dbStatus = 'warning';
+            dbMessage = 'Database status endpoint not available';
+          }
+        } catch (e) {
+          dbStatus = 'warning';
+          dbMessage = 'Could not check database status';
+        }
+        
+        // Display system status
+        systemStatusEl.innerHTML = `
+          ${createStatusIndicator('success', 'Server is running')}
+          ${createStatusIndicator('success', 'API is accessible')}
+          ${createStatusIndicator(dbStatus, dbMessage)}
+          ${createStatusIndicator('success', `Node version: ${apiData.env.node_version}`)}
+        `;
+      } catch (error) {
+        systemStatusEl.innerHTML = createStatusIndicator('error', `System check failed: ${error.message}`);
+      }
+    }
+    
+    // Test API endpoints
+    async function testApiEndpoints() {
+      const apiStatusEl = document.getElementById('apiStatus');
+      apiStatusEl.innerHTML = 'Testing API endpoints...';
+      
+      const endpoints = [
+        { url: '/api/ping', name: 'API Health Check' },
+        { url: '/api/logs/recent', name: 'Logs API' },
+        { url: '/api/auth/facebook/url', name: 'Facebook Auth API' },
+        { url: '/api/auth/linkedin/url', name: 'LinkedIn Auth API' },
+        { url: '/api/contacts/import/test', name: 'Contacts Import API' }
+      ];
+      
+      const results = await Promise.all(
+        endpoints.map(async endpoint => {
+          try {
+            const response = await fetch(endpoint.url);
+            const isSuccess = response.ok;
+            return {
+              name: endpoint.name,
+              url: endpoint.url,
+              status: isSuccess ? 'success' : 'error',
+              statusCode: response.status
+            };
+          } catch (error) {
+            return {
+              name: endpoint.name,
+              url: endpoint.url,
+              status: 'error',
+              message: error.message
+            };
+          }
+        })
+      );
+      
+      // Create table of results
+      let tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>URL</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      results.forEach(result => {
+        const statusIndicator = 
+          result.status === 'success' ? '✅' :
+          result.status === 'warning' ? '⚠️' : '❌';
+        
+        tableHtml += `
+          <tr>
+            <td>${result.name}</td>
+            <td>${result.url}</td>
+            <td>${statusIndicator} ${result.status === 'success' ? 'OK' : result.message || `Error ${result.statusCode}`}</td>
+          </tr>
+        `;
+      });
+      
+      tableHtml += `
+          </tbody>
+        </table>
+      `;
+      
+      apiStatusEl.innerHTML = tableHtml;
+    }
+    
+    // Test authentication providers
+    async function testAuthProviders() {
+      const authStatusEl = document.getElementById('authStatus');
+      authStatusEl.innerHTML = 'Testing authentication providers...';
+      
+      // Fetch Facebook auth URL to check if it's configured
+      let facebookStatus = 'pending';
+      let facebookMessage = 'Checking...';
+      
+      try {
+        const fbResponse = await fetch('/api/auth/facebook/url');
+        const fbData = await fbResponse.json();
+        
+        if (fbData.url && !fbData.url.includes('APP_ID_REQUIRED')) {
+          facebookStatus = 'success';
+          facebookMessage = 'Facebook authentication configured';
+        } else {
+          facebookStatus = 'warning';
+          facebookMessage = 'Facebook credentials not configured';
+        }
+      } catch (e) {
+        facebookStatus = 'error';
+        facebookMessage = 'Facebook authentication check failed';
+      }
+      
+      // Fetch LinkedIn auth URL to check if it's configured
+      let linkedinStatus = 'pending';
+      let linkedinMessage = 'Checking...';
+      
+      try {
+        const liResponse = await fetch('/api/auth/linkedin/url');
+        const liData = await liResponse.json();
+        
+        if (liData.url && !liData.url.includes('CLIENT_ID_REQUIRED')) {
+          linkedinStatus = 'success';
+          linkedinMessage = 'LinkedIn authentication configured';
+        } else {
+          linkedinStatus = 'warning';
+          linkedinMessage = 'LinkedIn credentials not configured';
+        }
+      } catch (e) {
+        linkedinStatus = 'error';
+        linkedinMessage = 'LinkedIn authentication check failed';
+      }
+      
+      authStatusEl.innerHTML = `
+        ${createStatusIndicator(facebookStatus, facebookMessage)}
+        ${createStatusIndicator(linkedinStatus, linkedinMessage)}
+      `;
+    }
+    
+    // Display environment information
+    async function showEnvironmentInfo() {
+      const envInfoEl = document.getElementById('environmentInfo');
+      envInfoEl.innerHTML = 'Loading environment information...';
+      
+      try {
+        const response = await fetch('/api/ping');
+        const data = await response.json();
+        
+        const envInfo = {
+          'Node Version': data.env.node_version,
+          'Replit Domain': data.env.replit_domain,
+          'Server Time': data.timestamp,
+          'API Status': data.success ? 'Operational' : 'Error'
+        };
+        
+        let tableHtml = `
+          <table>
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        for (const [key, value] of Object.entries(envInfo)) {
+          tableHtml += `
+            <tr>
+              <td>${key}</td>
+              <td>${value}</td>
+            </tr>
+          `;
+        }
+        
+        tableHtml += `
+            </tbody>
+          </table>
+        `;
+        
+        envInfoEl.innerHTML = tableHtml;
+      } catch (error) {
+        envInfoEl.innerHTML = `<p>Error loading environment information: ${error.message}</p>`;
+      }
+    }
+    
+    // Fetch and display recent logs
+    async function showRecentLogs() {
+      const logsEl = document.getElementById('recentLogs');
+      logsEl.innerHTML = 'Fetching recent logs...';
+      
+      try {
+        const response = await fetch('/api/logs/recent');
+        const data = await response.json();
+        
+        if (!data.logs || data.logs.length === 0) {
+          logsEl.innerHTML = '<p>No logs available</p>';
+          return;
+        }
+        
+        let tableHtml = `
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Method</th>
+                <th>Path</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        data.logs.slice(0, 10).forEach(log => {
+          tableHtml += `
+            <tr>
+              <td>${log.timestamp}</td>
+              <td>${log.method}</td>
+              <td>${log.path}</td>
+              <td>${log.ip}</td>
+            </tr>
+          `;
+        });
+        
+        tableHtml += `
+            </tbody>
+          </table>
+        `;
+        
+        logsEl.innerHTML = tableHtml;
+      } catch (error) {
+        logsEl.innerHTML = `<p>Error loading logs: ${error.message}</p>`;
+      }
+    }
+    
+    // Run a full diagnostic
+    async function runFullDiagnostic() {
+      document.querySelectorAll('.diagnostic-section div').forEach(el => {
+        el.innerHTML = 'Running diagnostic...';
+      });
+      
+      await Promise.all([
+        testSystemComponents(),
+        testAdvancedApiEndpoints(),
+        testAuthProviders(),
+        showEnvironmentInfo(),
+        showRecentLogs()
+      ]);
+      
+      alert('Full diagnostic completed!');
+    }
+    
+    // Refresh all diagnostics
+    function refreshDiagnostics() {
+      testSystemComponents();
+      testAdvancedApiEndpoints(); // Using advanced API endpoints test instead
+      testAuthProviders();
+      showEnvironmentInfo();
+      showRecentLogs();
+    }
+    
+    // Test Facebook Authentication Flow
+    async function testFacebookAuth() {
+      const resultEl = document.getElementById('authTestResult');
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = 'Testing Facebook authentication flow...';
+
+      try {
+        // Step 1: Get Facebook auth URL
+        const fbUrlResponse = await fetch('/api/auth/facebook/url');
+        const fbUrlData = await fbUrlResponse.json();
+        
+        if (!fbUrlData.url || fbUrlData.url.includes('APP_ID_REQUIRED')) {
+          resultEl.innerHTML = createStatusIndicator('error', 'Facebook authentication is not configured');
+          return;
+        }
+        
+        // Step 2: Test token exchange endpoint with mock data
+        const testCode = 'TEST_CODE_' + Math.random().toString(36).substring(2, 10);
+        const testRedirectUri = `${window.location.origin}/api/auth/facebook/callback`;
+        
+        try {
+          const tokenResponse = await fetch('/api/auth/facebook/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              code: testCode,
+              redirectUri: testRedirectUri
+            })
+          });
+          
+          const tokenData = await tokenResponse.json();
+          
+          // We expect this to fail with the test code, but we want to check the endpoint is working
+          resultEl.innerHTML = `
+            <h4>Facebook Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ${tokenResponse.status === 400 ? '✅ Responding (expected error with test code)' : '❌ Unexpected response'}</p>
+            <p>Auth URL: ${fbUrlData.url.substring(0, 60)}...</p>
+            <p>Response from token endpoint:</p>
+            <pre style="background: #f0f0f0; padding: 10px; overflow: auto; max-height: 150px;">${JSON.stringify(tokenData, null, 2)}</pre>
+            <p><strong>Note:</strong> The token exchange error is expected since we're using a test code.</p>
+          `;
+        } catch (tokenError) {
+          resultEl.innerHTML = `
+            <h4>Facebook Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ❌ Error (${tokenError.message})</p>
+            <p>Auth URL: ${fbUrlData.url.substring(0, 60)}...</p>
+          `;
+        }
+      } catch (error) {
+        resultEl.innerHTML = createStatusIndicator('error', `Facebook auth test failed: ${error.message}`);
+      }
+    }
+    
+    // Test LinkedIn Authentication Flow
+    async function testLinkedInAuth() {
+      const resultEl = document.getElementById('authTestResult');
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = 'Testing LinkedIn authentication flow...';
+
+      try {
+        // Step 1: Get LinkedIn auth URL
+        const liUrlResponse = await fetch('/api/auth/linkedin/url');
+        const liUrlData = await liUrlResponse.json();
+        
+        if (!liUrlData.url || liUrlData.url.includes('CLIENT_ID_REQUIRED')) {
+          resultEl.innerHTML = createStatusIndicator('error', 'LinkedIn authentication is not configured');
+          return;
+        }
+        
+        // Step 2: Test token exchange endpoint with mock data
+        const testCode = 'TEST_CODE_' + Math.random().toString(36).substring(2, 10);
+        const testRedirectUri = `${window.location.origin}/api/auth/linkedin/callback`;
+        
+        try {
+          const tokenResponse = await fetch('/api/auth/linkedin/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              code: testCode,
+              redirectUri: testRedirectUri
+            })
+          });
+          
+          const tokenData = await tokenResponse.json();
+          
+          // We expect this to fail with the test code, but we want to check the endpoint is working
+          resultEl.innerHTML = `
+            <h4>LinkedIn Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ${tokenResponse.status === 400 ? '✅ Responding (expected error with test code)' : '❌ Unexpected response'}</p>
+            <p>Auth URL: ${liUrlData.url.substring(0, 60)}...</p>
+            <p>Response from token endpoint:</p>
+            <pre style="background: #f0f0f0; padding: 10px; overflow: auto; max-height: 150px;">${JSON.stringify(tokenData, null, 2)}</pre>
+            <p><strong>Note:</strong> The token exchange error is expected since we're using a test code.</p>
+          `;
+        } catch (tokenError) {
+          resultEl.innerHTML = `
+            <h4>LinkedIn Authentication Test</h4>
+            <p>Auth URL Generation: ✅ Success</p>
+            <p>Token Exchange Endpoint: ❌ Error (${tokenError.message})</p>
+            <p>Auth URL: ${liUrlData.url.substring(0, 60)}...</p>
+          `;
+        }
+      } catch (error) {
+        resultEl.innerHTML = createStatusIndicator('error', `LinkedIn auth test failed: ${error.message}`);
+      }
+    }
+    
+    // Enhanced API endpoint test to include token exchange endpoints
+    async function testAdvancedApiEndpoints() {
+      const apiStatusEl = document.getElementById('apiStatus');
+      apiStatusEl.innerHTML = 'Testing API endpoints...';
+      
+      const endpoints = [
+        { url: '/api/ping', name: 'API Health Check', method: 'GET' },
+        { url: '/api/logs/recent', name: 'Logs API', method: 'GET' },
+        { url: '/api/auth/facebook/url', name: 'Facebook Auth URL', method: 'GET' },
+        { url: '/api/auth/linkedin/url', name: 'LinkedIn Auth URL', method: 'GET' },
+        { url: '/api/auth/facebook/token', name: 'Facebook Token Exchange', method: 'POST', body: { code: 'test', redirectUri: window.location.origin } },
+        { url: '/api/auth/linkedin/token', name: 'LinkedIn Token Exchange', method: 'POST', body: { code: 'test', redirectUri: window.location.origin } },
+        { url: '/api/contacts/import/test', name: 'Contacts Import API', method: 'GET' }
+      ];
+      
+      const results = await Promise.all(
+        endpoints.map(async endpoint => {
+          try {
+            let response;
+            if (endpoint.method === 'GET') {
+              response = await fetch(endpoint.url);
+            } else if (endpoint.method === 'POST') {
+              response = await fetch(endpoint.url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(endpoint.body)
+              });
+            }
+            
+            // For token exchanges, we expect a 400 since we're using test codes
+            const isSuccess = endpoint.url.includes('/token') ? response.status === 400 || response.status === 200 : response.ok;
+            
+            return {
+              name: endpoint.name,
+              url: endpoint.url,
+              method: endpoint.method,
+              status: isSuccess ? 'success' : 'error',
+              statusCode: response.status
+            };
+          } catch (error) {
+            return {
+              name: endpoint.name,
+              url: endpoint.url,
+              method: endpoint.method,
+              status: 'error',
+              message: error.message
+            };
+          }
+        })
+      );
+      
+      // Create table of results
+      let tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Method</th>
+              <th>URL</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      results.forEach(result => {
+        const statusIndicator = 
+          result.status === 'success' ? '✅' :
+          result.status === 'warning' ? '⚠️' : '❌';
+        
+        tableHtml += `
+          <tr>
+            <td>${result.name}</td>
+            <td>${result.method}</td>
+            <td>${result.url}</td>
+            <td>${statusIndicator} ${result.status === 'success' ? 'OK' : result.message || `Error ${result.statusCode}`}</td>
+          </tr>
+        `;
+      });
+      
+      tableHtml += `
+          </tbody>
+        </table>
+      `;
+      
+      apiStatusEl.innerHTML = tableHtml;
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshDiagnostics();
+    });
+  </script>
+</body>
+</html>

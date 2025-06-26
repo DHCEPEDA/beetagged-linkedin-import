@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Facebook Login Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .button {
+      display: inline-block;
+      background-color: #1877F2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    .button:hover {
+      background-color: #166FE5;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      color: #155724;
+      background-color: #d4edda;
+    }
+    .error {
+      color: #721c24;
+      background-color: #f8d7da;
+    }
+    .code {
+      font-family: monospace;
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Facebook Login Test</h1>
+  
+  <div class="container">
+    <div class="card">
+      <h2>1. Direct Facebook OAuth URL</h2>
+      <p>This method builds the Facebook OAuth URL directly in the browser:</p>
+      <button class="button" id="directFbLogin">Login with Facebook (Direct)</button>
+      
+      <div id="directUrlInfo" class="code hidden">
+        <p>Constructed URL:</p>
+        <code id="constructedUrl"></code>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>2. Server-Generated URL</h2>
+      <p>This method gets the Facebook OAuth URL from the server:</p>
+      <button class="button" id="serverFbLogin">Login with Facebook (Server URL)</button>
+      
+      <div id="serverUrlInfo" class="code hidden">
+        <p>URL from server:</p>
+        <code id="serverUrl"></code>
+      </div>
+    </div>
+    
+    <div id="status" class="hidden"></div>
+  </div>
+  
+  <script>
+    // Configuration
+    const appId = '1222790436230433';
+    const redirectUri = `${window.location.origin}/api/auth/facebook/callback.html`;
+    
+    // Elements
+    const directFbLoginBtn = document.getElementById('directFbLogin');
+    const serverFbLoginBtn = document.getElementById('serverFbLogin');
+    const directUrlInfo = document.getElementById('directUrlInfo');
+    const constructedUrlEl = document.getElementById('constructedUrl');
+    const serverUrlInfo = document.getElementById('serverUrlInfo');
+    const serverUrlEl = document.getElementById('serverUrl');
+    const statusEl = document.getElementById('status');
+    
+    // Functions
+    function showStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.className = isError ? 'error' : 'success';
+      statusEl.classList.remove('hidden');
+    }
+    
+    function hideStatus() {
+      statusEl.classList.add('hidden');
+    }
+    
+    // 1. Direct Facebook Login
+    directFbLoginBtn.addEventListener('click', () => {
+      hideStatus();
+      
+      // Generate a random state for security
+      const state = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('fbState', state);
+      
+      // Construct the Facebook OAuth URL
+      const scope = 'email,public_profile';
+      const url = `https://www.facebook.com/v19.0/dialog/oauth?` +
+                 `client_id=${appId}&` +
+                 `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                 `state=${state}&` +
+                 `response_type=code&` +
+                 `scope=${scope}`;
+      
+      // Display the URL for debugging
+      constructedUrlEl.textContent = url;
+      directUrlInfo.classList.remove('hidden');
+      
+      console.log('Direct login URL:', url);
+      
+      // Redirect to Facebook
+      setTimeout(() => {
+        window.location.href = url;
+      }, 1500); // Small delay so user can see the URL
+    });
+    
+    // 2. Server-Generated URL
+    serverFbLoginBtn.addEventListener('click', async () => {
+      hideStatus();
+      serverUrlInfo.classList.remove('hidden');
+      serverUrlEl.textContent = 'Fetching URL from server...';
+      
+      try {
+        const response = await fetch('/api/auth/facebook/url');
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        if (!data.url) {
+          throw new Error('Server did not return a valid URL');
+        }
+        
+        // Display the URL for debugging
+        serverUrlEl.textContent = data.url;
+        console.log('Server login URL:', data.url);
+        
+        // Redirect to Facebook
+        setTimeout(() => {
+          window.location.href = data.url;
+        }, 1500); // Small delay so user can see the URL
+      } catch (error) {
+        console.error('Error fetching Facebook auth URL:', error);
+        serverUrlEl.textContent = `Error: ${error.message}`;
+        showStatus(`Failed to get Facebook login URL: ${error.message}`, true);
+      }
+    });
+    
+    // Check for error parameters in URL
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const error = urlParams.get('error');
+      const errorDescription = urlParams.get('error_description');
+      
+      if (error) {
+        showStatus(`Facebook Error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`, true);
+      }
+    });
+  </script>
+</body>
+</html>

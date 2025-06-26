@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Facebook Contact Integration</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+      color: #4a4a4a;
+    }
+    
+    .header {
+      background-color: white;
+      padding: 15px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo img {
+      height: 40px;
+      margin-right: 10px;
+    }
+    
+    .logo h1 {
+      font-size: 24px;
+      margin: 0;
+      color: #f5a623;
+    }
+    
+    .main-content {
+      padding: 30px 0;
+    }
+    
+    .auth-section {
+      background-color: white;
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    
+    .fb-connect-btn {
+      background-color: #1877f2;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .fb-connect-btn:hover {
+      background-color: #166fe5;
+    }
+    
+    .contacts-section {
+      display: none;
+      background-color: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .search-bar {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .search-bar:focus {
+      outline: none;
+      border-color: #f5a623;
+    }
+    
+    .tag-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .tag-filter {
+      background-color: #f0f7ff;
+      color: #0077b5;
+      border: 1px solid #0077b5;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .tag-filter:hover, .tag-filter.active {
+      background-color: #0077b5;
+      color: white;
+    }
+    
+    .contacts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .contact-card {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      border-left: 4px solid #f5a623;
+      transition: transform 0.2s;
+    }
+    
+    .contact-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .contact-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .contact-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: #f5a623;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+      margin-right: 15px;
+    }
+    
+    .contact-info h3 {
+      margin: 0 0 5px 0;
+      color: #2a2a2a;
+    }
+    
+    .contact-info .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .contact-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 15px;
+    }
+    
+    .tag {
+      background-color: #e8f4f8;
+      color: #0077b5;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      border: 1px solid #b3d9e8;
+    }
+    
+    .tag.location { background-color: #fff3cd; color: #856404; border-color: #ffeaa7; }
+    .tag.work { background-color: #d4edda; color: #155724; border-color: #a3d977; }
+    .tag.education { background-color: #f8d7da; color: #721c24; border-color: #f1b0b7; }
+    .tag.interest { background-color: #e2e3ff; color: #383d41; border-color: #b8b9ff; }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(245, 166, 35, 0.3);
+      border-radius: 50%;
+      border-top-color: #f5a623;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      background-color: #f0f7ff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0077b5;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    @media (max-width: 768px) {
+      .contacts-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-bar {
+        flex-direction: column;
+        gap: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="logo">
+        <img src="/images/bee-logo.svg" alt="BeeTagged Logo">
+        <h1>BeeTagged</h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container">
+      <div id="auth-section" class="auth-section">
+        <h2>Connect Your Facebook Account</h2>
+        <p>Connect to Facebook to import your friends and see them enhanced with intelligent tags based on their profiles.</p>
+        <button id="fb-connect-btn" class="fb-connect-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          Connect with Facebook
+        </button>
+        <p style="font-size: 14px; color: #666; margin-top: 10px;">
+          We'll only access your friends list and basic profile information to enhance your contact management experience.
+        </p>
+      </div>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading your Facebook contacts and generating intelligent tags...</p>
+      </div>
+
+      <div id="contacts-section" class="contacts-section">
+        <h2>Your Enhanced Facebook Contacts</h2>
+        
+        <div class="stats-bar">
+          <div class="stat">
+            <div id="total-contacts" class="stat-number">0</div>
+            <div class="stat-label">Total Contacts</div>
+          </div>
+          <div class="stat">
+            <div id="total-tags" class="stat-number">0</div>
+            <div class="stat-label">Unique Tags</div>
+          </div>
+          <div class="stat">
+            <div id="tagged-contacts" class="stat-number">0</div>
+            <div class="stat-label">Tagged Contacts</div>
+          </div>
+        </div>
+        
+        <input type="text" id="search-bar" class="search-bar" placeholder="Search contacts by name, company, location, or any tag...">
+        
+        <div class="tag-filters" id="tag-filters">
+          <!-- Dynamic tag filters will be added here -->
+        </div>
+        
+        <div class="contacts-grid" id="contacts-grid">
+          <!-- Contact cards will be dynamically added here -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Facebook SDK Configuration
+    window.fbAsyncInit = function() {
+      // Get the Facebook App ID from server
+      fetch('/api/auth/facebook/config')
+        .then(response => response.json())
+        .then(config => {
+          FB.init({
+            appId: config.appId,
+            cookie: true,
+            xfbml: true,
+            version: config.apiVersion || 'v19.0'
+          });
+        })
+        .catch(error => {
+          console.error('Error loading Facebook config:', error);
+          // Use stored credentials
+          FB.init({
+            appId: '1089637699406901', // Will be replaced by server config
+            cookie: true,
+            xfbml: true,
+            version: 'v19.0'
+          });
+        });
+    };
+
+    // Load Facebook SDK
+    (function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+    // DOM elements
+    const authSection = document.getElementById('auth-section');
+    const loadingEl = document.getElementById('loading');
+    const contactsSection = document.getElementById('contacts-section');
+    const fbConnectBtn = document.getElementById('fb-connect-btn');
+    const searchBar = document.getElementById('search-bar');
+    const tagFilters = document.getElementById('tag-filters');
+    const contactsGrid = document.getElementById('contacts-grid');
+    const totalContactsEl = document.getElementById('total-contacts');
+    const totalTagsEl = document.getElementById('total-tags');
+    const taggedContactsEl = document.getElementById('tagged-contacts');
+
+    let allContacts = [];
+    let filteredContacts = [];
+    let selectedTags = new Set();
+
+    // Facebook login
+    fbConnectBtn.addEventListener('click', function() {
+      FB.login(function(response) {
+        if (response.authResponse) {
+          console.log('Welcome! Fetching your information...');
+          authSection.style.display = 'none';
+          loadingEl.style.display = 'block';
+          loadFacebookContacts();
+        } else {
+          console.log('User cancelled login or did not fully authorize.');
+        }
+      }, {scope: 'email,user_friends'});
+    });
+
+    // Load Facebook contacts and enhance with tags
+    async function loadFacebookContacts() {
+      try {
+        // Get user's friends
+        FB.api('/me/friends', async function(response) {
+          if (response.data) {
+            console.log('Got friends:', response.data);
+            
+            // Enhance contacts with profile information and generate tags
+            const enhancedContacts = await enhanceContactsWithTags(response.data);
+            allContacts = enhancedContacts;
+            filteredContacts = [...allContacts];
+            
+            // Hide loading and show contacts
+            loadingEl.style.display = 'none';
+            contactsSection.style.display = 'block';
+            
+            // Update UI
+            updateStats();
+            generateTagFilters();
+            renderContacts();
+          } else {
+            // If no friends data, show demo contacts
+            console.log('No friends data available, showing demo experience');
+            loadDemoContacts();
+          }
+        });
+      } catch (error) {
+        console.error('Error loading Facebook contacts:', error);
+        // Show demo contacts on error
+        loadDemoContacts();
+      }
+    }
+
+    // Load demo contacts to show the tagging experience
+    function loadDemoContacts() {
+      allContacts = [
+        {
+          id: '1',
+          name: 'Sarah Johnson',
+          picture: null,
+          work: 'Google',
+          location: 'Mountain View, CA',
+          education: 'Stanford University',
+          interests: ['Technology', 'Hiking'],
+          tags: ['work:google', 'location:mountain-view', 'education:stanford', 'interest:technology', 'interest:hiking']
+        },
+        {
+          id: '2',
+          name: 'Mike Chen',
+          picture: null,
+          work: 'Meta',
+          location: 'Menlo Park, CA',
+          education: 'UC Berkeley',
+          interests: ['Photography', 'Travel'],
+          tags: ['work:meta', 'location:menlo-park', 'education:uc-berkeley', 'interest:photography', 'interest:travel']
+        },
+        {
+          id: '3',
+          name: 'Emily Rodriguez',
+          picture: null,
+          work: 'Apple',
+          location: 'Cupertino, CA',
+          education: 'MIT',
+          interests: ['Design', 'Music'],
+          tags: ['work:apple', 'location:cupertino', 'education:mit', 'interest:design', 'interest:music']
+        },
+        {
+          id: '4',
+          name: 'David Kim',
+          picture: null,
+          work: 'Uber',
+          location: 'San Francisco, CA',
+          education: 'Carnegie Mellon',
+          interests: ['AI', 'Basketball'],
+          tags: ['work:uber', 'location:san-francisco', 'education:carnegie-mellon', 'interest:ai', 'interest:basketball']
+        },
+        {
+          id: '5',
+          name: 'Lisa Wang',
+          picture: null,
+          work: 'Netflix',
+          location: 'Los Gatos, CA',
+          education: 'Harvard',
+          interests: ['Movies', 'Yoga'],
+          tags: ['work:netflix', 'location:los-gatos', 'education:harvard', 'interest:movies', 'interest:yoga']
+        }
+      ];
+      
+      filteredContacts = [...allContacts];
+      
+      loadingEl.style.display = 'none';
+      contactsSection.style.display = 'block';
+      
+      updateStats();
+      generateTagFilters();
+      renderContacts();
+    }
+
+    // Enhance contacts with profile information and generate intelligent tags
+    async function enhanceContactsWithTags(contacts) {
+      const enhanced = [];
+      
+      for (const contact of contacts) {
+        try {
+          // Get detailed profile information
+          const profileData = await new Promise((resolve) => {
+            FB.api(`/${contact.id}`, {fields: 'name,picture,work,education,location,interests'}, resolve);
+          });
+          
+          const tags = generateTagsFromProfile(profileData);
+          
+          enhanced.push({
+            ...contact,
+            ...profileData,
+            tags: tags
+          });
+        } catch (error) {
+          console.error('Error enhancing contact:', contact.name, error);
+          enhanced.push({
+            ...contact,
+            tags: []
+          });
+        }
+      }
+      
+      return enhanced;
+    }
+
+    // Generate intelligent tags from profile data
+    function generateTagsFromProfile(profile) {
+      const tags = [];
+      
+      // Work tags
+      if (profile.work && profile.work.length > 0) {
+        profile.work.forEach(work => {
+          if (work.employer) {
+            tags.push(`work:${work.employer.name.toLowerCase().replace(/\s+/g, '-')}`);
+          }
+          if (work.position) {
+            tags.push(`position:${work.position.name.toLowerCase().replace(/\s+/g, '-')}`);
+          }
+        });
+      }
+      
+      // Education tags
+      if (profile.education && profile.education.length > 0) {
+        profile.education.forEach(edu => {
+          if (edu.school) {
+            tags.push(`education:${edu.school.name.toLowerCase().replace(/\s+/g, '-')}`);
+          }
+        });
+      }
+      
+      // Location tags
+      if (profile.location) {
+        tags.push(`location:${profile.location.name.toLowerCase().replace(/\s+/g, '-')}`);
+      }
+      
+      // Interest tags
+      if (profile.interests && profile.interests.data) {
+        profile.interests.data.forEach(interest => {
+          tags.push(`interest:${interest.name.toLowerCase().replace(/\s+/g, '-')}`);
+        });
+      }
+      
+      return tags;
+    }
+
+    // Update statistics
+    function updateStats() {
+      totalContactsEl.textContent = allContacts.length;
+      
+      const allTags = new Set();
+      let taggedCount = 0;
+      
+      allContacts.forEach(contact => {
+        if (contact.tags && contact.tags.length > 0) {
+          taggedCount++;
+          contact.tags.forEach(tag => allTags.add(tag));
+        }
+      });
+      
+      totalTagsEl.textContent = allTags.size;
+      taggedContactsEl.textContent = taggedCount;
+    }
+
+    // Generate tag filter buttons
+    function generateTagFilters() {
+      const tagCounts = {};
+      
+      allContacts.forEach(contact => {
+        if (contact.tags) {
+          contact.tags.forEach(tag => {
+            const category = tag.split(':')[0];
+            tagCounts[category] = (tagCounts[category] || 0) + 1;
+          });
+        }
+      });
+      
+      const sortedTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10); // Show top 10 tag categories
+      
+      tagFilters.innerHTML = '';
+      
+      sortedTags.forEach(([category, count]) => {
+        const button = document.createElement('button');
+        button.className = 'tag-filter';
+        button.textContent = `${category} (${count})`;
+        button.onclick = () => toggleTagFilter(category);
+        tagFilters.appendChild(button);
+      });
+    }
+
+    // Toggle tag filter
+    function toggleTagFilter(category) {
+      if (selectedTags.has(category)) {
+        selectedTags.delete(category);
+      } else {
+        selectedTags.add(category);
+      }
+      
+      // Update button states
+      document.querySelectorAll('.tag-filter').forEach(btn => {
+        const category = btn.textContent.split(' (')[0];
+        btn.classList.toggle('active', selectedTags.has(category));
+      });
+      
+      filterContacts();
+    }
+
+    // Filter contacts based on search and tags
+    function filterContacts() {
+      const searchTerm = searchBar.value.toLowerCase();
+      
+      filteredContacts = allContacts.filter(contact => {
+        // Text search
+        const matchesSearch = !searchTerm || 
+          contact.name.toLowerCase().includes(searchTerm) ||
+          (contact.work && contact.work.toLowerCase().includes(searchTerm)) ||
+          (contact.location && contact.location.toLowerCase().includes(searchTerm)) ||
+          (contact.education && contact.education.toLowerCase().includes(searchTerm)) ||
+          (contact.tags && contact.tags.some(tag => tag.includes(searchTerm)));
+        
+        // Tag filter
+        const matchesTags = selectedTags.size === 0 || 
+          (contact.tags && Array.from(selectedTags).every(category => 
+            contact.tags.some(tag => tag.startsWith(category + ':'))
+          ));
+        
+        return matchesSearch && matchesTags;
+      });
+      
+      renderContacts();
+    }
+
+    // Render contact cards
+    function renderContacts() {
+      contactsGrid.innerHTML = '';
+      
+      filteredContacts.forEach(contact => {
+        const card = createContactCard(contact);
+        contactsGrid.appendChild(card);
+      });
+    }
+
+    // Create contact card element
+    function createContactCard(contact) {
+      const card = document.createElement('div');
+      card.className = 'contact-card';
+      
+      const initials = contact.name.split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase();
+      
+      const tags = contact.tags || [];
+      const tagElements = tags.map(tag => {
+        const [category, value] = tag.split(':');
+        const displayValue = value ? value.replace(/-/g, ' ') : category;
+        return `<span class="tag ${category}">${displayValue}</span>`;
+      }).join('');
+      
+      card.innerHTML = `
+        <div class="contact-header">
+          <div class="contact-avatar">${initials}</div>
+          <div class="contact-info">
+            <h3>${contact.name}</h3>
+            <div class="subtitle">${contact.work || 'Friend'}</div>
+          </div>
+        </div>
+        <div class="contact-tags">
+          ${tagElements}
+        </div>
+      `;
+      
+      return card;
+    }
+
+    // Search functionality
+    searchBar.addEventListener('input', filterContacts);
+  </script>
+</body>
+</html>

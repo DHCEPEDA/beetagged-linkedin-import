@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Facebook Login</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { color: #4267B2; margin-bottom: 20px; }
+    .card {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+    button {
+      background-color: #4267B2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #365899;
+    }
+    pre {
+      background: #f6f8fa;
+      border-radius: 5px;
+      padding: 15px;
+      overflow: auto;
+    }
+    #status {
+      margin: 15px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success { background-color: #e7f3eb; color: #2e7d32; }
+    .error { background-color: #fdeded; color: #c62828; }
+    .info { background-color: #e8f0fe; color: #1976d2; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Super Direct Facebook Login</h1>
+    <p>This page implements the absolute simplest Facebook login with direct FB JS SDK.</p>
+    <div id="fb-root"></div>
+    <div id="status" class="info">Initializing Facebook SDK...</div>
+    
+    <button id="fb-login-button">Login with Facebook</button>
+    
+    <div id="result-container" style="display:none; margin-top: 20px;">
+      <h2>Login Result</h2>
+      <pre id="result"></pre>
+    </div>
+  </div>
+  
+  <script>
+    // Get the App ID from the server
+    fetch('/api/config/fb-app-id')
+      .then(response => response.json())
+      .then(data => {
+        initFacebookSDK(data.appId);
+      })
+      .catch(error => {
+        console.error('Error fetching App ID:', error);
+        document.getElementById('status').className = 'error';
+        document.getElementById('status').textContent = 'Error loading Facebook App ID: ' + error.message;
+      });
+      
+    function initFacebookSDK(appId) {
+      // Load the Facebook SDK asynchronously
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+        
+        document.getElementById('status').textContent = 'Facebook SDK initialized with App ID: ' + appId;
+        
+        // Check login status on page load
+        FB.getLoginStatus(function(response) {
+          console.log('Initial login status:', response);
+          updateStatusDisplay(response);
+        });
+      };
+      
+      // Load the SDK
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+      
+      // Handle login button click
+      document.getElementById('fb-login-button').addEventListener('click', function() {
+        document.getElementById('status').className = 'info';
+        document.getElementById('status').textContent = 'Connecting to Facebook...';
+        
+        FB.login(function(response) {
+          console.log('Login response:', response);
+          updateStatusDisplay(response);
+          
+          if (response.status === 'connected') {
+            // Get user info
+            FB.api('/me', {fields: 'id,name,email,picture'}, function(userData) {
+              console.log('User data:', userData);
+              
+              // Display the result
+              document.getElementById('result-container').style.display = 'block';
+              document.getElementById('result').textContent = JSON.stringify({
+                authResponse: response.authResponse,
+                userData: userData
+              }, null, 2);
+              
+              // Call the server to establish a session
+              createServerSession(response.authResponse.accessToken, userData);
+            });
+          }
+        }, {scope: 'public_profile,email'});
+      });
+    }
+    
+    function updateStatusDisplay(response) {
+      const statusDiv = document.getElementById('status');
+      
+      if (response.status === 'connected') {
+        statusDiv.className = 'success';
+        statusDiv.textContent = 'Connected to Facebook! User ID: ' + response.authResponse.userID;
+      } else if (response.status === 'not_authorized') {
+        statusDiv.className = 'error';
+        statusDiv.textContent = 'Not authorized. Please log in with Facebook.';
+      } else {
+        statusDiv.className = 'info';
+        statusDiv.textContent = 'Not logged in to Facebook. Please log in.';
+      }
+    }
+    
+    function createServerSession(accessToken, userData) {
+      fetch('/api/auth/facebook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          accessToken,
+          userData
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Server session created:', data);
+        
+        // Update the display with the server response
+        document.getElementById('result').textContent += '\n\nServer response:\n' + 
+          JSON.stringify(data, null, 2);
+          
+        // Store the token in local storage for later use
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+          console.log('Auth token stored in local storage');
+        }
+      })
+      .catch(error => {
+        console.error('Error creating server session:', error);
+        document.getElementById('status').className = 'error';
+        document.getElementById('status').textContent = 'Error creating server session: ' + error.message;
+      });
+    }
+  </script>
+</body>
+</html>

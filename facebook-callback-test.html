@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Facebook OAuth Callback Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #4267B2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Facebook OAuth Callback Test</h1>
+  
+  <div id="status">Processing callback parameters...</div>
+  
+  <h3>OAuth Response Parameters:</h3>
+  <pre id="params">Analyzing URL parameters...</pre>
+  
+  <h3>Detailed Analysis:</h3>
+  <pre id="details">Running checks...</pre>
+  
+  <button onclick="goToTestPage()">Back to Test Page</button>
+  
+  <script>
+    function goToTestPage() {
+      window.location.href = '/facebook-oauth-debugging.html';
+    }
+    
+    function logDetails(message, isSuccess) {
+      const detailsEl = document.getElementById('details');
+      const timestamp = new Date().toISOString();
+      detailsEl.innerHTML += `\n[${timestamp}] ${isSuccess ? '✅' : '📝'} ${message}`;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      const statusEl = document.getElementById('status');
+      const paramsEl = document.getElementById('params');
+      const detailsEl = document.getElementById('details');
+      
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramsObj = {};
+      
+      // Extract all parameters
+      urlParams.forEach((value, key) => {
+        paramsObj[key] = value;
+      });
+      
+      // Display raw parameters
+      if (Object.keys(paramsObj).length > 0) {
+        paramsEl.textContent = JSON.stringify(paramsObj, null, 2);
+        logDetails(`Found ${Object.keys(paramsObj).length} parameters in URL`);
+      } else {
+        paramsEl.textContent = 'No parameters found in URL';
+        statusEl.className = 'error';
+        statusEl.textContent = 'Error: No callback parameters found in URL';
+        logDetails('No callback parameters found in URL. This page should be accessed as a redirect from Facebook OAuth.');
+        return;
+      }
+      
+      // Extract specific parameters
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+      const errorReason = urlParams.get('error_reason');
+      const errorDescription = urlParams.get('error_description');
+      
+      // Check for error
+      if (error) {
+        statusEl.className = 'error';
+        statusEl.innerHTML = `<strong>OAuth Error:</strong> ${error}`;
+        
+        logDetails(`Error Type: ${error}`);
+        if (errorReason) logDetails(`Error Reason: ${errorReason}`);
+        if (errorDescription) logDetails(`Error Description: ${errorDescription}`);
+        
+        // Provide guidance based on error type
+        if (error === 'access_denied') {
+          logDetails('The user denied the authorization request');
+        } else if (errorReason === 'user_denied') {
+          logDetails('The user denied the authorization request');
+        } else {
+          logDetails('See the Facebook documentation for more information on this error type');
+        }
+        
+        return;
+      }
+      
+      // Check for authorization code
+      if (!code) {
+        statusEl.className = 'error';
+        statusEl.innerHTML = '<strong>Error:</strong> No authorization code received';
+        logDetails('No authorization code in the callback parameters');
+        return;
+      }
+      
+      logDetails(`Authorization code received (${code.length} characters)`, true);
+      
+      // Check state parameter
+      if (!state) {
+        statusEl.className = 'warning';
+        statusEl.innerHTML = '<strong>Warning:</strong> No state parameter received';
+        logDetails('No state parameter in the callback. This is a potential security risk.');
+      } else {
+        // Retrieve the state we originally sent
+        const savedState = localStorage.getItem('fb_debug_state');
+        
+        if (!savedState) {
+          logDetails('Could not find the original state parameter in localStorage');
+        } else if (state !== savedState) {
+          statusEl.className = 'error';
+          statusEl.innerHTML = '<strong>Security Error:</strong> State parameter mismatch';
+          logDetails(`State parameter mismatch:
+Expected: ${savedState}
+Received: ${state}`);
+        } else {
+          logDetails('State parameter verified successfully', true);
+        }
+      }
+      
+      // Calculate flow duration
+      const startTime = localStorage.getItem('fb_debug_start_time');
+      if (startTime) {
+        const duration = Math.round((Date.now() - parseInt(startTime)) / 1000);
+        logDetails(`Authentication flow completed in ${duration} seconds`);
+      }
+      
+      // Success message
+      if (!statusEl.className) {
+        statusEl.className = 'success';
+        statusEl.innerHTML = '<strong>Success:</strong> Authorization code received from Facebook';
+        
+        logDetails('In a production app, the server would now:');
+        logDetails('1. Exchange this code for an access token using the Facebook API');
+        logDetails('2. Retrieve user information using the access token');
+        logDetails('3. Create or update the user record in the database');
+        logDetails('4. Establish a session for the authenticated user');
+      }
+    });
+  </script>
+</body>
+</html>

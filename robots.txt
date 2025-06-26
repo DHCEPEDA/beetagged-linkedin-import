@@ -1,0 +1,18 @@
+# BeeTagged robots.txt
+# Allow Meta crawlers to access the site for Facebook integration
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: facebookcatalog
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: meta-externalfetcher
+Allow: /
+
+# Allow other search engines
+User-agent: *
+Allow: /
