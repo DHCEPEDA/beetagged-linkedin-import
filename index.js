@@ -50,53 +50,107 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// LinkedIn CSV parser
+/**
+ * LinkedIn CSV Parser - Extracts contact data from LinkedIn export files
+ * Supports standard LinkedIn CSV format with flexible column mapping
+ * 
+ * @param {string} filePath - Path to the uploaded CSV file
+ * @returns {Promise<Array>} - Array of parsed contact objects
+ */
 function parseLinkedInCSV(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
     
+    console.log('Starting CSV parsing for file:', filePath);
+    
+    // Create readable stream and pipe through CSV parser
     fs.createReadStream(filePath)
-      .pipe(csv())
+      .pipe(csv()) // Automatically detects headers from first row
       .on('data', (data) => {
+        // Initialize contact object with unique ID and metadata
         const contact = {
           id: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           source: 'linkedin_import',
           tags: []
         };
         
-        const fields = {
-          'First Name': 'firstName',
-          'Last Name': 'lastName', 
-          'Email Address': 'email',
-          'Company': 'company',
-          'Position': 'title',
-          'Connected On': 'connectedOn',
-          'Location': 'location',
-          'Industry': 'industry',
-          'Phone Number': 'phone'
-        };
+        // Enhanced field mapping - handles multiple possible column names
+        const fieldMappings = [
+          // Standard LinkedIn export format
+          { csvField: 'First Name', contactField: 'firstName' },
+          { csvField: 'Last Name', contactField: 'lastName' },
+          { csvField: 'Email Address', contactField: 'email' },
+          { csvField: 'Company', contactField: 'company' },
+          { csvField: 'Position', contactField: 'title' },
+          { csvField: 'Connected On', contactField: 'connectedOn' },
+          { csvField: 'Location', contactField: 'location' },
+          { csvField: 'Industry', contactField: 'industry' },
+          { csvField: 'Phone Number', contactField: 'phone' },
+          
+          // Alternative formats (case variations and common alternatives)
+          { csvField: 'first name', contactField: 'firstName' },
+          { csvField: 'last name', contactField: 'lastName' },
+          { csvField: 'email', contactField: 'email' },
+          { csvField: 'company', contactField: 'company' },
+          { csvField: 'position', contactField: 'title' },
+          { csvField: 'title', contactField: 'title' },
+          { csvField: 'job title', contactField: 'title' },
+          { csvField: 'Name', contactField: 'fullName' },
+          { csvField: 'Full Name', contactField: 'fullName' },
+          { csvField: 'Organization', contactField: 'company' },
+          { csvField: 'Employer', contactField: 'company' }
+        ];
         
-        Object.keys(data).forEach(col => {
-          if (fields[col] && data[col]) {
-            contact[fields[col]] = data[col].trim();
+        // Extract data using flexible field mapping
+        fieldMappings.forEach(mapping => {
+          if (data[mapping.csvField] && data[mapping.csvField].trim()) {
+            contact[mapping.contactField] = data[mapping.csvField].trim();
           }
         });
         
+        // Handle full name splitting if we got a single name field
+        if (contact.fullName && !contact.firstName && !contact.lastName) {
+          const nameParts = contact.fullName.split(' ');
+          contact.firstName = nameParts[0] || '';
+          contact.lastName = nameParts.slice(1).join(' ') || '';
+        }
+        
+        // Create full name by combining first and last name
         contact.name = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
         
-        const tags = [];
-        if (contact.location) tags.push({ type: 'location', name: contact.location });
-        if (contact.company) tags.push({ type: 'company', name: contact.company });
-        if (contact.title) tags.push({ type: 'position', name: contact.title });
-        if (contact.industry) tags.push({ type: 'industry', name: contact.industry });
+        // Enhanced validation - accept contact if it has ANY meaningful data
+        const hasValidData = contact.name || 
+                           contact.company || 
+                           contact.email || 
+                           contact.title ||
+                           contact.fullName;
         
-        contact.tags = tags;
-        contact.picture = 'https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg';
-        
-        results.push(contact);
+        if (hasValidData) {
+          // Generate intelligent tags based on contact data
+          const tags = [];
+          if (contact.location) tags.push({ type: 'location', name: contact.location });
+          if (contact.company) tags.push({ type: 'company', name: contact.company });
+          if (contact.title) tags.push({ type: 'position', name: contact.title });
+          if (contact.industry) tags.push({ type: 'industry', name: contact.industry });
+          
+          contact.tags = tags;
+          // Add LinkedIn icon as default profile picture
+          contact.picture = 'https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg';
+          
+          results.push(contact);
+          console.log(`Parsed contact: ${contact.name} at ${contact.company}`);
+        } else {
+          console.log('Skipped row - no name or company found');
+        }
       })
-      .on('end', () => resolve(results))
-      .on('error', reject);
+      .on('end', () => {
+        console.log(`CSV parsing complete. Found ${results.length} valid contacts`);
+        resolve(results);
+      })
+      .on('error', (error) => {
+        console.error('CSV parsing error:', error);
+        reject(error);
+      });
   });
 }
 
@@ -135,9 +189,22 @@ app.get('/squarespace-linkedin-import', (req, res) => {
   res.redirect('/li-import');
 });
 
-// LinkedIn import API
-app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
+/**
+ * LinkedIn Import API Endpoint - Processes uploaded LinkedIn CSV files
+ * POST /api/import/linkedin
+ * 
+ * This endpoint accepts a CSV file upload, parses LinkedIn connection data,
+ * converts it to our internal contact format, and generates intelligent tags.
+ * 
+ * Features:
+ * - File validation and error handling
+ * - Duplicate prevention (clears existing LinkedIn imports)
+ * - Automatic tag generation based on company, location, position
+ * - Contact format standardization for the BeeTagged system
+ */
+app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
+    // Step 1: Validate file upload
     if (!req.file) {
       return res.status(400).json({ 
         success: false, 
@@ -145,15 +212,31 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
       });
     }
 
+    console.log('Processing LinkedIn CSV file:', req.file.originalname);
+    
+    // Step 2: Parse the CSV file using our LinkedIn parser
     const importedContacts = await parseLinkedInCSV(req.file.path);
     
-    // Clear existing LinkedIn imports to avoid duplicates
+    // Step 3: Validate that we found meaningful contact data
+    if (!importedContacts || importedContacts.length === 0) {
+      console.log('No valid contacts found in CSV file');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No valid contacts found in CSV file. Please check that your CSV has First Name, Last Name, Company, or Position columns.' 
+      });
+    }
+    
+    console.log(`Found ${importedContacts.length} valid contacts in CSV`);
+    
+    // Step 4: Clear existing LinkedIn imports to avoid duplicates
+    // This ensures fresh data on each import while preserving manual contacts
     contacts = contacts.filter(c => c.source !== 'linkedin_import');
     
-    // Convert imported contacts to the format expected by the contact system
+    // Step 5: Convert parsed contacts to BeeTagged internal format
+    // This standardizes the data structure for consistent API responses
     importedContacts.forEach(contact => {
       const newContact = {
-        _id: contactIdCounter++,
+        _id: contactIdCounter++, // Unique internal ID
         name: contact.name,
         email: contact.email || '',
         phoneNumber: contact.phone || '',
@@ -162,9 +245,11 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
         location: contact.location || '',
         industry: contact.industry || '',
         connectedOn: contact.connectedOn || '',
-        source: 'linkedin_import',
+        source: 'linkedin_import', // Track data source for filtering
         picture: contact.picture,
         createdAt: new Date().toISOString(),
+        
+        // Priority data structure for search and filtering
         priorityData: {
           employment: { 
             current: { 
@@ -174,29 +259,38 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
           },
           location: { current: contact.location || '' }
         },
+        
+        // Tag mappings for search functionality  
         allTags: contact.tags.map(tag => ({
           name: tag.name,
           category: tag.type
         })),
+        
+        // LinkedIn-specific metadata
         linkedinData: { id: contact.id },
         tags: contact.tags
       };
       
+      // Add to global contacts array
       contacts.push(newContact);
     });
     
-    // Create tags from imported contact data
+    // Step 6: Generate and store unique tags from contact data
+    // This builds our searchable tag database automatically
     const newTags = new Set();
     importedContacts.forEach(contact => {
       contact.tags.forEach(tag => {
         const tagName = tag.name;
+        // Only add new tags (case-insensitive duplicate checking)
         if (tagName && !tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())) {
           newTags.add(JSON.stringify({
             _id: tagIdCounter++,
             name: tagName,
-            color: tag.type === 'company' ? '#1e40af' : 
-                   tag.type === 'location' ? '#059669' : 
-                   tag.type === 'position' ? '#dc2626' : '#7c2d12',
+            // Color coding by tag type for UI display
+            color: tag.type === 'company' ? '#1e40af' :     // Blue for companies
+                   tag.type === 'location' ? '#059669' :    // Green for locations  
+                   tag.type === 'position' ? '#dc2626' :    // Red for positions
+                   '#7c2d12',                               // Brown for other tags
             category: tag.type || 'general',
             createdAt: new Date().toISOString(),
             usageCount: 1,
@@ -206,14 +300,17 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
       });
     });
     
+    // Add new tags to global tags array
     newTags.forEach(tagStr => {
       tags.push(JSON.parse(tagStr));
     });
     
+    // Step 7: Clean up uploaded file to save disk space
     fs.unlink(req.file.path, (err) => {
       if (err) console.error('File cleanup error:', err);
     });
     
+    // Step 8: Return success response with import statistics
     res.json({
       success: true,
       message: `Successfully imported ${importedContacts.length} contacts from LinkedIn`,
@@ -224,12 +321,15 @@ app.post('/api/import/linkedin', upload.single('file'), async (req, res) => {
     });
     
   } catch (error) {
+    // Error handling: Log detailed error and clean up files
     console.error('LinkedIn import error:', error);
     
+    // Clean up uploaded file on error
     if (req.file && req.file.path) {
       fs.unlink(req.file.path, () => {});
     }
     
+    // Return error response to client
     res.status(500).json({
       success: false,
       message: 'Failed to import LinkedIn contacts',
