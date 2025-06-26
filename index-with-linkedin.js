@@ -53,24 +53,54 @@ console.log('✓ Storage initialized');
 function parseLinkedInCSV(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
+    let headers = [];
+    
     fs.createReadStream(filePath)
-      .pipe(csv({ skipEmptyLines: true, headers: true }))
+      .pipe(csv({ 
+        skipEmptyLines: true, 
+        headers: true,
+        mapHeaders: ({ header }) => {
+          headers.push(header);
+          return header.toLowerCase().trim();
+        }
+      }))
       .on('data', (data) => {
+        console.log('Raw CSV row:', data);
+        
+        // Handle multiple possible column name variations
         const contact = {
-          firstName: data['First Name'] || data.firstName || '',
-          lastName: data['Last Name'] || data.lastName || '',
-          emailAddress: data['Email Address'] || data.email || '',
-          company: data['Company'] || data.company || '',
-          position: data['Position'] || data.position || data.title || '',
-          connectedOn: data['Connected On'] || data.connectedOn || '',
-          url: data['URL'] || data.url || ''
+          firstName: data['first name'] || data['firstname'] || data['first_name'] || data['name'] || '',
+          lastName: data['last name'] || data['lastname'] || data['last_name'] || data['surname'] || '',
+          emailAddress: data['email address'] || data['email'] || data['e-mail'] || '',
+          company: data['company'] || data['organization'] || data['employer'] || data['current company'] || '',
+          position: data['position'] || data['title'] || data['job title'] || data['current position'] || data['role'] || '',
+          connectedOn: data['connected on'] || data['connection date'] || data['date connected'] || '',
+          url: data['url'] || data['profile url'] || data['linkedin url'] || data['link'] || ''
         };
         
-        if (contact.firstName || contact.lastName || contact.company) {
+        // If no firstName/lastName, try to split full name
+        if (!contact.firstName && !contact.lastName) {
+          const fullName = data['name'] || data['full name'] || data['contact name'] || '';
+          if (fullName) {
+            const nameParts = fullName.trim().split(' ');
+            contact.firstName = nameParts[0] || '';
+            contact.lastName = nameParts.slice(1).join(' ') || '';
+          }
+        }
+        
+        console.log('Parsed contact:', contact);
+        
+        // Accept contact if it has at least a name or company
+        if (contact.firstName || contact.lastName || contact.company || 
+            Object.values(data).some(value => value && value.trim().length > 0)) {
           results.push(contact);
         }
       })
-      .on('end', () => resolve(results))
+      .on('end', () => {
+        console.log('CSV headers found:', headers);
+        console.log('Total parsed contacts:', results.length);
+        resolve(results);
+      })
       .on('error', reject);
   });
 }
