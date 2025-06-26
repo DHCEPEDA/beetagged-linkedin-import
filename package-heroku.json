@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "npx webpack --mode production",
+    "build": "npx webpack --config webpack.heroku.config.js",
     "dev": "concurrently \"npx webpack --mode development --watch\" \"nodemon index.js\"",
     "heroku-postbuild": "npm run build"
   },
@@ -38,6 +38,7 @@
     "html-webpack-plugin": "^5.6.3",
     "css-loader": "^7.1.2",
     "style-loader": "^4.0.0",
-    "copy-webpack-plugin": "^13.0.0"
+    "copy-webpack-plugin": "^13.0.0",
+    "process": "^0.11.10"
   }
 }
