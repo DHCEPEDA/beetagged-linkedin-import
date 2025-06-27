@@ -265,6 +265,32 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Status endpoint for deployment verification
+app.get('/status', (req, res) => {
+  res.json({
+    server: 'BeeTagged LinkedIn Import Server',
+    status: 'running',
+    features: {
+      csvImport: true,
+      reactApp: true,
+      contactManagement: true,
+      tagGeneration: true
+    },
+    endpoints: {
+      homepage: '/',
+      linkedinImport: '/li-import',
+      api: '/api/import/linkedin',
+      contacts: '/api/contacts',
+      health: '/health'
+    },
+    stats: {
+      contacts: contacts.length,
+      uptime: process.uptime(),
+      port: process.env.PORT || '5000'
+    }
+  });
+});
+
 // Catch-all handler for React Router
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
