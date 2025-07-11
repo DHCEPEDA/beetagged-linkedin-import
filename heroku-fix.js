@@ -4,10 +4,8 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const csv = require('csv-parser');
-const FacebookAPI = require('./server/facebook-api');
 
 const app = express();
-const facebookAPI = new FacebookAPI();
 
 // Trust proxy for Heroku
 app.set('trust proxy', 1);
@@ -21,7 +19,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Storage arrays - declared once at the top
+// Storage arrays
 let contacts = [];
 let tags = [];
 let contactIdCounter = 1;
@@ -67,7 +65,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// LinkedIn CSV parser with flexible field mapping
+// LinkedIn CSV parser
 function parseLinkedInCSV(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -81,7 +79,6 @@ function parseLinkedInCSV(filePath) {
           tags: []
         };
         
-        // Map CSV fields to contact fields (case-insensitive)
         const fieldMappings = [
           { csvField: 'First Name', contactField: 'firstName' },
           { csvField: 'Last Name', contactField: 'lastName' },
@@ -102,7 +99,6 @@ function parseLinkedInCSV(filePath) {
           }
         });
         
-        // Handle full name splitting
         if (contact.fullName && !contact.firstName && !contact.lastName) {
           const nameParts = contact.fullName.split(' ');
           contact.firstName = nameParts[0] || '';
@@ -111,11 +107,9 @@ function parseLinkedInCSV(filePath) {
         
         contact.name = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
         
-        // Only add contacts with valid data
         const hasValidData = contact.name || contact.company || contact.email || contact.title || contact.fullName;
         
         if (hasValidData) {
-          // Generate tags
           const tags = [];
           if (contact.location) tags.push({ type: 'location', name: contact.location });
           if (contact.company) tags.push({ type: 'company', name: contact.company });
@@ -133,73 +127,76 @@ function parseLinkedInCSV(filePath) {
   });
 }
 
-// Routes
+// Homepage route
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-    <title>BeeTagged</title>
-    <style>
-        body { font-family: Arial; margin: 40px; background: #f8fafc; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
-        h1 { color: #2563eb; }
-        .status { color: #059669; background: #dcfce7; padding: 10px; border-radius: 5px; margin: 20px 0; }
-        .linkedin-section { background: #0077b5; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .linkedin-section a { background: white; color: #0077b5; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🐝 BeeTagged</h1>
-        <div class="status">Server running - Contacts: ${contacts.length}</div>
-        <div class="linkedin-section">
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>BeeTagged</title>
+        <style>
+          body { font-family: Arial; margin: 40px; background: #f8fafc; }
+          .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+          h1 { color: #2563eb; }
+          .status { color: #059669; background: #dcfce7; padding: 10px; border-radius: 5px; margin: 20px 0; }
+          .linkedin-section { background: #0077b5; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .linkedin-section a { background: white; color: #0077b5; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🐝 BeeTagged</h1>
+          <div class="status">Server running - Contacts: ${contacts.length}</div>
+          <div class="linkedin-section">
             <h3>LinkedIn Import</h3>
             <a href="/li-import">Import LinkedIn Connections</a>
+          </div>
+          <p><a href="/api/contacts">View Contacts API</a></p>
         </div>
-        <p><a href="/api/contacts">View Contacts API</a></p>
-    </div>
-</body>
-</html>`;
-    res.send(html);
+      </body>
+      </html>
+    `);
   }
 });
 
+// LinkedIn import page
 app.get('/li-import', (req, res) => {
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-    <title>LinkedIn Import</title>
-    <style>
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>LinkedIn Import</title>
+      <style>
         body { font-family: Arial; margin: 40px; background: #f8fafc; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
         h1 { color: #0077b5; }
         .upload-area { border: 2px dashed #0077b5; padding: 40px; text-align: center; border-radius: 10px; margin: 20px 0; }
         button { background: #0077b5; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="container">
+      </style>
+    </head>
+    <body>
+      <div class="container">
         <h1>LinkedIn Import</h1>
         <form action="/api/import/linkedin" method="post" enctype="multipart/form-data">
-            <div class="upload-area">
-                <h3>Upload LinkedIn CSV</h3>
-                <input type="file" name="linkedinCsv" accept=".csv" required>
-                <br><br>
-                <button type="submit">Import Contacts</button>
-            </div>
+          <div class="upload-area">
+            <h3>Upload LinkedIn CSV</h3>
+            <input type="file" name="linkedinCsv" accept=".csv" required>
+            <br><br>
+            <button type="submit">Import Contacts</button>
+          </div>
         </form>
         <a href="/">← Back</a>
-    </div>
-</body>
-</html>`;
-  res.send(html);
+      </div>
+    </body>
+    </html>
+  `);
 });
 
-// LinkedIn import API endpoint
+// LinkedIn import API
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
     if (!req.file) {
@@ -215,10 +212,8 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       });
     }
     
-    // Clear existing LinkedIn imports
     contacts = contacts.filter(c => c.source !== 'linkedin_import');
     
-    // Add new contacts
     importedContacts.forEach(contact => {
       const newContact = {
         _id: contactIdCounter++,
@@ -235,7 +230,6 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       contacts.push(newContact);
     });
     
-    // Clean up uploaded file
     fs.unlink(req.file.path, () => {});
     
     res.json({
@@ -281,32 +275,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Status endpoint for deployment verification
-app.get('/status', (req, res) => {
-  res.json({
-    server: 'BeeTagged LinkedIn Import Server',
-    status: 'running',
-    features: {
-      csvImport: true,
-      reactApp: true,
-      contactManagement: true,
-      tagGeneration: true
-    },
-    endpoints: {
-      homepage: '/',
-      linkedinImport: '/li-import',
-      api: '/api/import/linkedin',
-      contacts: '/api/contacts',
-      health: '/health'
-    },
-    stats: {
-      contacts: contacts.length,
-      uptime: process.uptime(),
-      port: process.env.PORT || '5000'
-    }
-  });
-});
-
 // Heroku-specific status endpoint
 app.get('/heroku-status', (req, res) => {
   res.json({
@@ -319,11 +287,6 @@ app.get('/heroku-status', (req, res) => {
       staticFiles: fs.existsSync(path.join(__dirname, 'dist', 'index.html')),
       uploadsDir: fs.existsSync(path.join(__dirname, 'uploads'))
     },
-    files: {
-      distExists: fs.existsSync(path.join(__dirname, 'dist')),
-      indexExists: fs.existsSync(path.join(__dirname, 'dist', 'index.html')),
-      bundleExists: fs.existsSync(path.join(__dirname, 'dist', 'bundle.js'))
-    },
     stats: {
       contacts: contacts.length,
       uptime: process.uptime()
@@ -331,7 +294,7 @@ app.get('/heroku-status', (req, res) => {
   });
 });
 
-// Catch-all handler for React Router with fallback
+// Catch-all for React Router (only if dist exists)
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexPath)) {
@@ -343,13 +306,10 @@ app.get('*', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`BeeTagged LinkedIn Import Server`);
-  console.log(`Running on port: ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+app.listen(PORT, () => {
+  console.log(`BeeTagged server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`Build exists: ${fs.existsSync(path.join(__dirname, 'dist', 'index.html'))}`);
-  console.log(`Test page: /li-import`);
-  console.log(`API: /api/import/linkedin`);
 });
 
 module.exports = app;
