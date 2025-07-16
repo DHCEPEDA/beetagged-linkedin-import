@@ -249,17 +249,62 @@ app.get('/squarespace-linkedin-import', (req, res) => {
   }
 });
 
-// Homepage route
+// Homepage route - serve React app
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.json({
-      message: 'BeeTagged Server Running',
-      status: 'healthy',
-      endpoints: ['/health', '/status', '/api/contacts', '/api/tags', '/squarespace-linkedin-import']
-    });
+    // Fallback to simple HTML page with links to functionality
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+    <title>BeeTagged</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f8fafc; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        h1 { color: #2563eb; }
+        .status { color: #059669; background: #dcfce7; padding: 10px; border-radius: 5px; margin: 20px 0; }
+        .linkedin-section { background: #0077b5; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .linkedin-section a { background: white; color: #0077b5; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0; }
+        .feature-card { background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .feature-card h3 { margin: 0 0 10px 0; color: #1e293b; }
+        .feature-card a { color: #2563eb; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐝 BeeTagged</h1>
+        <div class="status">Professional Contact Intelligence Platform - Server Running</div>
+        
+        <div class="linkedin-section">
+            <h3>LinkedIn Import</h3>
+            <p>Import your LinkedIn connections for intelligent contact search</p>
+            <a href="/li-import">Import LinkedIn Connections</a>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>Contact Management</h3>
+                <p>View and manage your imported contacts</p>
+                <a href="/api/contacts">View Contacts API</a>
+            </div>
+            <div class="feature-card">
+                <h3>Health Status</h3>
+                <p>Check server health and statistics</p>
+                <a href="/health">Server Health</a>
+            </div>
+            <div class="feature-card">
+                <h3>Squarespace Integration</h3>
+                <p>Facebook connect widget for Squarespace</p>
+                <a href="/squarespace-linkedin-import">Squarespace Widget</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+    res.send(html);
   }
 });
 
