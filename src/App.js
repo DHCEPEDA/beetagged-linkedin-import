@@ -26,7 +26,8 @@ const MainNavigation = () => {
     { id: 'contact', label: 'Contact', path: '/contacts' },
     { id: 'search', label: 'Search', path: '/search' },
     { id: 'social', label: 'Social', path: '/social-connect' },
-    { id: 'rank', label: 'Rank', path: '/rank' }
+    { id: 'rank', label: 'Rank', path: '/rank' },
+    { id: 'import', label: 'Import Contacts', path: '/squarespace-linkedin-import', external: true }
   ];
 
   return (
@@ -41,25 +42,48 @@ const MainNavigation = () => {
       zIndex: 100
     }}>
       {navButtons.map(button => (
-        <Link
-          key={button.id}
-          to={button.path}
-          onClick={() => setActiveTab(button.id)}
-          style={{
-            padding: '12px 24px',
-            margin: '0 5px',
-            textDecoration: 'none',
-            color: activeTab === button.id ? 'white' : '#666',
-            backgroundColor: activeTab === button.id ? beeGold : 'transparent',
-            borderRadius: '20px',
-            fontWeight: 'bold',
-            fontSize: '16px',
-            transition: 'all 0.3s ease',
-            border: activeTab === button.id ? 'none' : '2px solid #e0e0e0'
-          }}
-        >
-          {button.label}
-        </Link>
+        button.external ? (
+          <a
+            key={button.id}
+            href={button.path}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '12px 24px',
+              margin: '0 5px',
+              textDecoration: 'none',
+              color: '#666',
+              backgroundColor: 'transparent',
+              borderRadius: '20px',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              transition: 'all 0.3s ease',
+              border: '2px solid #e0e0e0'
+            }}
+          >
+            {button.label}
+          </a>
+        ) : (
+          <Link
+            key={button.id}
+            to={button.path}
+            onClick={() => setActiveTab(button.id)}
+            style={{
+              padding: '12px 24px',
+              margin: '0 5px',
+              textDecoration: 'none',
+              color: activeTab === button.id ? 'white' : '#666',
+              backgroundColor: activeTab === button.id ? beeGold : 'transparent',
+              borderRadius: '20px',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              transition: 'all 0.3s ease',
+              border: activeTab === button.id ? 'none' : '2px solid #e0e0e0'
+            }}
+          >
+            {button.label}
+          </Link>
+        )
       ))}
     </div>
   );
