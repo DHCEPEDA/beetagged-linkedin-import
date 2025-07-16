@@ -1,0 +1,111 @@
+// Assume 'contacts' is an array populated after file processing
+// Example: contacts = [{ name: "Alice Wonderland", source: "LinkedIn" }, { name: "Bob The Builder", source: "LinkedIn" }];
+
+const contactListContainer = document.getElementById('contactListContainer');
+const searchBar = document.getElementById('searchBar');
+let allContacts = []; // This will hold all contacts from all sources
+
+function displayContacts(contactsToDisplay) {
+    contactListContainer.innerHTML = ''; // Clear previous list
+
+    if (contactsToDisplay.length === 0) {
+        contactListContainer.innerHTML = '<p>No contacts to display.</p>';
+        return;
+    }
+
+    const ul = document.createElement('ul');
+    contactsToDisplay.forEach(contact => {
+        const li = document.createElement('li');
+        li.textContent = `${contact.name} (${contact.source || 'Unknown'})`; // Display name and source
+        // Add more details if available
+        if (contact.title) {
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = ` - ${contact.title}`;
+            titleSpan.style.fontSize = '0.9em';
+            titleSpan.style.color = '#555';
+            li.appendChild(titleSpan);
+        }
+        // Handle other publicly available data fields similarly
+        ul.appendChild(li);
+    });
+    contactListContainer.appendChild(ul);
+}
+
+// --- LinkedIn Import Logic ---
+const linkedinFileEl = document.getElementById('linkedinFile');
+const importLinkedInBtn = document.getElementById('importLinkedInBtn');
+
+importLinkedInBtn.addEventListener('click', () => {
+    if (linkedinFileEl.files.length === 0) {
+        alert("Please select a LinkedIn export file first.");
+        return;
+    }
+    const file = linkedinFileEl.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        const fileContent = event.target.result;
+        // --- !!! PARSE THE LINKEDIN FILE CONTENT HERE !!! ---
+        // This is highly dependent on the format of your LinkedIn export.
+        // For CSV, you might split by lines, then by commas.
+        // For VCF (vCard), you might need a library or more complex parsing.
+        // Example (very simplified CSV parsing):
+        const parsedLinkedInContacts = parseLinkedInData(fileContent); // You need to implement parseLinkedInData
+
+        // Add to global contacts array and ensure 'source' is set
+        parsedLinkedInContacts.forEach(contact => contact.source = 'LinkedIn');
+        allContacts = allContacts.concat(parsedLinkedInContacts);
+        displayContacts(getConsolidatedContacts());
+    };
+
+    reader.onerror = function() {
+        alert("Failed to read file.");
+    };
+
+    if (file.name.endsWith('.csv')) {
+        reader.readAsText(file);
+    } else if (file.name.endsWith('.vcf')) {
+        reader.readAsText(file); // Or use a library that handles VCF
+    } else {
+        alert("Unsupported file type. Please upload a CSV or VCF file.");
+    }
+});
+
+// Placeholder for your LinkedIn data parsing logic
+function parseLinkedInData(data) {
+    // THIS IS A VERY BASIC EXAMPLE FOR CSV
+    // You'll need to adapt this based on your actual CSV structure
+    console.log("Parsing LinkedIn Data (implement this based on your file format):", data.substring(0,100) + "...");
+    const lines = data.split('\n').slice(1); // Assuming first line is header
+    const contacts = [];
+    lines.forEach(line => {
+        const columns = line.split(','); // Adjust delimiter if necessary
+        if (columns.length > 0 && columns[0]) { // Basic check
+            contacts.push({
+                name: columns[0].trim(), // Assuming name is in the first column
+                // Add other relevant fields from your CSV
+                // e.g., title: columns[1] ? columns[1].trim() : '',
+            });
+        }
+    });
+    return contacts;
+}
+
+// --- Search Functionality (will be refined later) ---
+searchBar.addEventListener('input', (event) => {
+    const searchTerm = event.target.value.toLowerCase();
+    const filteredContacts = getConsolidatedContacts().filter(contact =>
+        contact.name.toLowerCase().includes(searchTerm)
+        // You might want to search in other fields as well
+    );
+    displayContacts(filteredContacts);
+});
+
+// --- Consolidation Logic (will be refined with Facebook integration) ---
+function getConsolidatedContacts() {
+    // For now, just returns allContacts. This will get more complex.
+    // Basic deduplication could be added here if names are exact matches
+    // More advanced deduplication would require more sophisticated logic.
+    return allContacts;
+}
+

@@ -1,0 +1,236 @@
+jsx
+// In your React component that manages and displays contacts
+
+// State to hold the contacts
+// const [contacts, setContacts] = useState([]); // Managed by your main contacts component
+// State to hold the current view
+// const [currentView, setCurrentView] = useState('home'); // Or whatever your default is
+
+// Function to fetch all contacts from the backend
+// This would be called on initial load and after successful import
+async function fetchAllContacts() {
+  try {
+    const response = await fetch('/api/contacts'); // A NEW ENDPOINT to get all contacts
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    // Assuming data is an array of contact objects
+    // setContacts(data); // Update the state in your main contacts component
+    // For the purpose of this example, let's assume `displayContactsOnPage`
+    // is a function that takes the contact data and updates the UI
+    // (similar to the vanilla JS `displayContacts` function from earlier).
+    // In React, this would typically be done by setting state.
+    console.log("Fetched contacts:", data);
+    // You'd pass 'data' to your contact list rendering component via props or context
+    // For now, let's simulate updating a global store or calling a display function
+    // that the parent component (which manages the contact list display) can react to.
+    // For this example, let's say the parent component has a function passed down via props
+    // or context: onContactsUpdated(data);
+    if (typeof onContactsUpdated === 'function') {
+        onContactsUpdated(data);
+    }
+
+  } catch (error) {
+    console.error("Could not fetch contacts:", error);
+    // Handle error display
+  }
+}
+
+
+// Modified LinkedIn CSV upload form
+<form onSubmit={async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById('csvFile'); // Keep using getElementById if this isn't a controlled component
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  
+  if (!fileInput.files[0]) {
+    alert('Please select a CSV file');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('csvFile', fileInput.files[0]);
+
+  if(loading) loading.style.display = 'block';
+  if(result) result.style.display = 'none';
+
+  try {
+    const response = await fetch('/api/import/linkedin', { // Your existing import endpoint
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json(); // Response from /api/import/linkedin
+    if(loading) loading.style.display = 'none';
+
+    if (data.success) {
+      if(result) {
+        result.innerHTML = 'Successfully imported ' + data.count + ' contacts!';
+        result.style.backgroundColor = '#dcfce7';
+        result.style.color = '#059669';
+        result.style.display = 'block';
+      }
+      
+      // === KEY CHANGE HERE ===
+      // Instead of reloading, fetch the updated contact list
+      // And then update the view to show the contacts (e.g., switch view and pass data)
+      // Option 1: The import API returns all contacts
+      if (data.contacts) { // If your import endpoint returns the full list
+          // setContacts(data.contacts); // Update state directly if this component manages it
+          // setCurrentView('contactList'); // Or whatever view shows the list
+          console.log("Contacts returned from import:", data.contacts);
+          // Here you would pass data.contacts to the component/function that displays them
+          // For example, if you have a state `allContacts` in a parent component:
+          // props.onImportSuccess(data.contacts); 
+          // Then setCurrentView('contactList');
+      } else {
+      // Option 2: Fetch all contacts using a separate endpoint
+          await fetchAllContacts(); // Call the function to refresh the contact list
+          // setCurrentView('contactList'); // Then switch to the view that shows them
+          console.log("Import successful, now fetching all contacts...");
+      }
+      // After fetching and updating the state, you might want to navigate
+      // to the view that displays the contacts.
+      // Assuming 'setCurrentView' is available and 'contactList' is the view name:
+      // setCurrentView('contactListView'); // Or whatever your view for the list is called
+
+      // If the import itself is a view, and you want to show contacts
+      // within or alongside this import success message, you'd trigger
+      // the contact list component to re-render with the new data.
+
+    } else {
+      if(result) {
+        result.innerHTML = 'Error: ' + (data.message || 'Import failed');
+        result.style.backgroundColor = '#fee2e2';
+        result.style.color = '#dc2626';
+        result.style.display = 'block';
+      }
+    }
+  } catch (error) {
+    if(loading) loading.style.display = 'none';
+    if(result) {
+        result.innerHTML = 'Error: ' + error.message;
+        result.style.backgroundColor = '#fee2e2';
+        result.style.color = '#dc2626';
+        result.style.display = 'block';
+    }
+  }
+}}>
+  {/* ... rest of your form ... */}
+  <input
+    type="file"
+    id="csvFile" // If using React, consider using a ref or controlled component for file input
+    accept=".csv"
+    required
+    style={{
+      width: '100%',
+      padding: '10px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      marginBottom: '15px'
+    }}
+  />
+  <button
+    type="submit"
+    style={{
+      backgroundColor: '#0077b5',
+      color: 'white',
+      padding: '12px 24px',
+      border: 'none',
+      borderRadius: '4px',
+      fontSize: '16px',
+      cursor: 'pointer',
+      width: '100%'
+    }}
+  >
+    Upload and Import Contacts
+  </button>
+</form>
+
+// Somewhere in your app, you'd have:
+// <div id="loading" style={{display: 'none'}}>Loading...</div>
+// <div id="result" style={{display: 'none'}}></div>
+
+// And your contact list display component:
+// function ContactListComponent({ contacts }) {
+//   const [searchTerm, setSearchTerm] = useState('');
+//   const filteredContacts = contacts.filter(c => 
+//       c.name.toLowerCase().includes(searchTerm.toLowerCase())
+//   );
+
+//   return (
+//     <div>
+//       <input 
+//         type="text" 
+//         placeholder="Search contacts..." 
+//         value={searchTerm} 
+//         onChange={(e) => setSearchTerm(e.target.value)} 
+//       />
+//       <ul style={{ maxHeight: '400px', overflowY: 'auto' }}>
+//         {filteredContacts.map(contact => (
+//           <li key={contact.id || contact.name}>{contact.name} {/* ... more details */}</li>
+//         ))}
+//       </ul>
+//     </div>
+//   );
+// }
+
+// Your main App component might look something like this:
+// function App() {
+//   const [currentView, setCurrentView] = useState('home');
+//   const [contacts, setContacts] = useState([]);
+
+//   const handleImportSuccess = (importedContacts) => {
+//      // This function could be called from the form's onSubmit
+//      // It could either receive the contacts directly, or trigger a fetch
+//      fetchAllContactsAndUpdateState(); // A function that fetches and then calls setContacts
+//   }
+
+//   const fetchAllContactsAndUpdateState = async () => {
+//     try {
+//       const response = await fetch('/api/contacts');
+//       const data = await response.json();
+//       setContacts(data);
+//       setCurrentView('contactList'); // Switch view after fetching
+//     } catch (error) {
+//       console.error("Failed to fetch contacts", error);
+//     }
+//   };
+
+
+//   // Initial fetch of contacts when the app loads or when appropriate
+//   useEffect(() => {
+//     if (currentView === 'contactList' || someOtherCondition) { // Fetch when needed
+//         fetchAllContactsAndUpdateState();
+//     }
+//   }, [currentView]);
+
+
+//   return (
+//     <div>
+//       {currentView === 'home' && (
+//         <button onClick={() => setCurrentView('import')} /* ... */ >
+//           Import LI Contacts
+//         </button>
+//         // ... other home view elements
+//       )}
+
+//       {currentView === 'import' && (
+//         // Your form code here, passing fetchAllContactsAndUpdateState or a similar handler
+//         // e.g. <LinkedInImportForm onImportSuccess={fetchAllContactsAndUpdateState} />
+//         // For your provided code, you'd modify its onSubmit to call a function like this
+//         // after the API call and then setCurrentView.
+//       )}
+
+//       {currentView === 'contactList' && (
+//         <ContactListComponent contacts={contacts} />
+//       )}
+      
+//       <div id="loading" style={{display: 'none'}}>Loading...</div>
+//       <div id="result" style={{display: 'none'}}></div>
+//     </div>
+//   );
+// }
+

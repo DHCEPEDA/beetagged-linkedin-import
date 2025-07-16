@@ -1,0 +1,116 @@
+jsx
+// Search functionality
+const SearchContacts = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(''); // Optional: for displaying search errors
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setError(''); // Clear previous errors
+    if (!searchTerm.trim()) {
+      setResults([]); // Clear results if search term is empty
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/search/natural?q=${encodeURIComponent(searchTerm)}`);
+      if (!response.ok) {
+        const errData = await response.json(); // Try to get error message from backend
+        throw new Error(errData.message || `Search failed with status: ${response.status}`);
+      }
+      const data = await response.json();
+      setResults(data.results || []);
+      if ((data.results || []).length === 0) {
+        setError('No contacts found matching your search.');
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setError(err.message || 'An error occurred during search.');
+      setResults([]);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSearch} style={{ marginBottom: '20px' }}>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search contacts... (e.g., 'Who works at Google?', 'marketing', 'Seattle')"
+          style={{
+            width: '100%',
+            padding: '12px',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            fontSize: '16px',
+            marginBottom: '15px',
+            boxSizing: 'border-box'
+          }}
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            backgroundColor: '#2563eb',
+            color: 'white',
+            padding: '12px 24px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '16px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            width: '100%'
+          }}
+        >
+          {loading ? 'Searching...' : 'Search'}
+        </button>
+      </form>
+
+      {/* Display Search Results or Loading/Error Messages */}
+      {loading && <p>Loading results...</p>}
+      
+      {error && !loading && <p style={{ color: 'red' }}>{error}</p>}
+
+      {!loading && !error && results.length > 0 && (
+        <div className="searchResultsContainer" style={{ marginTop: '20px' }}>
+          <h3>Search Results:</h3>
+          <ul style={{ listStyleType: 'none', padding: 0, maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px' }}>
+            {results.map((contact, index) => (
+              <li key={contact.id || index} style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
+                <strong>{contact.name}</strong>
+                {contact.title && <span> - {contact.title}</span>}
+                {contact.company && <span> at {contact.company}</span>}
+                {/* Add more contact details as available and needed */}
+                {/* Example for showing LinkedIn/Facebook specific data if your search API returns it */}
+                {contact.linkedInData && contact.linkedInData.profileUrl && (
+                  <p style={{ margin: '5px 0 0', fontSize: '0.9em' }}>
+                    LI Profile: <a href={contact.linkedInData.profileUrl} target="_blank" rel="noopener noreferrer">{contact.linkedInData.profileUrl}</a>
+                  </p>
+                )}
+                 {contact.facebookData && contact.facebookData.profileUrl && (
+                  <p style={{ margin: '5px 0 0', fontSize: '0.9em' }}>
+                    FB Profile: <a href={contact.facebookData.profileUrl} target="_blank" rel="noopener noreferrer">{contact.facebookData.profileUrl}</a>
+                  </p>
+                )}
+                {contact.source && <span style={{ fontSize: '0.8em', color: '#777', display: 'block' }}> (Source: {contact.source})</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {!loading && !error && results.length === 0 && searchTerm.trim() !== '' && (
+        // This message is shown if search was performed but yielded no results,
+        // distinct from the initial state or an empty search term.
+        // The `error` state handles the "No contacts found..." message above now.
+        <p>No results found for "{searchTerm}".</p>
+      )}
+    </div>
+  );
+};
+
+export default SearchContacts; // Assuming you export it

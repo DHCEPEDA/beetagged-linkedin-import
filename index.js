@@ -103,16 +103,36 @@ function parseLinkedInCSV(filePath) {
       .pipe(csv())
       .on('data', (row) => {
         try {
+          // Enhanced field mapping for different LinkedIn CSV formats
+          const firstName = row['First Name'] || row['firstName'] || '';
+          const lastName = row['Last Name'] || row['lastName'] || '';
+          const name = firstName && lastName ? `${firstName} ${lastName}` : 
+                      row['Name'] || row['name'] || 
+                      row['Full Name'] || row['fullName'] || '';
+          
           const contact = {
-            name: row['First Name'] + ' ' + row['Last Name'] || row['Name'] || '',
-            email: row['Email Address'] || row['Email'] || '',
-            company: row['Company'] || row['Current Company'] || '',
-            title: row['Position'] || row['Title'] || '',
-            location: row['Location'] || '',
+            name: name.trim(),
+            email: row['Email Address'] || row['email'] || row['Email'] || '',
+            company: row['Company'] || row['Current Company'] || row['company'] || 
+                    row['Organization'] || row['organization'] || '',
+            title: row['Position'] || row['Title'] || row['title'] || 
+                   row['Job Title'] || row['jobTitle'] || '',
+            location: row['Location'] || row['location'] || row['Region'] || '',
             source: 'linkedin_import',
             picture: 'https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg',
             tags: []
           };
+          
+          // Generate intelligent tags based on the contact data
+          if (contact.company) {
+            contact.tags.push(contact.company);
+          }
+          if (contact.title) {
+            contact.tags.push(contact.title);
+          }
+          if (contact.location) {
+            contact.tags.push(contact.location);
+          }
           
           if (contact.name && contact.name.trim() !== '') {
             results.push(contact);
@@ -256,7 +276,8 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       success: true,
       message: `Successfully imported ${importedContacts.length} contacts from LinkedIn`,
       count: importedContacts.length,
-      totalContacts: contacts.length
+      totalContacts: contacts.length,
+      contacts: contacts // Return updated contacts for immediate UI refresh
     });
     
   } catch (error) {
@@ -268,6 +289,106 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       success: false,
       message: 'Failed to import LinkedIn contacts',
       error: error.message
+    });
+  }
+});
+
+// Natural language search API endpoint
+app.get('/api/search/natural', (req, res) => {
+  try {
+    const query = req.query.q;
+    
+    if (!query || query.trim() === '') {
+      return res.status(400).json({ 
+        message: 'Search query is required' 
+      });
+    }
+
+    const searchTerm = query.toLowerCase();
+    
+    // Natural language search across multiple fields
+    const searchResults = contacts.filter(contact => {
+      // Search in name
+      if (contact.name && contact.name.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search in company
+      if (contact.company && contact.company.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search in title/position
+      if (contact.title && contact.title.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search in location
+      if (contact.location && contact.location.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search in email
+      if (contact.email && contact.email.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search in tags
+      if (contact.tags && contact.tags.some(tag => 
+        tag.toLowerCase().includes(searchTerm))) {
+        return true;
+      }
+      
+      return false;
+    });
+
+    // Enhanced natural language processing for specific patterns
+    let contextualResults = searchResults;
+    
+    // Handle "who works at" or "at" queries
+    if (searchTerm.includes('who works at') || searchTerm.includes('at ')) {
+      const companyMatch = searchTerm.match(/(?:who works at|at)\s+([^?]+)/i);
+      if (companyMatch) {
+        const company = companyMatch[1].trim();
+        contextualResults = contacts.filter(contact => 
+          contact.company && contact.company.toLowerCase().includes(company.toLowerCase())
+        );
+      }
+    }
+    
+    // Handle "who is" queries
+    if (searchTerm.includes('who is') || searchTerm.includes('who are')) {
+      const roleMatch = searchTerm.match(/who (?:is|are)\s+([^?]+)/i);
+      if (roleMatch) {
+        const role = roleMatch[1].trim();
+        contextualResults = contacts.filter(contact => 
+          contact.title && contact.title.toLowerCase().includes(role.toLowerCase())
+        );
+      }
+    }
+    
+    // Handle location-based queries
+    if (searchTerm.includes('in ') || searchTerm.includes('from ')) {
+      const locationMatch = searchTerm.match(/(?:in|from)\s+([^?]+)/i);
+      if (locationMatch) {
+        const location = locationMatch[1].trim();
+        contextualResults = contacts.filter(contact => 
+          contact.location && contact.location.toLowerCase().includes(location.toLowerCase())
+        );
+      }
+    }
+
+    res.json({
+      results: contextualResults,
+      query: query,
+      count: contextualResults.length
+    });
+    
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ 
+      message: 'Search failed',
+      error: error.message 
     });
   }
 });
