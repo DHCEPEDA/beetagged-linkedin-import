@@ -423,11 +423,11 @@ app.get('/squarespace-linkedin-import', (req, res) => {
         </div>
         <div class="step">
           <h3>Step 2: Upload</h3>
-          <p>Upload your connections to our secure server to get an access code.</p>
+          <p>Upload your CSV file to import contacts directly into BeeTagged.</p>
         </div>
         <div class="step">
-          <h3>Step 3: Import</h3>
-          <p>Enter your access code in the BeeTagged mobile app to import connections.</p>
+          <h3>Step 3: Search</h3>
+          <p>Search through your imported contacts using natural language queries.</p>
         </div>
       </div>
       
@@ -449,7 +449,7 @@ app.get('/squarespace-linkedin-import', (req, res) => {
         <input type="file" id="file-input" class="file-input" accept=".csv">
         <button id="browse-btn" class="btn">Choose File</button>
         <div id="selected-file" class="selected-file"></div>
-        <button id="upload-btn" class="btn" style="display: none;">Upload & Generate Code</button>
+        <button id="upload-btn" class="btn" style="display: none;">Import Connections</button>
       </div>
       
       <div id="loading" class="loading">
