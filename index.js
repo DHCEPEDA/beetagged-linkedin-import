@@ -85,6 +85,19 @@ app.get('/status', (req, res) => {
   });
 });
 
+// Squarespace LinkedIn Import route
+app.get('/squarespace-linkedin-import', (req, res) => {
+  const filePath = path.join(__dirname, 'squarespace-embed-code.html');
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({
+      error: 'LinkedIn import page not found',
+      message: 'The squarespace-embed-code.html file is missing'
+    });
+  }
+});
+
 // Homepage route
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
@@ -94,7 +107,7 @@ app.get('/', (req, res) => {
     res.json({
       message: 'BeeTagged Server Running',
       status: 'healthy',
-      endpoints: ['/health', '/status', '/api/contacts', '/api/tags']
+      endpoints: ['/health', '/status', '/api/contacts', '/api/tags', '/squarespace-linkedin-import']
     });
   }
 });
