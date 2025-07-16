@@ -96,6 +96,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // API Routes
 app.get('/api/contacts', (req, res) => {
+  console.log(`Returning ${contacts.length} contacts`);
   res.json(contacts);
 });
 
