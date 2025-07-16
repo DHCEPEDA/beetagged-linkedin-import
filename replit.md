@@ -81,7 +81,8 @@ BeeTagged is a professional contact intelligence platform that transforms phone 
 
 ### Production Considerations
 - **Heroku Ready**: Configured for Heroku deployment with `Procfile` and `app.json`
-- **GitHub Pages**: Static LinkedIn import tool deployable to GitHub Pages
+- **Development Environment**: Internal Heroku instance for troubleshooting and testing
+- **Public Integration**: Squarespace widget for customer-facing site integration
 - **Mobile Deployment**: Android Studio project structure ready for Google Play Store
 
 ### Security Measures
@@ -92,7 +93,7 @@ BeeTagged is a professional contact intelligence platform that transforms phone 
 
 ## Recent Changes
 - **July 16, 2025**: DEPLOYED TO HEROKU PRODUCTION - https://beetagged-app-53414697acd3.herokuapp.com/
-- **July 16, 2025**: Fixed routing structure - main app at root (/) serves full React application with search, import, and social login
+- **July 16, 2025**: Configured internal development/testing environment for troubleshooting purposes
 - **July 16, 2025**: Created production-ready Squarespace widget with correct Heroku URLs for public integration
 - **July 16, 2025**: LinkedIn CSV import fully functional - successfully imported up to 9,077 contacts in production test
 - **July 16, 2025**: Fixed `/squarespace-linkedin-import` route with embedded HTML page for reliable deployment
