@@ -1,0 +1,273 @@
+2025-06-26T05:59:45.000000+00:00 app[api]: Build started by user dhcepeda@gmail.com
+2025-06-26T06:00:01.299809+00:00 heroku[web.1]: State changed from crashed to starting
+2025-06-26T06:00:03.557625+00:00 heroku[web.1]: Starting process with command `npm start`
+2025-06-26T06:00:04.630705+00:00 heroku[web.1]: Process exited with status 1
+2025-06-26T06:00:04.475848+00:00 app[web.1]:
+2025-06-26T06:00:04.475866+00:00 app[web.1]: > beetagged@1.0.0 start
+2025-06-26T06:00:04.475867+00:00 app[web.1]: > node index.js
+2025-06-26T06:00:04.475867+00:00 app[web.1]:
+2025-06-26T06:00:04.575221+00:00 app[web.1]: node:internal/modules/cjs/loader:1143
+2025-06-26T06:00:04.575222+00:00 app[web.1]: throw err;
+2025-06-26T06:00:04.575223+00:00 app[web.1]: ^
+2025-06-26T06:00:04.575223+00:00 app[web.1]:
+2025-06-26T06:00:04.575224+00:00 app[web.1]: Error: Cannot find module 'cors'
+2025-06-26T06:00:04.575224+00:00 app[web.1]: Require stack:
+2025-06-26T06:00:04.575225+00:00 app[web.1]: - /app/index.js
+2025-06-26T06:00:04.575226+00:00 app[web.1]: at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+2025-06-26T06:00:04.575226+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:981:27)
+2025-06-26T06:00:04.575227+00:00 app[web.1]: at Module.require (node:internal/modules/cjs/loader:1231:19)
+2025-06-26T06:00:04.575227+00:00 app[web.1]: at require (node:internal/modules/helpers:177:18)
+2025-06-26T06:00:04.575227+00:00 app[web.1]: at Object.<anonymous> (/app/index.js:3:14)
+2025-06-26T06:00:04.575228+00:00 app[web.1]: at Module._compile (node:internal/modules/cjs/loader:1364:14)
+2025-06-26T06:00:04.575228+00:00 app[web.1]: at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+2025-06-26T06:00:04.575228+00:00 app[web.1]: at Module.load (node:internal/modules/cjs/loader:1203:32)
+2025-06-26T06:00:04.575236+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:1019:12)
+2025-06-26T06:00:04.575237+00:00 app[web.1]: at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:128:12) {
+2025-06-26T06:00:04.575237+00:00 app[web.1]: code: 'MODULE_NOT_FOUND',
+2025-06-26T06:00:04.575238+00:00 app[web.1]: requireStack: [ '/app/index.js' ]
+2025-06-26T06:00:04.575238+00:00 app[web.1]: }
+2025-06-26T06:00:04.575238+00:00 app[web.1]:
+2025-06-26T06:00:04.575238+00:00 app[web.1]: Node.js v18.20.8
+2025-06-26T06:00:04.587739+00:00 app[web.1]: npm notice
+2025-06-26T06:00:04.587740+00:00 app[web.1]: npm notice New major version of npm available! 10.8.2 -> 11.4.2
+2025-06-26T06:00:04.587740+00:00 app[web.1]: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+2025-06-26T06:00:04.587740+00:00 app[web.1]: npm notice To update run: npm install -g npm@11.4.2
+2025-06-26T06:00:04.587741+00:00 app[web.1]: npm notice
+2025-06-26T06:00:04.655138+00:00 heroku[web.1]: State changed from starting to crashed
+2025-06-26T06:00:04.658925+00:00 heroku[web.1]: State changed from crashed to starting
+2025-06-26T06:00:00.973847+00:00 app[api]: Release v16 created by user dhcepeda@gmail.com
+2025-06-26T06:00:00.973847+00:00 app[api]: Deploy f58f07cb by user dhcepeda@gmail.com
+2025-06-26T06:00:07.306539+00:00 heroku[web.1]: Starting process with command `npm start`
+2025-06-26T06:00:02.000000+00:00 app[api]: Build succeeded
+2025-06-26T06:00:08.645708+00:00 heroku[web.1]: Process exited with status 1
+2025-06-26T06:00:08.443343+00:00 app[web.1]:
+2025-06-26T06:00:08.443367+00:00 app[web.1]: > beetagged@1.0.0 start
+2025-06-26T06:00:08.443367+00:00 app[web.1]: > node index.js
+2025-06-26T06:00:08.443367+00:00 app[web.1]:
+2025-06-26T06:00:08.573654+00:00 app[web.1]: node:internal/modules/cjs/loader:1143
+2025-06-26T06:00:08.573655+00:00 app[web.1]: throw err;
+2025-06-26T06:00:08.573655+00:00 app[web.1]: ^
+2025-06-26T06:00:08.573656+00:00 app[web.1]:
+2025-06-26T06:00:08.573656+00:00 app[web.1]: Error: Cannot find module 'cors'
+2025-06-26T06:00:08.573657+00:00 app[web.1]: Require stack:
+2025-06-26T06:00:08.573657+00:00 app[web.1]: - /app/index.js
+2025-06-26T06:00:08.573666+00:00 app[web.1]: at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+2025-06-26T06:00:08.573666+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:981:27)
+2025-06-26T06:00:08.573666+00:00 app[web.1]: at Module.require (node:internal/modules/cjs/loader:1231:19)
+2025-06-26T06:00:08.573667+00:00 app[web.1]: at require (node:internal/modules/helpers:177:18)
+2025-06-26T06:00:08.573667+00:00 app[web.1]: at Object.<anonymous> (/app/index.js:3:14)
+2025-06-26T06:00:08.573667+00:00 app[web.1]: at Module._compile (node:internal/modules/cjs/loader:1364:14)
+2025-06-26T06:00:08.573667+00:00 app[web.1]: at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+2025-06-26T06:00:08.573668+00:00 app[web.1]: at Module.load (node:internal/modules/cjs/loader:1203:32)
+2025-06-26T06:00:08.573668+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:1019:12)
+2025-06-26T06:00:08.573668+00:00 app[web.1]: at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:128:12) {
+2025-06-26T06:00:08.573669+00:00 app[web.1]: code: 'MODULE_NOT_FOUND',
+2025-06-26T06:00:08.573669+00:00 app[web.1]: requireStack: [ '/app/index.js' ]
+2025-06-26T06:00:08.573669+00:00 app[web.1]: }
+2025-06-26T06:00:08.573707+00:00 app[web.1]:
+2025-06-26T06:00:08.573708+00:00 app[web.1]: Node.js v18.20.8
+2025-06-26T06:00:08.581738+00:00 app[web.1]: npm notice
+2025-06-26T06:00:08.581739+00:00 app[web.1]: npm notice New major version of npm available! 10.8.2 -> 11.4.2
+2025-06-26T06:00:08.581740+00:00 app[web.1]: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+2025-06-26T06:00:08.581740+00:00 app[web.1]: npm notice To update run: npm install -g npm@11.4.2
+2025-06-26T06:00:08.581740+00:00 app[web.1]: npm notice
+2025-06-26T06:00:08.671271+00:00 heroku[web.1]: State changed from starting to crashed
+2025-06-26T06:00:59.933684+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/li-import" host=beetagged-app-53414697acd3.herokuapp.com request_id=152de452-0412-4323-a14c-e75e93d93da6 fwd="74.194.173.30" dyno= connect= service= status=503 bytes= protocol=https
+2025-06-26T06:01:17.635818+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=344a5b4e-9867-4ef2-b82d-a9c0913b2648 fwd="74.194.173.30" dyno= connect= service= status=503 bytes= protocol=https
+2025-06-26T06:07:22.000000+00:00 app[api]: Build started by user dhcepeda@gmail.com
+2025-06-26T06:07:38.991619+00:00 heroku[web.1]: State changed from crashed to starting
+2025-06-26T06:07:38.793420+00:00 app[api]: Deploy dc04dfca by user dhcepeda@gmail.com
+2025-06-26T06:07:38.793420+00:00 app[api]: Release v17 created by user dhcepeda@gmail.com
+2025-06-26T06:07:40.000000+00:00 app[api]: Build succeeded
+2025-06-26T06:07:41.490190+00:00 heroku[web.1]: Starting process with command `npm start`
+2025-06-26T06:07:42.723973+00:00 heroku[web.1]: Process exited with status 1
+2025-06-26T06:07:42.530404+00:00 app[web.1]:
+2025-06-26T06:07:42.530417+00:00 app[web.1]: > beetagged@1.0.0 start
+2025-06-26T06:07:42.530423+00:00 app[web.1]: > node index.js
+2025-06-26T06:07:42.530423+00:00 app[web.1]:
+2025-06-26T06:07:42.665663+00:00 app[web.1]: node:internal/modules/cjs/loader:1143
+2025-06-26T06:07:42.665664+00:00 app[web.1]: throw err;
+2025-06-26T06:07:42.665665+00:00 app[web.1]: ^
+2025-06-26T06:07:42.665665+00:00 app[web.1]:
+2025-06-26T06:07:42.665666+00:00 app[web.1]: Error: Cannot find module 'cors'
+2025-06-26T06:07:42.665666+00:00 app[web.1]: Require stack:
+2025-06-26T06:07:42.665666+00:00 app[web.1]: - /app/index.js
+2025-06-26T06:07:42.665667+00:00 app[web.1]: at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+2025-06-26T06:07:42.665674+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:981:27)
+2025-06-26T06:07:42.665674+00:00 app[web.1]: at Module.require (node:internal/modules/cjs/loader:1231:19)
+2025-06-26T06:07:42.665674+00:00 app[web.1]: at require (node:internal/modules/helpers:177:18)
+2025-06-26T06:07:42.665675+00:00 app[web.1]: at Object.<anonymous> (/app/index.js:3:14)
+2025-06-26T06:07:42.665675+00:00 app[web.1]: at Module._compile (node:internal/modules/cjs/loader:1364:14)
+2025-06-26T06:07:42.665675+00:00 app[web.1]: at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+2025-06-26T06:07:42.665675+00:00 app[web.1]: at Module.load (node:internal/modules/cjs/loader:1203:32)
+2025-06-26T06:07:42.665676+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:1019:12)
+2025-06-26T06:07:42.665677+00:00 app[web.1]: at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:128:12) {
+2025-06-26T06:07:42.665677+00:00 app[web.1]: code: 'MODULE_NOT_FOUND',
+2025-06-26T06:07:42.665678+00:00 app[web.1]: requireStack: [ '/app/index.js' ]
+2025-06-26T06:07:42.665678+00:00 app[web.1]: }
+2025-06-26T06:07:42.665679+00:00 app[web.1]:
+2025-06-26T06:07:42.665679+00:00 app[web.1]: Node.js v18.20.8
+2025-06-26T06:07:42.675308+00:00 app[web.1]: npm notice
+2025-06-26T06:07:42.675309+00:00 app[web.1]: npm notice New major version of npm available! 10.8.2 -> 11.4.2
+2025-06-26T06:07:42.675310+00:00 app[web.1]: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+2025-06-26T06:07:42.675311+00:00 app[web.1]: npm notice To update run: npm install -g npm@11.4.2
+2025-06-26T06:07:42.675311+00:00 app[web.1]: npm notice
+2025-06-26T06:07:42.748830+00:00 heroku[web.1]: State changed from starting to crashed
+ »   Error: Logs eventsource failed with: 401 Unauthorized
+PS C:\Users\dhcep> npm install -g npm@11.4.2npm install -g npm@11.4.2mkdir heroku-test
+npm : The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the
+spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ npm install -g npm@11.4.2npm install -g npm@11.4.2mkdir heroku-test
++ ~~~
+    + CategoryInfo          : ObjectNotFound: (npm:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\Users\dhcep> cd heroku-test
+cd : Cannot find path 'C:\Users\dhcep\heroku-test' because it does not exist.
+At line:1 char:1
++ cd heroku-test
++ ~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\dhcep\heroku-test:String) [Set-Location], ItemNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.SetLocationCommand
+
+PS C:\Users\dhcep> # Copy the 3 files
+PS C:\Users\dhcep> git init
+Reinitialized existing Git repository in C:/Users/dhcep/.git/
+PS C:\Users\dhcep> git add .
+fatal: Unable to create 'C:/Users/dhcep/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+PS C:\Users\dhcep> git commit -m "Debug server"
+fatal: Unable to create 'C:/Users/dhcep/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+PS C:\Users\dhcep> heroku git:remote -a beetagged-app
+ »   Warning: heroku update available from 10.0.0 to 10.10.1.
+set git remote heroku to https://git.heroku.com/beetagged-app.git
+PS C:\Users\dhcep> git push heroku maingit add .
+fatal: invalid refspec '.'
+PS C:\Users\dhcep> git commit -m "Deploy working server with correct dependencies"
+fatal: Unable to create 'C:/Users/dhcep/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+PS C:\Users\dhcep> git push heroku main
+error: src refspec main does not match any
+error: failed to push some refs to 'https://git.heroku.com/beetagged-app.git'
+PS C:\Users\dhcep> git push heroku main
+error: src refspec main does not match any
+error: failed to push some refs to 'https://git.heroku.com/beetagged-app.git'
+PS C:\Users\dhcep> heroku logs
+ »   Warning: heroku update available from 10.0.0 to 10.10.1.
+2025-07-15T16:26:42.660872+00:00 app[web.1]: node:internal/modules/cjs/loader:1143
+2025-07-15T16:26:42.660873+00:00 app[web.1]: throw err;
+2025-07-15T16:26:42.660874+00:00 app[web.1]: ^
+2025-07-15T16:26:42.660874+00:00 app[web.1]:
+2025-07-15T16:26:42.660874+00:00 app[web.1]: Error: Cannot find module 'cors'
+2025-07-15T16:26:42.660875+00:00 app[web.1]: Require stack:
+2025-07-15T16:26:42.660885+00:00 app[web.1]: - /app/index.js
+2025-07-15T16:26:42.660886+00:00 app[web.1]: at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+2025-07-15T16:26:42.660886+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:981:27)
+2025-07-15T16:26:42.660886+00:00 app[web.1]: at Module.require (node:internal/modules/cjs/loader:1231:19)
+2025-07-15T16:26:42.660887+00:00 app[web.1]: at require (node:internal/modules/helpers:177:18)
+2025-07-15T16:26:42.660887+00:00 app[web.1]: at Object.<anonymous> (/app/index.js:5:14)
+2025-07-15T16:26:42.660887+00:00 app[web.1]: at Module._compile (node:internal/modules/cjs/loader:1364:14)
+2025-07-15T16:26:42.660888+00:00 app[web.1]: at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+2025-07-15T16:26:42.660888+00:00 app[web.1]: at Module.load (node:internal/modules/cjs/loader:1203:32)
+2025-07-15T16:26:42.660888+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:1019:12)
+2025-07-15T16:26:42.660889+00:00 app[web.1]: at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:128:12) {
+2025-07-15T16:26:42.660889+00:00 app[web.1]: code: 'MODULE_NOT_FOUND',
+2025-07-15T16:26:42.660890+00:00 app[web.1]: requireStack: [ '/app/index.js' ]
+2025-07-15T16:26:42.660890+00:00 app[web.1]: }
+2025-07-15T16:26:42.660890+00:00 app[web.1]:
+2025-07-15T16:26:42.660891+00:00 app[web.1]: Node.js v18.20.8
+2025-07-15T16:26:42.669068+00:00 app[web.1]: npm notice
+2025-07-15T16:26:42.669070+00:00 app[web.1]: npm notice New major version of npm available! 10.8.2 -> 11.4.2
+2025-07-15T16:26:42.669070+00:00 app[web.1]: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+2025-07-15T16:26:42.669070+00:00 app[web.1]: npm notice To update run: npm install -g npm@11.4.2
+2025-07-15T16:26:42.669071+00:00 app[web.1]: npm notice
+2025-07-15T16:26:42.719875+00:00 heroku[web.1]: Process exited with status 1
+2025-07-15T16:26:42.745430+00:00 heroku[web.1]: State changed from starting to crashed
+2025-07-15T21:54:40.412794+00:00 heroku[web.1]: State changed from crashed to starting
+2025-07-15T21:54:42.906038+00:00 heroku[web.1]: Starting process with command `npm start`
+2025-07-15T21:54:43.765272+00:00 app[web.1]:
+2025-07-15T21:54:43.765294+00:00 app[web.1]: > beetagged@1.0.0 start
+2025-07-15T21:54:43.765294+00:00 app[web.1]: > node index.js
+2025-07-15T21:54:43.765295+00:00 app[web.1]:
+2025-07-15T21:54:43.867170+00:00 app[web.1]: node:internal/modules/cjs/loader:1143
+2025-07-15T21:54:43.867172+00:00 app[web.1]: throw err;
+2025-07-15T21:54:43.867173+00:00 app[web.1]: ^
+2025-07-15T21:54:43.867173+00:00 app[web.1]:
+2025-07-15T21:54:43.867173+00:00 app[web.1]: Error: Cannot find module 'cors'
+2025-07-15T21:54:43.867174+00:00 app[web.1]: Require stack:
+2025-07-15T21:54:43.867174+00:00 app[web.1]: - /app/index.js
+2025-07-15T21:54:43.867174+00:00 app[web.1]: at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+2025-07-15T21:54:43.867175+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:981:27)
+2025-07-15T21:54:43.867175+00:00 app[web.1]: at Module.require (node:internal/modules/cjs/loader:1231:19)
+2025-07-15T21:54:43.867175+00:00 app[web.1]: at require (node:internal/modules/helpers:177:18)
+2025-07-15T21:54:43.867176+00:00 app[web.1]: at Object.<anonymous> (/app/index.js:5:14)
+2025-07-15T21:54:43.867176+00:00 app[web.1]: at Module._compile (node:internal/modules/cjs/loader:1364:14)
+2025-07-15T21:54:43.867176+00:00 app[web.1]: at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+2025-07-15T21:54:43.867176+00:00 app[web.1]: at Module.load (node:internal/modules/cjs/loader:1203:32)
+2025-07-15T21:54:43.867176+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:1019:12)
+2025-07-15T21:54:43.867177+00:00 app[web.1]: at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:128:12) {
+2025-07-15T21:54:43.867177+00:00 app[web.1]: code: 'MODULE_NOT_FOUND',
+2025-07-15T21:54:43.867177+00:00 app[web.1]: requireStack: [ '/app/index.js' ]
+2025-07-15T21:54:43.867178+00:00 app[web.1]: }
+2025-07-15T21:54:43.867178+00:00 app[web.1]:
+2025-07-15T21:54:43.867178+00:00 app[web.1]: Node.js v18.20.8
+2025-07-15T21:54:43.874576+00:00 app[web.1]: npm notice
+2025-07-15T21:54:43.874577+00:00 app[web.1]: npm notice New major version of npm available! 10.8.2 -> 11.4.2
+2025-07-15T21:54:43.874578+00:00 app[web.1]: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+2025-07-15T21:54:43.874578+00:00 app[web.1]: npm notice To update run: npm install -g npm@11.4.2
+2025-07-15T21:54:43.874578+00:00 app[web.1]: npm notice
+2025-07-15T21:54:43.931622+00:00 heroku[web.1]: Process exited with status 1
+2025-07-15T21:54:43.952834+00:00 heroku[web.1]: State changed from starting to crashed
+2025-07-16T03:35:22.933246+00:00 heroku[web.1]: State changed from crashed to starting
+2025-07-16T03:35:25.685809+00:00 heroku[web.1]: Starting process with command `npm start`
+2025-07-16T03:35:26.604419+00:00 app[web.1]:
+2025-07-16T03:35:26.604452+00:00 app[web.1]: > beetagged@1.0.0 start
+2025-07-16T03:35:26.604452+00:00 app[web.1]: > node index.js
+2025-07-16T03:35:26.604452+00:00 app[web.1]:
+2025-07-16T03:35:26.712206+00:00 app[web.1]: node:internal/modules/cjs/loader:1143
+2025-07-16T03:35:26.712208+00:00 app[web.1]: throw err;
+2025-07-16T03:35:26.712208+00:00 app[web.1]: ^
+2025-07-16T03:35:26.712208+00:00 app[web.1]:
+2025-07-16T03:35:26.712209+00:00 app[web.1]: Error: Cannot find module 'cors'
+2025-07-16T03:35:26.712209+00:00 app[web.1]: Require stack:
+2025-07-16T03:35:26.712209+00:00 app[web.1]: - /app/index.js
+2025-07-16T03:35:26.712210+00:00 app[web.1]: at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+2025-07-16T03:35:26.712211+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:981:27)
+2025-07-16T03:35:26.712211+00:00 app[web.1]: at Module.require (node:internal/modules/cjs/loader:1231:19)
+2025-07-16T03:35:26.712221+00:00 app[web.1]: at require (node:internal/modules/helpers:177:18)
+2025-07-16T03:35:26.712222+00:00 app[web.1]: at Object.<anonymous> (/app/index.js:5:14)
+2025-07-16T03:35:26.712222+00:00 app[web.1]: at Module._compile (node:internal/modules/cjs/loader:1364:14)
+2025-07-16T03:35:26.712223+00:00 app[web.1]: at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+2025-07-16T03:35:26.712224+00:00 app[web.1]: at Module.load (node:internal/modules/cjs/loader:1203:32)
+2025-07-16T03:35:26.712224+00:00 app[web.1]: at Module._load (node:internal/modules/cjs/loader:1019:12)
+2025-07-16T03:35:26.712224+00:00 app[web.1]: at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:128:12) {
+2025-07-16T03:35:26.712225+00:00 app[web.1]: code: 'MODULE_NOT_FOUND',
+2025-07-16T03:35:26.712225+00:00 app[web.1]: requireStack: [ '/app/index.js' ]
+2025-07-16T03:35:26.712225+00:00 app[web.1]: }
+2025-07-16T03:35:26.712226+00:00 app[web.1]:
+2025-07-16T03:35:26.712226+00:00 app[web.1]: Node.js v18.20.8
+2025-07-16T03:35:26.741833+00:00 app[web.1]: npm notice
+2025-07-16T03:35:26.741834+00:00 app[web.1]: npm notice New major version of npm available! 10.8.2 -> 11.4.2
+2025-07-16T03:35:26.741835+00:00 app[web.1]: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+2025-07-16T03:35:26.741835+00:00 app[web.1]: npm notice To update run: npm install -g npm@11.4.2
+2025-07-16T03:35:26.741835+00:00 app[web.1]: npm notice
+2025-07-16T03:35:26.786527+00:00 heroku[web.1]: Process exited with status 1
+2025-07-16T03:35:26.807767+00:00 heroku[web.1]: State changed from starting to crashed
+2025-07-16T03:45:45.922948+00:00 heroku[router]: sock=client at=warning code=H27 desc="Client Request Interrupted" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=97207273-009b-2231-1547-1ecf63bc7ef7 fwd="" dyno= connect=0ms service=0ms status=499 bytes=567 protocol=http1.1 tls=true tls_version=unknown
