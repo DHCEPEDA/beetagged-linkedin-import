@@ -1,0 +1,360 @@
+<!-- BeeTagged Squarespace Widget V2 - Embed Code -->
+<style>
+.beetagged-widget {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 20px;
+    border-radius: 20px;
+    margin: 20px 0;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.beetagged-card {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 500px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.beetagged-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #0077b5, #2563eb, #059669);
+}
+
+.beetagged-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.beetagged-title {
+    font-size: 2rem;
+    color: #2563eb;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.beetagged-subtitle {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.beetagged-stats {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.beetagged-stat {
+    text-align: center;
+}
+
+.beetagged-stat-number {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2563eb;
+    display: block;
+}
+
+.beetagged-stat-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 3px;
+}
+
+.beetagged-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.beetagged-feature {
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.beetagged-feature-icon {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.beetagged-feature-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.beetagged-feature-desc {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.beetagged-demo {
+    background: #f0f9ff;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    border: 1px solid #bae6fd;
+}
+
+.beetagged-demo-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0369a1;
+    margin-bottom: 12px;
+}
+
+.beetagged-queries {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.beetagged-query {
+    background: white;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.beetagged-query:hover {
+    background: #2563eb;
+    color: white;
+    transform: scale(1.05);
+}
+
+.beetagged-access {
+    background: #fef3c7;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid #f59e0b;
+    margin-bottom: 20px;
+}
+
+.beetagged-access-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 8px;
+}
+
+.beetagged-access-desc {
+    font-size: 0.8rem;
+    color: #a16207;
+    line-height: 1.4;
+}
+
+.beetagged-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.beetagged-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.beetagged-btn-primary {
+    background: #0077b5;
+    color: white;
+}
+
+.beetagged-btn-primary:hover {
+    background: #005582;
+    transform: translateY(-2px);
+}
+
+.beetagged-btn-secondary {
+    background: #2563eb;
+    color: white;
+}
+
+.beetagged-btn-secondary:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+}
+
+.beetagged-footer {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 15px;
+}
+
+@media (max-width: 480px) {
+    .beetagged-widget {
+        padding: 20px 15px;
+    }
+    
+    .beetagged-card {
+        padding: 20px;
+    }
+    
+    .beetagged-title {
+        font-size: 1.6rem;
+    }
+    
+    .beetagged-buttons {
+        flex-direction: column;
+    }
+    
+    .beetagged-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .beetagged-stats {
+        gap: 15px;
+    }
+}
+</style>
+
+<div class="beetagged-widget">
+    <div class="beetagged-card">
+        <span class="beetagged-icon">🐝</span>
+        <h2 class="beetagged-title">BeeTagged</h2>
+        <p class="beetagged-subtitle">Transform your phone contacts into a searchable professional network</p>
+        
+        <div class="beetagged-stats">
+            <div class="beetagged-stat">
+                <span class="beetagged-stat-number">5K+</span>
+                <div class="beetagged-stat-label">Contacts Processed</div>
+            </div>
+            <div class="beetagged-stat">
+                <span class="beetagged-stat-number">50+</span>
+                <div class="beetagged-stat-label">Companies</div>
+            </div>
+            <div class="beetagged-stat">
+                <span class="beetagged-stat-number">12</span>
+                <div class="beetagged-stat-label">Industries</div>
+            </div>
+        </div>
+
+        <div class="beetagged-features">
+            <div class="beetagged-feature">
+                <span class="beetagged-feature-icon">📱</span>
+                <div class="beetagged-feature-title">LinkedIn Import</div>
+                <div class="beetagged-feature-desc">Upload CSV to instantly organize contacts</div>
+            </div>
+            <div class="beetagged-feature">
+                <span class="beetagged-feature-icon">🔍</span>
+                <div class="beetagged-feature-title">Smart Search</div>
+                <div class="beetagged-feature-desc">Natural language queries</div>
+            </div>
+            <div class="beetagged-feature">
+                <span class="beetagged-feature-icon">🤖</span>
+                <div class="beetagged-feature-title">AI-Powered</div>
+                <div class="beetagged-feature-desc">Intelligent tag generation</div>
+            </div>
+        </div>
+
+        <div class="beetagged-demo">
+            <div class="beetagged-demo-title">Example Searches</div>
+            <div class="beetagged-queries">
+                <span class="beetagged-query">"Who works at Google?"</span>
+                <span class="beetagged-query">"Marketing in Seattle"</span>
+                <span class="beetagged-query">"Software engineers"</span>
+                <span class="beetagged-query">"New York contacts"</span>
+            </div>
+        </div>
+
+        <div class="beetagged-access">
+            <div class="beetagged-access-title">🎯 Early Access Available</div>
+            <div class="beetagged-access-desc">
+                Join our beta program to experience the future of professional networking. 
+                Limited spots available for the initial launch.
+            </div>
+        </div>
+
+        <div class="beetagged-buttons">
+            <a href="https://beetagged-app-53414697acd3.herokuapp.com/" class="beetagged-btn beetagged-btn-primary" target="_blank">
+                <span>🚀</span> Try Live Demo
+            </a>
+            <a href="mailto:info@beetagged.com?subject=BeeTagged Access Request&body=Hi! I'm interested in getting access to BeeTagged. Please send me more information about the beta program." class="beetagged-btn beetagged-btn-secondary">
+                <span>📧</span> Request Access
+            </a>
+        </div>
+
+        <div class="beetagged-footer">
+            Powered by AI • Built for Professionals • Privacy-First
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add subtle animations to features
+    const features = document.querySelectorAll('.beetagged-feature');
+    features.forEach((feature, index) => {
+        feature.style.opacity = '0';
+        feature.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            feature.style.transition = 'all 0.6s ease';
+            feature.style.opacity = '1';
+            feature.style.transform = 'translateY(0)';
+        }, index * 200);
+    });
+
+    // Interactive demo queries
+    const queries = document.querySelectorAll('.beetagged-query');
+    queries.forEach(query => {
+        query.addEventListener('click', function() {
+            this.style.background = '#2563eb';
+            this.style.color = 'white';
+            this.style.transform = 'scale(1.05)';
+            
+            setTimeout(() => {
+                this.style.background = 'white';
+                this.style.color = '#475569';
+                this.style.transform = 'scale(1)';
+            }, 1000);
+        });
+    });
+
+    // Add click feedback to buttons
+    document.querySelectorAll('.beetagged-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 150);
+        });
+    });
+});
+</script>
