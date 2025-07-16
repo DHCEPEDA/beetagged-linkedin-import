@@ -127,7 +127,7 @@ function parseLinkedInCSV(filePath) {
 }
 
 // Static files
-app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // API Routes
 app.get('/api/contacts', (req, res) => {
@@ -169,7 +169,7 @@ app.get('/status', (req, res) => {
     port: PORT,
     features: {
       contactManagement: true,
-      staticFiles: fs.existsSync(path.join(__dirname, 'dist', 'index.html'))
+      staticFiles: fs.existsSync(path.join(__dirname, 'public', 'index.html'))
     },
     stats: {
       contacts: contacts.length,
@@ -600,7 +600,7 @@ app.get('/squarespace-linkedin-import', (req, res) => {
 
 // Homepage route - serve React app
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, 'dist', 'index.html');
+  const indexPath = path.join(__dirname, 'public', 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
@@ -659,7 +659,7 @@ app.get('/', (req, res) => {
 
 // Catch-all for React Router
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, 'dist', 'index.html');
+  const indexPath = path.join(__dirname, 'public', 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
@@ -671,7 +671,7 @@ app.get('*', (req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`BeeTagged Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log(`Build exists: ${fs.existsSync(path.join(__dirname, 'dist', 'index.html'))}`);
+  console.log(`Build exists: ${fs.existsSync(path.join(__dirname, 'public', 'index.html'))}`);
   console.log(`Server started successfully`);
 });
 
