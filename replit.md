@@ -91,12 +91,13 @@ BeeTagged is a professional contact intelligence platform that transforms phone 
 - **Social Auth Compliance**: OAuth 2.0 best practices implementation
 
 ## Recent Changes
-- **July 16, 2025**: LinkedIn CSV import fully functional - successfully imported 2,703 contacts in production test
+- **July 16, 2025**: Created professional Squarespace widget for public-facing site integration
+- **July 16, 2025**: Widget includes direct links to main BeeTagged app and LinkedIn import functionality
+- **July 16, 2025**: LinkedIn CSV import fully functional - successfully imported up to 9,077 contacts in production test
 - **July 16, 2025**: Fixed `/squarespace-linkedin-import` route with embedded HTML page for reliable deployment
 - **July 16, 2025**: Added auto-redirect after successful CSV upload to improve user experience
 - **July 16, 2025**: CRITICAL - Fixed CORS dependency issue preventing Heroku deployment
 - **July 16, 2025**: Replaced external `cors` module with custom CORS middleware for better compatibility
-- **July 16, 2025**: Server now works locally but needs updated `index.js` file uploaded to Heroku
 - **July 16, 2025**: All core functionality maintained: contact management, Facebook widget, static file serving
 - **June 26, 2025**: LinkedIn CSV import fully operational with successful test import of 5 contacts
 - **June 26, 2025**: Enhanced CSV parser handles multiple LinkedIn export formats with flexible column mapping

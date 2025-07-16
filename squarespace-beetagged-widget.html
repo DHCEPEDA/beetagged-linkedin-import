@@ -1,0 +1,281 @@
+<!-- BeeTagged Professional Contact Intelligence Widget for Squarespace -->
+<!-- Paste this code into a Code Block in Squarespace -->
+
+<div id="beetagged-widget">
+    <style>
+        #beetagged-widget {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .beetagged-header {
+            background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .beetagged-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .beetagged-header p {
+            margin: 0;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .beetagged-content {
+            background: white;
+            padding: 40px;
+        }
+
+        .beetagged-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .beetagged-feature {
+            text-align: center;
+            padding: 20px;
+            background: #f8fbff;
+            border-radius: 12px;
+            border: 2px solid #e8f4fd;
+            transition: transform 0.3s ease;
+        }
+
+        .beetagged-feature:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .beetagged-feature-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #0077B5;
+        }
+
+        .beetagged-feature h3 {
+            color: #0077B5;
+            margin: 0 0 10px 0;
+            font-size: 20px;
+        }
+
+        .beetagged-feature p {
+            color: #666;
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .beetagged-cta {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .beetagged-btn {
+            background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(0,119,181,0.3);
+        }
+
+        .beetagged-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,119,181,0.4);
+        }
+
+        .beetagged-btn-secondary {
+            background: transparent;
+            color: #0077B5;
+            border: 2px solid #0077B5;
+        }
+
+        .beetagged-btn-secondary:hover {
+            background: #0077B5;
+            color: white;
+        }
+
+        .beetagged-demo {
+            background: #f8fbff;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+
+        .beetagged-demo h3 {
+            color: #0077B5;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+
+        .beetagged-search-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .beetagged-search-example {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0077B5;
+            font-style: italic;
+            color: #333;
+        }
+
+        .beetagged-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .beetagged-stat {
+            flex: 1;
+        }
+
+        .beetagged-stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #0077B5;
+            display: block;
+        }
+
+        .beetagged-stat-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 768px) {
+            .beetagged-features {
+                grid-template-columns: 1fr;
+            }
+            
+            .beetagged-search-examples {
+                grid-template-columns: 1fr;
+            }
+            
+            .beetagged-stats {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+
+    <div class="beetagged-header">
+        <h1>🐝 BeeTagged</h1>
+        <p>Professional Contact Intelligence Platform</p>
+    </div>
+
+    <div class="beetagged-content">
+        <div class="beetagged-features">
+            <div class="beetagged-feature">
+                <div class="beetagged-feature-icon">🔍</div>
+                <h3>Smart Search</h3>
+                <p>Find contacts using natural language queries like "Who do I know at Google?" or "Who do I know in marketing?"</p>
+            </div>
+            <div class="beetagged-feature">
+                <div class="beetagged-feature-icon">🤖</div>
+                <h3>AI-Powered Tags</h3>
+                <p>Automatically categorize contacts by company, location, industry, and job function using advanced AI</p>
+            </div>
+            <div class="beetagged-feature">
+                <div class="beetagged-feature-icon">📊</div>
+                <h3>Network Analytics</h3>
+                <p>Get insights into your professional network with detailed analytics and connection rankings</p>
+            </div>
+        </div>
+
+        <div class="beetagged-demo">
+            <h3>Try These Search Examples:</h3>
+            <div class="beetagged-search-examples">
+                <div class="beetagged-search-example">"Who do I know at Google?"</div>
+                <div class="beetagged-search-example">"Who do I know in Seattle?"</div>
+                <div class="beetagged-search-example">"Who do I know in marketing?"</div>
+                <div class="beetagged-search-example">"Who do I know in technology?"</div>
+            </div>
+        </div>
+
+        <div class="beetagged-stats">
+            <div class="beetagged-stat">
+                <span class="beetagged-stat-number">9K+</span>
+                <span class="beetagged-stat-label">Contacts Imported</span>
+            </div>
+            <div class="beetagged-stat">
+                <span class="beetagged-stat-number">AI</span>
+                <span class="beetagged-stat-label">Smart Tagging</span>
+            </div>
+            <div class="beetagged-stat">
+                <span class="beetagged-stat-number">$0.99</span>
+                <span class="beetagged-stat-label">Simple Pricing</span>
+            </div>
+        </div>
+
+        <div class="beetagged-cta">
+            <a href="https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/" 
+               class="beetagged-btn" 
+               target="_blank">
+                Launch BeeTagged App
+            </a>
+            <a href="https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/squarespace-linkedin-import" 
+               class="beetagged-btn beetagged-btn-secondary" 
+               target="_blank">
+                Import LinkedIn Contacts
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Track widget interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.beetagged-btn');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // Add loading state
+                    const originalText = this.textContent;
+                    this.textContent = 'Opening BeeTagged...';
+                    this.style.opacity = '0.7';
+                    
+                    // Reset after delay
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.style.opacity = '1';
+                    }, 2000);
+                });
+            });
+
+            // Add hover effects to feature cards
+            const features = document.querySelectorAll('.beetagged-feature');
+            features.forEach(feature => {
+                feature.addEventListener('mouseenter', function() {
+                    this.style.borderColor = '#0077B5';
+                });
+                feature.addEventListener('mouseleave', function() {
+                    this.style.borderColor = '#e8f4fd';
+                });
+            });
+        });
+    </script>
+</div>
