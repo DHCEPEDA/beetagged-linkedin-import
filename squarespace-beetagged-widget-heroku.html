@@ -1,5 +1,5 @@
 <!-- BeeTagged Professional Contact Intelligence Widget for Squarespace -->
-<!-- Paste this code into a Code Block in Squarespace -->
+<!-- HEROKU PRODUCTION VERSION -->
 
 <div id="beetagged-widget">
     <style>
@@ -168,6 +168,41 @@
             letter-spacing: 1px;
         }
 
+        .beetagged-instructions {
+            background: #f8fbff;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #0077B5;
+        }
+
+        .beetagged-instructions h4 {
+            color: #0077B5;
+            margin: 0 0 15px 0;
+        }
+
+        .beetagged-instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .beetagged-instructions li {
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .beetagged-production-badge {
+            background: #28a745;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin: 10px 0;
+            display: inline-block;
+        }
+
         @media (max-width: 768px) {
             .beetagged-features {
                 grid-template-columns: 1fr;
@@ -187,6 +222,7 @@
     <div class="beetagged-header">
         <h1>🐝 BeeTagged</h1>
         <p>Professional Contact Intelligence Platform</p>
+        <div class="beetagged-production-badge">Live on Heroku</div>
     </div>
 
     <div class="beetagged-content">
@@ -218,6 +254,17 @@
             </div>
         </div>
 
+        <div class="beetagged-instructions">
+            <h4>📋 How to Import Your LinkedIn Connections:</h4>
+            <ol>
+                <li>Go to LinkedIn Settings & Privacy → Data privacy</li>
+                <li>Click "Get a copy of your data"</li>
+                <li>Select "Connections" and request archive</li>
+                <li>Download the CSV file when ready</li>
+                <li>Use the import tool to upload your connections</li>
+            </ol>
+        </div>
+
         <div class="beetagged-stats">
             <div class="beetagged-stat">
                 <span class="beetagged-stat-number">9K+</span>
@@ -234,15 +281,14 @@
         </div>
 
         <div class="beetagged-cta">
-            <a href="https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/" 
+            <a href="https://YOUR-HEROKU-APP.herokuapp.com/" 
                class="beetagged-btn" 
                target="_blank">
                 Launch BeeTagged App
             </a>
-            <a href="https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/squarespace-linkedin-import" 
+            <a href="https://YOUR-HEROKU-APP.herokuapp.com/squarespace-linkedin-import" 
                class="beetagged-btn beetagged-btn-secondary" 
-               target="_blank"
-               onclick="window.open('https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/squarespace-linkedin-import', '_blank'); return false;">
+               target="_blank">
                 Import LinkedIn Contacts
             </a>
         </div>
@@ -280,3 +326,11 @@
         });
     </script>
 </div>
+
+<!-- 
+DEPLOYMENT INSTRUCTIONS:
+1. Replace "YOUR-HEROKU-APP" with your actual Heroku app name
+2. Set MONGODB_URI environment variable in Heroku
+3. Deploy using: git push heroku main
+4. Your app will be available at https://YOUR-HEROKU-APP.herokuapp.com/
+-->

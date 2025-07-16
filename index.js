@@ -22,11 +22,46 @@ app.use((req, res, next) => {
   }
 });
 
-// Storage arrays
-let contacts = [];
-let tags = [];
+// MongoDB connection
+const mongoose = require('mongoose');
 let contactIdCounter = 1;
 let tagIdCounter = 1;
+
+// Connect to MongoDB
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.error('MongoDB connection error:', err));
+}
+
+// MongoDB Schemas
+const contactSchema = new mongoose.Schema({
+  id: { type: Number, unique: true },
+  name: String,
+  email: String,
+  phone: String,
+  company: String,
+  position: String,
+  location: String,
+  tags: [String],
+  source: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const tagSchema = new mongoose.Schema({
+  id: { type: Number, unique: true },
+  name: String,
+  category: String,
+  count: { type: Number, default: 1 },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Contact = mongoose.model('Contact', contactSchema);
+const Tag = mongoose.model('Tag', tagSchema);
+
+// In-memory fallback for development
+let contacts = [];
+let tags = [];
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');

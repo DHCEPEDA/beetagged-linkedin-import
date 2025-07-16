@@ -1,5 +1,5 @@
 <!-- BeeTagged Professional Contact Intelligence Widget for Squarespace -->
-<!-- Paste this code into a Code Block in Squarespace -->
+<!-- UPDATED VERSION with working links -->
 
 <div id="beetagged-widget">
     <style>
@@ -168,6 +168,29 @@
             letter-spacing: 1px;
         }
 
+        .beetagged-instructions {
+            background: #f8fbff;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #0077B5;
+        }
+
+        .beetagged-instructions h4 {
+            color: #0077B5;
+            margin: 0 0 15px 0;
+        }
+
+        .beetagged-instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .beetagged-instructions li {
+            margin-bottom: 8px;
+            color: #333;
+        }
+
         @media (max-width: 768px) {
             .beetagged-features {
                 grid-template-columns: 1fr;
@@ -218,6 +241,17 @@
             </div>
         </div>
 
+        <div class="beetagged-instructions">
+            <h4>📋 How to Import Your LinkedIn Connections:</h4>
+            <ol>
+                <li>Go to LinkedIn Settings & Privacy → Data privacy</li>
+                <li>Click "Get a copy of your data"</li>
+                <li>Select "Connections" and request archive</li>
+                <li>Download the CSV file when ready</li>
+                <li>Open BeeTagged app and look for the import option</li>
+            </ol>
+        </div>
+
         <div class="beetagged-stats">
             <div class="beetagged-stat">
                 <span class="beetagged-stat-number">9K+</span>
@@ -239,21 +273,36 @@
                target="_blank">
                 Launch BeeTagged App
             </a>
-            <a href="https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/squarespace-linkedin-import" 
-               class="beetagged-btn beetagged-btn-secondary" 
-               target="_blank"
-               onclick="window.open('https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/squarespace-linkedin-import', '_blank'); return false;">
+            <button class="beetagged-btn beetagged-btn-secondary" onclick="openLinkedInImport()">
                 Import LinkedIn Contacts
-            </a>
+            </button>
         </div>
     </div>
 
     <script>
+        function openLinkedInImport() {
+            // Try the import route first, fallback to main app
+            const importUrl = 'https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/squarespace-linkedin-import';
+            const mainAppUrl = 'https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/';
+            
+            // Test if the import route is available
+            const testWindow = window.open(importUrl, '_blank');
+            
+            // If it fails to load, redirect to main app after 3 seconds
+            setTimeout(() => {
+                if (testWindow && (testWindow.closed || testWindow.location.href === 'about:blank')) {
+                    window.open(mainAppUrl, '_blank');
+                }
+            }, 3000);
+        }
+
         // Track widget interactions
         document.addEventListener('DOMContentLoaded', function() {
             const buttons = document.querySelectorAll('.beetagged-btn');
             buttons.forEach(button => {
                 button.addEventListener('click', function(e) {
+                    if (this.getAttribute('onclick')) return; // Skip if has onclick
+                    
                     // Add loading state
                     const originalText = this.textContent;
                     this.textContent = 'Opening BeeTagged...';
