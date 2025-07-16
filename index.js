@@ -541,7 +541,10 @@ app.get('/squarespace-linkedin-import', (req, res) => {
         loading.style.display = 'none';
 
         if (data.success) {
-          showResult('Successfully imported ' + data.count + ' LinkedIn connections!', 'success');
+          showResult('Successfully imported ' + data.count + ' LinkedIn connections! Redirecting to app...', 'success');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
         } else {
           showResult('Error: ' + (data.message || 'Failed to import connections'), 'error');
         }
