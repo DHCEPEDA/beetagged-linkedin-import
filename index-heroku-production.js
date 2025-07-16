@@ -572,6 +572,89 @@ app.post('/api/search', async (req, res) => {
   }
 });
 
+// Natural language search endpoint for the frontend
+app.post('/api/search/natural', async (req, res) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query || query.trim() === '') {
+      return res.json({ success: true, results: [] });
+    }
+    
+    // Get all contacts from database
+    const allContacts = await getContacts();
+    
+    // Enhanced search function that matches query against multiple fields
+    const searchResults = allContacts.filter(contact => {
+      const searchTerms = query.toLowerCase().split(' ');
+      
+      // Fields to search in
+      const searchableText = [
+        contact.name || '',
+        contact.email || '',
+        contact.company || '',
+        contact.position || '',
+        contact.location || '',
+        ...(contact.tags || [])
+      ].join(' ').toLowerCase();
+      
+      // Check if any search term matches
+      return searchTerms.some(term => searchableText.includes(term));
+    });
+    
+    // Transform results to match expected frontend format
+    const formattedResults = searchResults.map(contact => ({
+      _id: contact.id,
+      name: contact.name,
+      phoneNumber: contact.phone,
+      priorityData: {
+        employment: {
+          current: {
+            jobFunction: contact.position || '',
+            employer: contact.company || ''
+          }
+        },
+        location: {
+          current: contact.location || ''
+        }
+      },
+      allTags: contact.tags ? contact.tags.map(tag => ({ name: tag, category: 'general' })) : [],
+      linkedinData: contact.source === 'linkedin_csv' ? { id: contact.id } : null,
+      searchScore: 0.8
+    }));
+    
+    // Sort by relevance (simple scoring based on how many terms match)
+    formattedResults.sort((a, b) => {
+      const scoreA = query.toLowerCase().split(' ').reduce((score, term) => {
+        const text = `${a.name} ${a.priorityData.employment.current.jobFunction} ${a.priorityData.employment.current.employer}`.toLowerCase();
+        return score + (text.includes(term) ? 1 : 0);
+      }, 0);
+      
+      const scoreB = query.toLowerCase().split(' ').reduce((score, term) => {
+        const text = `${b.name} ${b.priorityData.employment.current.jobFunction} ${b.priorityData.employment.current.employer}`.toLowerCase();
+        return score + (text.includes(term) ? 1 : 0);
+      }, 0);
+      
+      return scoreB - scoreA;
+    });
+    
+    res.json({
+      success: true,
+      results: formattedResults.slice(0, 50), // Limit to 50 results
+      query,
+      total: formattedResults.length
+    });
+    
+  } catch (error) {
+    console.error('Natural search error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Search failed',
+      message: error.message 
+    });
+  }
+});
+
 // LinkedIn CSV Import
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
