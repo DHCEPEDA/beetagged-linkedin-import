@@ -82,7 +82,7 @@ BeeTagged is a professional contact intelligence platform that transforms phone 
 ### Production Considerations
 - **Heroku Ready**: Configured for Heroku deployment with `Procfile` and `app.json`
 - **Development Environment**: Internal Heroku instance for troubleshooting and testing
-- **Public Integration**: Squarespace widget for customer-facing site integration
+- **Public Integration**: Squarespace widget code for embedding on customer-facing site
 - **Mobile Deployment**: Android Studio project structure ready for Google Play Store
 
 ### Security Measures
