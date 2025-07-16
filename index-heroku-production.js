@@ -170,9 +170,328 @@ async function parseLinkedInCSV(filePath) {
 // Static file serving
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the React app
+// Serve the main React app with full functionality
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Public landing page for marketing/squarespace
+app.get('/landing', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - Professional Contact Intelligence</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      color: white;
+      padding: 60px 0;
+    }
+    .header h1 {
+      font-size: 3.5em;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+    .header p {
+      font-size: 1.5em;
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+    .production-badge {
+      background: #28a745;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      display: inline-block;
+      margin-bottom: 40px;
+    }
+    .main-content {
+      background: white;
+      border-radius: 20px;
+      padding: 60px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+      margin-bottom: 40px;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+      margin-bottom: 60px;
+    }
+    .feature {
+      text-align: center;
+      padding: 30px;
+      background: #f8fbff;
+      border-radius: 15px;
+      border: 2px solid #e8f4fd;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .feature:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    }
+    .feature-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .feature h3 {
+      color: #0077B5;
+      font-size: 1.5em;
+      margin-bottom: 15px;
+    }
+    .feature p {
+      color: #666;
+      line-height: 1.6;
+    }
+    .cta-section {
+      text-align: center;
+      margin: 60px 0;
+    }
+    .cta-section h2 {
+      color: #0077B5;
+      font-size: 2.5em;
+      margin-bottom: 30px;
+    }
+    .cta-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+      color: white;
+      border: none;
+      padding: 20px 40px;
+      border-radius: 30px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 5px 20px rgba(0,119,181,0.3);
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0,119,181,0.4);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #0077B5;
+      border: 2px solid #0077B5;
+    }
+    .btn-secondary:hover {
+      background: #0077B5;
+      color: white;
+    }
+    .demo-section {
+      background: #f8fbff;
+      padding: 40px;
+      border-radius: 15px;
+      margin: 40px 0;
+    }
+    .demo-section h3 {
+      color: #0077B5;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2em;
+    }
+    .search-examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    .search-example {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 5px solid #0077B5;
+      font-style: italic;
+      font-size: 1.1em;
+      color: #333;
+    }
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 50px 0;
+      text-align: center;
+    }
+    .stat {
+      flex: 1;
+    }
+    .stat-number {
+      font-size: 3em;
+      font-weight: 700;
+      color: #0077B5;
+      display: block;
+    }
+    .stat-label {
+      font-size: 1em;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .instructions {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 10px;
+      padding: 30px;
+      margin: 40px 0;
+    }
+    .instructions h4 {
+      color: #856404;
+      margin-bottom: 20px;
+      font-size: 1.3em;
+    }
+    .instructions ol {
+      margin-left: 20px;
+      color: #856404;
+    }
+    .instructions li {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 2.5em;
+      }
+      .header p {
+        font-size: 1.2em;
+      }
+      .main-content {
+        padding: 30px;
+      }
+      .features {
+        grid-template-columns: 1fr;
+      }
+      .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+      .stats {
+        flex-direction: column;
+        gap: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🐝 BeeTagged</h1>
+      <p>Professional Contact Intelligence Platform</p>
+      <div class="production-badge">Live on Heroku</div>
+    </div>
+
+    <div class="main-content">
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">🔍</div>
+          <h3>Smart Search</h3>
+          <p>Find contacts using natural language queries like "Who do I know at Google?" or "Who do I know in marketing?"</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🤖</div>
+          <h3>AI-Powered Tags</h3>
+          <p>Automatically categorize contacts by company, location, industry, and job function using advanced AI</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📊</div>
+          <h3>Network Analytics</h3>
+          <p>Get insights into your professional network with detailed analytics and connection rankings</p>
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h3>Try These Search Examples</h3>
+        <div class="search-examples">
+          <div class="search-example">"Who do I know at Google?"</div>
+          <div class="search-example">"Who do I know in Seattle?"</div>
+          <div class="search-example">"Who do I know in marketing?"</div>
+          <div class="search-example">"Who do I know in technology?"</div>
+        </div>
+      </div>
+
+      <div class="instructions">
+        <h4>📋 How to Import Your LinkedIn Connections</h4>
+        <ol>
+          <li>Go to LinkedIn Settings & Privacy → Data privacy</li>
+          <li>Click "Get a copy of your data"</li>
+          <li>Select "Connections" and request archive</li>
+          <li>Download the CSV file when ready</li>
+          <li>Use the import tool below to upload your connections</li>
+        </ol>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">9K+</span>
+          <span class="stat-label">Contacts Imported</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">AI</span>
+          <span class="stat-label">Smart Tagging</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">$0.99</span>
+          <span class="stat-label">Simple Pricing</span>
+        </div>
+      </div>
+
+      <div class="cta-section">
+        <h2>Get Started Now</h2>
+        <div class="cta-buttons">
+          <a href="/squarespace-linkedin-import" class="btn">Import LinkedIn Contacts</a>
+          <a href="/" class="btn btn-secondary">Open BeeTagged App</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Add smooth scrolling and interaction effects
+    document.addEventListener('DOMContentLoaded', function() {
+      const buttons = document.querySelectorAll('.btn');
+      buttons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          const originalText = this.textContent;
+          this.textContent = 'Loading...';
+          this.style.opacity = '0.7';
+          
+          setTimeout(() => {
+            this.textContent = originalText;
+            this.style.opacity = '1';
+          }, 1000);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+  `);
 });
 
 // Health check endpoint
