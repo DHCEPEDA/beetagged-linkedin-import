@@ -156,8 +156,8 @@
 
     <script>
         // Configuration - UPDATE THESE WITH YOUR ACTUAL URLS
-        const BEETAGGED_SERVER = 'https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev:5000';
-        const BEETAGGED_APP = 'https://beetagged.com';
+        const BEETAGGED_SERVER = 'https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
+        const BEETAGGED_APP = 'https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev';
 
         let isConnecting = false;
 
@@ -183,15 +183,15 @@
                 showFBStatus('Getting Facebook authorization URL...', 'info');
 
                 // Get Facebook auth URL from BeeTagged server
-                const response = await fetch(`${BEETAGGED_SERVER}/api/facebook/auth-url`);
+                const response = await fetch(`${BEETAGGED_SERVER}/api/auth/facebook/url`);
                 const data = await response.json();
 
-                if (data.success) {
+                if (data.url) {
                     showFBStatus('Opening Facebook authorization. Please complete the login process.', 'info');
                     
                     // Open Facebook OAuth in popup
                     const popup = window.open(
-                        data.authUrl,
+                        data.url,
                         'facebook-auth',
                         'width=600,height=600,scrollbars=yes,resizable=yes'
                     );
