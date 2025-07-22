@@ -249,11 +249,16 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       });
     }
     
-    // Clear existing LinkedIn imports
+    // Clear existing LinkedIn imports from both memory and database
     contacts = contacts.filter(c => c.source !== 'linkedin_import');
     
-    // Add new contacts
-    importedContacts.forEach(contact => {
+    if (process.env.MONGODB_URI) {
+      await Contact.deleteMany({ source: 'linkedin_import' });
+    }
+    
+    // Process and store contacts
+    const savedContacts = [];
+    for (const contact of importedContacts) {
       const newContact = {
         id: contactIdCounter++,
         name: contact.name,
@@ -266,18 +271,34 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
         createdAt: new Date().toISOString(),
         tags: contact.tags
       };
+      
+      // Add to memory array
       contacts.push(newContact);
-    });
+      
+      // Save to MongoDB if available
+      if (process.env.MONGODB_URI) {
+        try {
+          const mongoContact = new Contact(newContact);
+          await mongoContact.save();
+          savedContacts.push(mongoContact);
+        } catch (error) {
+          console.log('Duplicate contact, skipping:', newContact.name);
+        }
+      }
+    }
     
     // Clean up uploaded file
     fs.unlink(req.file.path, () => {});
+    
+    console.log(`Successfully imported ${importedContacts.length} contacts from LinkedIn`);
+    console.log('Sample contact:', importedContacts[0]);
     
     res.json({
       success: true,
       message: `Successfully imported ${importedContacts.length} contacts from LinkedIn`,
       count: importedContacts.length,
       totalContacts: contacts.length,
-      contacts: contacts // Return updated contacts for immediate UI refresh
+      contacts: contacts.slice(-10) // Return last 10 contacts for UI refresh
     });
     
   } catch (error) {
