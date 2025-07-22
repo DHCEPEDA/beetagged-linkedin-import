@@ -1,0 +1,10 @@
+# Heroku Environment Variables Setup
+# Run these commands in your Heroku CLI or set them in the Heroku dashboard
+
+heroku config:set NODE_ENV=production
+heroku config:set MONGODB_URI="mongodb+srv://dhcepeda:wy0CvNgPRq6EPivU@clusterbeetagged.mpruwpw.mongodb.net/?retryWrites=true&w=majority&appName=ClusterBeeTagged"
+
+# Optional: Verify the configuration
+heroku config
+
+# The app will now connect to your MongoDB Atlas cluster on Heroku
