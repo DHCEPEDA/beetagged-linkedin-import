@@ -18,10 +18,7 @@ module.exports = {
         test: /\.(js|jsx)$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env', '@babel/preset-react']
-          }
+          loader: 'babel-loader'
         }
       },
       {
@@ -44,16 +41,41 @@ module.exports = {
       "http": false,
       "https": false,
       "zlib": false,
-      "process": false
+      "process": require.resolve("process/browser")
     }
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './public/index.html',
-      inject: 'body'
+      inject: 'body',
+      title: 'BeeTagged',
+      templateContent: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged - Professional Contact Intelligence</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+        #root {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
+      `.trim()
     }),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production')
+    }),
+    new webpack.ProvidePlugin({
+      process: 'process/browser'
     }),
     new CopyPlugin({
       patterns: [
@@ -61,21 +83,14 @@ module.exports = {
           from: 'public/images', 
           to: 'images',
           noErrorOnMissing: true
-        },
-        { 
-          from: 'public/*.html', 
-          to: '[name][ext]',
-          noErrorOnMissing: true
-        },
-        { 
-          from: 'public/app-config.js', 
-          to: 'app-config.js',
-          noErrorOnMissing: true
         }
       ],
     }),
   ],
   optimization: {
     minimize: true
+  },
+  performance: {
+    hints: false
   }
 };

@@ -40,7 +40,7 @@ module.exports = {
       "http": false,
       "https": false,
       "zlib": false,
-      "process": false
+      "process": require.resolve("process/browser")
     }
   },
   plugins: [
