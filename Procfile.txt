@@ -1,1 +1,1 @@
-web: node index-heroku-production.js
+web: node index.js
