@@ -315,7 +315,7 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
 });
 
 // Natural language search API endpoint
-app.get('/api/search/natural', (req, res) => {
+app.get('/api/search/natural', async (req, res) => {
   try {
     const query = req.query.q;
     
@@ -326,42 +326,69 @@ app.get('/api/search/natural', (req, res) => {
     }
 
     const searchTerm = query.toLowerCase();
+    console.log('Searching for:', searchTerm);
     
-    // Natural language search across multiple fields
-    const searchResults = contacts.filter(contact => {
-      // Search in name
-      if (contact.name && contact.name.toLowerCase().includes(searchTerm)) {
-        return true;
+    let searchResults = [];
+    
+    // Try MongoDB first if available
+    if (process.env.MONGODB_URI && Contact) {
+      try {
+        const mongoResults = await Contact.find({
+          $or: [
+            { name: { $regex: searchTerm, $options: 'i' } },
+            { company: { $regex: searchTerm, $options: 'i' } },
+            { title: { $regex: searchTerm, $options: 'i' } },
+            { location: { $regex: searchTerm, $options: 'i' } },
+            { email: { $regex: searchTerm, $options: 'i' } },
+            { tags: { $regex: searchTerm, $options: 'i' } }
+          ]
+        }).sort({ createdAt: -1 });
+        
+        console.log('MongoDB search results:', mongoResults.length);
+        searchResults = mongoResults;
+      } catch (error) {
+        console.error('MongoDB search error:', error);
       }
-      
-      // Search in company
-      if (contact.company && contact.company.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in title/position
-      if (contact.title && contact.title.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in location
-      if (contact.location && contact.location.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in email
-      if (contact.email && contact.email.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in tags
-      if (contact.tags && contact.tags.some(tag => 
-        tag.toLowerCase().includes(searchTerm))) {
-        return true;
-      }
-      
-      return false;
-    });
+    }
+    
+    // Fallback to in-memory search if MongoDB fails or has no results
+    if (searchResults.length === 0) {
+      console.log('Searching in memory, contacts count:', contacts.length);
+      searchResults = contacts.filter(contact => {
+        // Search in name
+        if (contact.name && contact.name.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        
+        // Search in company
+        if (contact.company && contact.company.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        
+        // Search in title/position
+        if (contact.title && contact.title.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        
+        // Search in location
+        if (contact.location && contact.location.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        
+        // Search in email
+        if (contact.email && contact.email.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        
+        // Search in tags
+        if (contact.tags && contact.tags.some(tag => 
+          tag.toLowerCase().includes(searchTerm))) {
+          return true;
+        }
+        
+        return false;
+      });
+    }
 
     // Enhanced natural language processing for specific patterns
     let contextualResults = searchResults;
