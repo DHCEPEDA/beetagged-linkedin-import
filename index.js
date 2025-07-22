@@ -719,63 +719,328 @@ app.get('/squarespace-linkedin-import', (req, res) => {
   res.send(html);
 });
 
-// Homepage route - serve React app
+// Homepage route - fully functional BeeTagged app
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    // Fallback to simple HTML page with links to functionality
-    const html = `<!DOCTYPE html>
-<html>
+  const html = `<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>BeeTagged</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged - Professional Contact Intelligence</title>
     <style>
-        body { font-family: Arial; margin: 40px; background: #f8fafc; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
-        h1 { color: #2563eb; }
-        .status { color: #059669; background: #dcfce7; padding: 10px; border-radius: 5px; margin: 20px 0; }
-        .linkedin-section { background: #0077b5; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .linkedin-section a { background: white; color: #0077b5; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0; }
-        .feature-card { background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .feature-card h3 { margin: 0 0 10px 0; color: #1e293b; }
-        .feature-card a { color: #2563eb; text-decoration: none; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .hero { 
+            text-align: center; 
+            color: white; 
+            margin-bottom: 50px;
+        }
+        .hero h1 { 
+            font-size: 3rem; 
+            margin-bottom: 20px; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .hero p { 
+            font-size: 1.2rem; 
+            opacity: 0.9; 
+            margin-bottom: 40px;
+        }
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .section {
+            padding: 40px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .section:last-child { border-bottom: none; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .btn-secondary {
+            background: #f8fafc;
+            color: #2d3748;
+            border: 2px solid #e2e8f0;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .feature {
+            text-align: center;
+            padding: 20px;
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background: #f7fafc;
+        }
+        .contact-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f8fafc;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .contact-item {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-bar {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .hidden { display: none; }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .section { padding: 20px; }
+            .btn { width: 100%; margin: 5px 0; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🐝 BeeTagged</h1>
-        <div class="status">Professional Contact Intelligence Platform - Server Running</div>
-        
-        <div class="linkedin-section">
-            <h3>LinkedIn Import</h3>
-            <p>Import your LinkedIn connections for intelligent contact search</p>
-            <a href="/li-import">Import LinkedIn Connections</a>
+        <div class="hero">
+            <h1>🐝 BeeTagged</h1>
+            <p>Transform your phone contacts into a searchable professional network</p>
         </div>
-
-        <div class="features">
-            <div class="feature-card">
-                <h3>Contact Management</h3>
-                <p>View and manage your imported contacts</p>
-                <a href="/api/contacts">View Contacts API</a>
+        
+        <div class="main-content">
+            <div class="section" id="homeSection">
+                <h2>Get Started</h2>
+                <p>Upload your LinkedIn contacts and start searching with natural language queries like "Who do I know at Google?" or "Who works in marketing?"</p>
+                
+                <div class="feature-grid">
+                    <div class="feature">
+                        <div class="feature-icon">📱</div>
+                        <h3>Import Contacts</h3>
+                        <p>Upload your LinkedIn CSV export to instantly enrich your contact database</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔍</div>
+                        <h3>Smart Search</h3>
+                        <p>Find contacts using natural language - ask questions like a human would</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🎯</div>
+                        <h3>AI Tagging</h3>
+                        <p>Automatic categorization by company, location, role, and industry</p>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 40px;">
+                    <button class="btn" onclick="showImport()">📱 Import LinkedIn Contacts</button>
+                    <button class="btn btn-secondary" onclick="showSearch()">🔍 Search Contacts</button>
+                </div>
             </div>
-            <div class="feature-card">
-                <h3>Health Status</h3>
-                <p>Check server health and statistics</p>
-                <a href="/health">Server Health</a>
+            
+            <div class="section hidden" id="importSection">
+                <h2>📱 Import LinkedIn Contacts</h2>
+                <p>Upload your LinkedIn contacts CSV file to get started.</p>
+                
+                <div class="upload-area">
+                    <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="handleFileUpload(event)">
+                    <div onclick="document.getElementById('csvFile').click()" style="cursor: pointer;">
+                        <div style="font-size: 3rem; margin-bottom: 10px;">📁</div>
+                        <p><strong>Click to select CSV file</strong></p>
+                        <p>Or drag and drop your LinkedIn export here</p>
+                    </div>
+                </div>
+                
+                <div id="uploadStatus"></div>
+                
+                <button class="btn btn-secondary" onclick="showHome()">← Back to Home</button>
             </div>
-            <div class="feature-card">
-                <h3>Squarespace Integration</h3>
-                <p>Facebook connect widget for Squarespace</p>
-                <a href="/squarespace-linkedin-import">Squarespace Widget</a>
+            
+            <div class="section hidden" id="searchSection">
+                <h2>🔍 Search Contacts</h2>
+                <input type="text" id="searchInput" class="search-bar" placeholder="Try: 'Who works at Google?', 'Marketing contacts in NYC', 'People in Seattle'..." onkeyup="handleSearch(event)">
+                
+                <div id="searchResults">
+                    <p style="text-align: center; color: #666; padding: 40px;">Import contacts first to start searching</p>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="showHome()">← Back to Home</button>
             </div>
         </div>
     </div>
+
+    <script>
+        let contacts = [];
+        
+        function showHome() {
+            document.getElementById('homeSection').classList.remove('hidden');
+            document.getElementById('importSection').classList.add('hidden');
+            document.getElementById('searchSection').classList.add('hidden');
+        }
+        
+        function showImport() {
+            document.getElementById('homeSection').classList.add('hidden');
+            document.getElementById('importSection').classList.remove('hidden');
+            document.getElementById('searchSection').classList.add('hidden');
+        }
+        
+        function showSearch() {
+            document.getElementById('homeSection').classList.add('hidden');
+            document.getElementById('importSection').classList.add('hidden');
+            document.getElementById('searchSection').classList.remove('hidden');
+            loadContacts();
+        }
+        
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerHTML = '<div class="loading"></div>Uploading and processing contacts...';
+            
+            const formData = new FormData();
+            formData.append('linkedinCsv', file);
+            
+            try {
+                const response = await fetch('/api/import/linkedin', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    statusDiv.innerHTML = \`<div style="color: green; font-weight: bold;">✅ Successfully imported \${result.count} contacts!</div>\`;
+                    setTimeout(() => showSearch(), 1500);
+                } else {
+                    statusDiv.innerHTML = \`<div style="color: red;">❌ Import failed: \${result.message}</div>\`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = \`<div style="color: red;">❌ Upload error: \${error.message}</div>\`;
+            }
+        }
+        
+        async function loadContacts() {
+            try {
+                const response = await fetch('/api/contacts');
+                contacts = await response.json();
+                displayContacts(contacts);
+            } catch (error) {
+                console.error('Error loading contacts:', error);
+            }
+        }
+        
+        function displayContacts(contactList) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (contactList.length === 0) {
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No contacts found. Import your LinkedIn CSV first!</p>';
+                return;
+            }
+            
+            const contactsHtml = contactList.map(contact => \`
+                <div class="contact-item">
+                    <div>
+                        <strong>\${contact.name || 'Unknown'}</strong>
+                        <div style="font-size: 14px; color: #666;">
+                            \${contact.position || ''} \${contact.position && contact.company ? 'at' : ''} \${contact.company || ''}
+                        </div>
+                        <div style="font-size: 12px; color: #999;">
+                            \${contact.location || ''} \${contact.tags ? '• ' + contact.tags.join(', ') : ''}
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        \${contact.email || ''}
+                    </div>
+                </div>
+            \`).join('');
+            
+            resultsDiv.innerHTML = \`
+                <div style="margin-bottom: 15px; font-weight: bold;">Found \${contactList.length} contacts</div>
+                <div class="contact-list">\${contactsHtml}</div>
+            \`;
+        }
+        
+        async function handleSearch(event) {
+            const query = event.target.value.trim();
+            
+            if (query.length < 2) {
+                displayContacts(contacts);
+                return;
+            }
+            
+            try {
+                const response = await fetch(\`/api/search/natural?q=\${encodeURIComponent(query)}\`);
+                const result = await response.json();
+                displayContacts(result.results || []);
+            } catch (error) {
+                console.error('Search error:', error);
+                displayContacts([]);
+            }
+        }
+        
+        // Initialize
+        showHome();
+    </script>
 </body>
 </html>`;
     res.send(html);
-  }
 });
 
 // Catch-all for React Router
