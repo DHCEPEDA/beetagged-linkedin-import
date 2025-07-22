@@ -40,23 +40,47 @@ module.exports = {
       "http": false,
       "https": false,
       "zlib": false,
-      // Add the process fallback
       "process": require.resolve("process/browser")
     }
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './public/index.html',
-      inject: 'body' // Automatically inject bundle.js into body
+      inject: 'body',
+      title: 'BeeTagged',
+      templateContent: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged</title>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+        #root {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
+      `.trim()
     }),
     new webpack.DefinePlugin({
       // Define environment variables for client-side access
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
     }),
-    // Fixed: The process polyfill needs to be handled differently
-    // This properly handles the process global in a way compatible with webpack 5
+    // Provide process for browser compatibility
     new webpack.ProvidePlugin({
-      process: require.resolve('process/browser')
+      process: 'process/browser'
     }),
     new CopyPlugin({
       patterns: [
