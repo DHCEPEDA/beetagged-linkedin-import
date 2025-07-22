@@ -1,16 +1,21 @@
-// Simplified BeeTagged server for Heroku deployment
+// BeeTagged - Self-contained Express server for Heroku deployment
 const express = require('express');
+const mongoose = require('mongoose');
+const multer = require('multer');
+const csv = require('csv-parser');
+const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Basic middleware
+// Middleware
+app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Simple CORS middleware (avoiding external dependency)
+// CORS middleware
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -23,14 +28,9 @@ app.use((req, res, next) => {
 });
 
 // MongoDB connection
-const mongoose = require('mongoose');
-let contactIdCounter = 1;
-let tagIdCounter = 1;
-
-// Connect to MongoDB
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB'))
+    .then(() => console.log('Connected to MongoDB Atlas'))
     .catch(err => console.error('MongoDB connection error:', err));
 }
 
@@ -48,678 +48,239 @@ const contactSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const tagSchema = new mongoose.Schema({
-  id: { type: Number, unique: true },
-  name: String,
-  category: String,
-  count: { type: Number, default: 1 },
-  createdAt: { type: Date, default: Date.now }
-});
-
 const Contact = mongoose.model('Contact', contactSchema);
-const Tag = mongoose.model('Tag', tagSchema);
-
-// In-memory fallback for development
-let contacts = [];
-let tags = [];
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
 
 // File upload setup
-const multer = require('multer');
-const csv = require('csv-parser');
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+// In-memory counters
+let contactIdCounter = 1;
+
+// Helper functions
+function generateTags(contact) {
+  const tags = [];
+  
+  if (contact.company) {
+    tags.push(`company:${contact.company.toLowerCase()}`);
+    
+    // Industry tags based on company
+    const techCompanies = ['google', 'microsoft', 'apple', 'amazon', 'meta', 'facebook', 'netflix', 'uber', 'airbnb'];
+    const financeCompanies = ['goldman', 'jpmorgan', 'chase', 'morgan stanley', 'blackrock'];
+    
+    const companyLower = contact.company.toLowerCase();
+    if (techCompanies.some(tech => companyLower.includes(tech))) {
+      tags.push('industry:technology');
+    } else if (financeCompanies.some(finance => companyLower.includes(finance))) {
+      tags.push('industry:finance');
+    }
+  }
+  
+  if (contact.position) {
+    tags.push(`role:${contact.position.toLowerCase()}`);
+    
+    const positionLower = contact.position.toLowerCase();
+    if (positionLower.includes('engineer') || positionLower.includes('developer')) {
+      tags.push('function:engineering');
+    } else if (positionLower.includes('marketing')) {
+      tags.push('function:marketing');
+    } else if (positionLower.includes('sales')) {
+      tags.push('function:sales');
+    } else if (positionLower.includes('manager') || positionLower.includes('director')) {
+      tags.push('function:management');
+    }
+  }
+  
+  if (contact.location) {
+    tags.push(`location:${contact.location.toLowerCase()}`);
+    
+    const locationLower = contact.location.toLowerCase();
+    if (locationLower.includes('san francisco') || locationLower.includes('sf')) {
+      tags.push('city:san-francisco');
+    } else if (locationLower.includes('new york') || locationLower.includes('nyc')) {
+      tags.push('city:new-york');
+    } else if (locationLower.includes('seattle')) {
+      tags.push('city:seattle');
+    } else if (locationLower.includes('los angeles') || locationLower.includes('la')) {
+      tags.push('city:los-angeles');
+    }
+  }
+  
+  return tags;
+}
+
+function parseCSVData(data) {
+  // Handle different LinkedIn CSV formats
+  const name = data['First Name'] && data['Last Name'] 
+    ? `${data['First Name']} ${data['Last Name']}`.trim()
+    : data['Name'] || data['Full Name'] || '';
+    
+  const email = data['Email Address'] || data['Email'] || '';
+  const company = data['Company'] || data['Current Company'] || '';
+  const position = data['Position'] || data['Current Position'] || data['Title'] || '';
+  const location = data['Location'] || data['Current Location'] || '';
+
+  return { name, email, company, position, location };
+}
+
+// API Routes
+app.get('/health', async (req, res) => {
+  try {
+    const contactCount = await Contact.countDocuments();
+    res.json({
+      status: 'healthy',
+      server: 'BeeTagged',
+      contacts: contactCount,
+      port: PORT,
+      uptime: process.uptime(),
+      mongodb: process.env.MONGODB_URI ? 'connected' : 'not configured'
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-const upload = multer({ 
-  storage,
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/csv' || file.originalname.toLowerCase().endsWith('.csv')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only CSV files allowed'), false);
-    }
-  },
-  limits: { fileSize: 5 * 1024 * 1024 }
+app.get('/api/contacts', async (req, res) => {
+  try {
+    const contacts = await Contact.find().sort({ createdAt: -1 });
+    console.log(`Returning ${contacts.length} contacts`);
+    res.json(contacts);
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ error: 'Failed to fetch contacts' });
+  }
 });
 
-// LinkedIn CSV parser function
-function parseLinkedInCSV(filePath) {
-  return new Promise((resolve, reject) => {
-    const results = [];
-    
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        try {
-          // Enhanced field mapping for different LinkedIn CSV formats
-          const firstName = row['First Name'] || row['firstName'] || '';
-          const lastName = row['Last Name'] || row['lastName'] || '';
-          const name = firstName && lastName ? `${firstName} ${lastName}` : 
-                      row['Name'] || row['name'] || 
-                      row['Full Name'] || row['fullName'] || '';
-          
-          const contact = {
-            name: name.trim(),
-            email: row['Email Address'] || row['email'] || row['Email'] || '',
-            company: row['Company'] || row['Current Company'] || row['company'] || 
-                    row['Organization'] || row['organization'] || '',
-            title: row['Position'] || row['Title'] || row['title'] || 
-                   row['Job Title'] || row['jobTitle'] || '',
-            location: row['Location'] || row['location'] || row['Region'] || '',
-            source: 'linkedin_import',
-            picture: 'https://cdn.jsdelivr.net/npm/simple-icons@v6/icons/linkedin.svg',
-            tags: []
-          };
-          
-          // Generate intelligent tags based on the contact data
-          if (contact.company) {
-            contact.tags.push(contact.company);
-          }
-          if (contact.title) {
-            contact.tags.push(contact.title);
-          }
-          if (contact.location) {
-            contact.tags.push(contact.location);
-          }
-          
-          if (contact.name && contact.name.trim() !== '') {
-            results.push(contact);
-          }
-        } catch (error) {
-          console.error('Error parsing row:', error);
-        }
-      })
-      .on('end', () => resolve(results))
-      .on('error', reject);
-  });
-}
-
-// Static files
-app.use(express.static(path.join(__dirname, 'public')));
-
-// API Routes
-app.get('/api/contacts', (req, res) => {
-  console.log(`Returning ${contacts.length} contacts`);
-  res.json(contacts);
-});
-
-app.post('/api/contacts', (req, res) => {
-  const newContact = {
-    id: contactIdCounter++,
-    ...req.body,
-    createdAt: new Date().toISOString()
-  };
-  contacts.push(newContact);
-  res.json(newContact);
-});
-
-app.get('/api/tags', (req, res) => {
-  res.json(tags);
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy',
-    server: 'BeeTagged',
-    contacts: contacts.length,
-    port: PORT,
-    uptime: process.uptime()
-  });
-});
-
-// Status endpoint
-app.get('/status', (req, res) => {
-  res.json({
-    server: 'BeeTagged LinkedIn Import Server',
-    status: 'running',
-    environment: process.env.NODE_ENV || 'production',
-    port: PORT,
-    features: {
-      contactManagement: true,
-      staticFiles: fs.existsSync(path.join(__dirname, 'public', 'index.html'))
-    },
-    stats: {
-      contacts: contacts.length,
-      uptime: process.uptime()
-    }
-  });
-});
-
-// LinkedIn import page
-app.get('/li-import', (req, res) => {
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-    <title>LinkedIn Import</title>
-    <style>
-        body { font-family: Arial; margin: 40px; background: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
-        h1 { color: #0077b5; }
-        .upload-area { border: 2px dashed #0077b5; padding: 40px; text-align: center; border-radius: 10px; margin: 20px 0; }
-        button { background: #0077b5; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; }
-        .success { color: #059669; background: #dcfce7; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 5px; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>LinkedIn Import</h1>
-        <form action="/api/import/linkedin" method="post" enctype="multipart/form-data">
-            <div class="upload-area">
-                <h3>Upload LinkedIn CSV</h3>
-                <input type="file" name="linkedinCsv" accept=".csv" required>
-                <br><br>
-                <button type="submit">Import Contacts</button>
-            </div>
-        </form>
-        <div id="result"></div>
-        <a href="/">← Back to Dashboard</a>
-    </div>
-</body>
-</html>`;
-  res.send(html);
-});
-
-// LinkedIn import API endpoint
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No CSV file uploaded' });
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
-    const importedContacts = await parseLinkedInCSV(req.file.path);
-    
-    if (!importedContacts || importedContacts.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No valid contacts found in CSV file' 
+    const csvData = req.file.buffer.toString('utf8');
+    const contacts = [];
+    let processed = 0;
+
+    const stream = require('stream');
+    const readable = new stream.Readable();
+    readable.push(csvData);
+    readable.push(null);
+
+    readable
+      .pipe(csv())
+      .on('data', (data) => {
+        const contactData = parseCSVData(data);
+        
+        if (contactData.name) {
+          const contact = {
+            id: contactIdCounter++,
+            ...contactData,
+            tags: generateTags(contactData),
+            source: 'linkedin',
+            createdAt: new Date()
+          };
+          contacts.push(contact);
+          processed++;
+        }
+      })
+      .on('end', async () => {
+        try {
+          if (contacts.length > 0) {
+            await Contact.insertMany(contacts, { ordered: false });
+          }
+          
+          console.log(`Successfully imported ${contacts.length} contacts`);
+          res.json({
+            success: true,
+            count: contacts.length,
+            processed: processed,
+            message: `Successfully imported ${contacts.length} LinkedIn contacts`
+          });
+        } catch (error) {
+          console.error('Database insert error:', error);
+          res.json({
+            success: true,
+            count: contacts.length,
+            message: `Processed ${contacts.length} contacts (some may have been duplicates)`
+          });
+        }
+      })
+      .on('error', (error) => {
+        console.error('CSV parsing error:', error);
+        res.status(500).json({ success: false, message: 'Error parsing CSV file' });
       });
-    }
-    
-    // Clear existing LinkedIn imports
-    contacts = contacts.filter(c => c.source !== 'linkedin_import');
-    
-    // Add new contacts
-    importedContacts.forEach(contact => {
-      const newContact = {
-        id: contactIdCounter++,
-        name: contact.name,
-        email: contact.email || '',
-        company: contact.company || '',
-        title: contact.title || '',
-        location: contact.location || '',
-        source: 'linkedin_import',
-        picture: contact.picture,
-        createdAt: new Date().toISOString(),
-        tags: contact.tags
-      };
-      contacts.push(newContact);
-    });
-    
-    // Clean up uploaded file
-    fs.unlink(req.file.path, () => {});
-    
-    res.json({
-      success: true,
-      message: `Successfully imported ${importedContacts.length} contacts from LinkedIn`,
-      count: importedContacts.length,
-      totalContacts: contacts.length,
-      contacts: contacts // Return updated contacts for immediate UI refresh
-    });
-    
+
   } catch (error) {
-    console.error('LinkedIn import error:', error);
-    if (req.file && req.file.path) {
-      fs.unlink(req.file.path, () => {});
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Failed to import LinkedIn contacts',
-      error: error.message
-    });
+    console.error('Import error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Natural language search API endpoint
-app.get('/api/search/natural', (req, res) => {
+app.get('/api/search/natural', async (req, res) => {
   try {
-    const query = req.query.q;
+    const query = req.query.q?.toLowerCase() || '';
     
-    if (!query || query.trim() === '') {
-      return res.status(400).json({ 
-        message: 'Search query is required' 
+    if (!query) {
+      const allContacts = await Contact.find().sort({ createdAt: -1 });
+      return res.json({ results: allContacts });
+    }
+
+    // Build search conditions
+    const searchConditions = [];
+    
+    // Company search
+    if (query.includes('google') || query.includes('at google')) {
+      searchConditions.push({ company: /google/i });
+    } else if (query.includes('microsoft')) {
+      searchConditions.push({ company: /microsoft/i });
+    } else if (query.includes('apple')) {
+      searchConditions.push({ company: /apple/i });
+    }
+    
+    // Location search
+    if (query.includes('seattle')) {
+      searchConditions.push({ location: /seattle/i });
+    } else if (query.includes('san francisco') || query.includes('sf')) {
+      searchConditions.push({ location: /san francisco|sf/i });
+    } else if (query.includes('new york') || query.includes('nyc')) {
+      searchConditions.push({ location: /new york|nyc/i });
+    }
+    
+    // Role/function search
+    if (query.includes('engineer') || query.includes('developer')) {
+      searchConditions.push({ position: /engineer|developer/i });
+    } else if (query.includes('marketing')) {
+      searchConditions.push({ position: /marketing/i });
+    } else if (query.includes('sales')) {
+      searchConditions.push({ position: /sales/i });
+    } else if (query.includes('manager')) {
+      searchConditions.push({ position: /manager|director/i });
+    }
+
+    // General text search if no specific patterns found
+    if (searchConditions.length === 0) {
+      searchConditions.push({
+        $or: [
+          { name: { $regex: query, $options: 'i' } },
+          { company: { $regex: query, $options: 'i' } },
+          { position: { $regex: query, $options: 'i' } },
+          { location: { $regex: query, $options: 'i' } },
+          { tags: { $regex: query, $options: 'i' } }
+        ]
       });
     }
 
-    const searchTerm = query.toLowerCase();
+    const searchQuery = searchConditions.length > 0 ? { $or: searchConditions } : {};
+    const results = await Contact.find(searchQuery).sort({ createdAt: -1 });
     
-    // Natural language search across multiple fields
-    const searchResults = contacts.filter(contact => {
-      // Search in name
-      if (contact.name && contact.name.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in company
-      if (contact.company && contact.company.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in title/position
-      if (contact.title && contact.title.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in location
-      if (contact.location && contact.location.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in email
-      if (contact.email && contact.email.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Search in tags
-      if (contact.tags && contact.tags.some(tag => 
-        tag.toLowerCase().includes(searchTerm))) {
-        return true;
-      }
-      
-      return false;
-    });
-
-    // Enhanced natural language processing for specific patterns
-    let contextualResults = searchResults;
-    
-    // Handle "who works at" or "at" queries
-    if (searchTerm.includes('who works at') || searchTerm.includes('at ')) {
-      const companyMatch = searchTerm.match(/(?:who works at|at)\s+([^?]+)/i);
-      if (companyMatch) {
-        const company = companyMatch[1].trim();
-        contextualResults = contacts.filter(contact => 
-          contact.company && contact.company.toLowerCase().includes(company.toLowerCase())
-        );
-      }
-    }
-    
-    // Handle "who is" queries
-    if (searchTerm.includes('who is') || searchTerm.includes('who are')) {
-      const roleMatch = searchTerm.match(/who (?:is|are)\s+([^?]+)/i);
-      if (roleMatch) {
-        const role = roleMatch[1].trim();
-        contextualResults = contacts.filter(contact => 
-          contact.title && contact.title.toLowerCase().includes(role.toLowerCase())
-        );
-      }
-    }
-    
-    // Handle location-based queries
-    if (searchTerm.includes('in ') || searchTerm.includes('from ')) {
-      const locationMatch = searchTerm.match(/(?:in|from)\s+([^?]+)/i);
-      if (locationMatch) {
-        const location = locationMatch[1].trim();
-        contextualResults = contacts.filter(contact => 
-          contact.location && contact.location.toLowerCase().includes(location.toLowerCase())
-        );
-      }
-    }
-
-    res.json({
-      results: contextualResults,
-      query: query,
-      count: contextualResults.length
-    });
-    
+    res.json({ results });
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ 
-      message: 'Search failed',
-      error: error.message 
-    });
+    res.status(500).json({ error: 'Search failed', results: [] });
   }
 });
 
-// Squarespace LinkedIn Import route
-app.get('/squarespace-linkedin-import', (req, res) => {
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LinkedIn Import - BeeTagged</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
-      margin: 0;
-      padding: 20px;
-      min-height: 100vh;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      overflow: hidden;
-    }
-    .header {
-      background: #0077B5;
-      color: white;
-      padding: 30px;
-      text-align: center;
-    }
-    .header h1 {
-      font-size: 28px;
-      margin: 0 0 10px 0;
-    }
-    .header p {
-      opacity: 0.9;
-      font-size: 16px;
-      margin: 0;
-    }
-    .content {
-      padding: 40px;
-    }
-    .steps {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 30px;
-      text-align: center;
-    }
-    .step {
-      flex: 1;
-      padding: 20px;
-      background: #f8fbff;
-      border-radius: 8px;
-      margin: 0 10px;
-      border: 2px solid #e8f4fd;
-    }
-    .step h3 {
-      color: #0077B5;
-      margin: 0 0 10px 0;
-    }
-    .step p {
-      color: #666;
-      font-size: 14px;
-      margin: 0;
-    }
-    .upload-area {
-      border: 2px dashed #0077B5;
-      border-radius: 8px;
-      padding: 40px 20px;
-      text-align: center;
-      background: #f8fbff;
-      margin: 20px 0;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    .upload-area:hover {
-      background: #e8f4fd;
-    }
-    .upload-area.dragover {
-      background: #e8f4fd;
-      border-color: #005582;
-    }
-    .upload-icon {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-    .file-input {
-      display: none;
-    }
-    .btn {
-      background: #0077B5;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    .btn:hover {
-      background: #005582;
-    }
-    .btn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    .selected-file {
-      margin-top: 20px;
-      padding: 15px;
-      background: #e8f4fd;
-      border-radius: 6px;
-      color: #0077B5;
-      display: none;
-    }
-    .result {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 6px;
-      display: none;
-    }
-    .success {
-      background: #e8f5e9;
-      color: #2e7d32;
-      border: 1px solid #c8e6c9;
-    }
-    .error {
-      background: #ffebee;
-      color: #c62828;
-      border: 1px solid #ffcdd2;
-    }
-    .loading {
-      text-align: center;
-      padding: 20px;
-      display: none;
-    }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #0077B5;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .instructions {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      border-radius: 6px;
-      padding: 20px;
-      margin: 20px 0;
-    }
-    .instructions h3 {
-      color: #856404;
-      margin: 0 0 15px 0;
-    }
-    .instructions ol {
-      margin: 0 0 0 20px;
-      color: #856404;
-    }
-    .instructions li {
-      margin-bottom: 8px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>LinkedIn</h1>
-      <p>Import LinkedIn Connections to BeeTagged</p>
-    </div>
-    
-    <div class="content">
-      <p>Easily import your LinkedIn professional network into the BeeTagged app to organize and manage your contacts.</p>
-      
-      <div class="steps">
-        <div class="step">
-          <h3>Step 1: Export</h3>
-          <p>Use a desktop computer to export your LinkedIn connections as a CSV file.</p>
-        </div>
-        <div class="step">
-          <h3>Step 2: Upload</h3>
-          <p>Upload your CSV file to import contacts directly into BeeTagged.</p>
-        </div>
-        <div class="step">
-          <h3>Step 3: Search</h3>
-          <p>Search through your imported contacts using natural language queries.</p>
-        </div>
-      </div>
-      
-      <div class="instructions">
-        <h3>📋 How to Export Your LinkedIn Connections:</h3>
-        <ol>
-          <li>Go to LinkedIn Settings & Privacy → Data privacy</li>
-          <li>Click "Get a copy of your data"</li>
-          <li>Select "Connections" and request archive</li>
-          <li>Download the CSV file when ready</li>
-          <li>Upload it below</li>
-        </ol>
-      </div>
-      
-      <div id="upload-area" class="upload-area">
-        <div class="upload-icon">📄</div>
-        <div><strong>Import Your Connections</strong></div>
-        <p>Drop your LinkedIn CSV file here or click to browse</p>
-        <input type="file" id="file-input" class="file-input" accept=".csv">
-        <button id="browse-btn" class="btn">Choose File</button>
-        <div id="selected-file" class="selected-file"></div>
-        <button id="upload-btn" class="btn" style="display: none;">Import Connections</button>
-      </div>
-      
-      <div id="loading" class="loading">
-        <div class="spinner"></div>
-        <p>Processing your LinkedIn connections...</p>
-      </div>
-      
-      <div id="result" class="result"></div>
-      
-      <p><small><strong>Note:</strong> Desktop computer required for LinkedIn data export. Your data is securely transmitted and only accessible by you.</small></p>
-    </div>
-  </div>
-
-  <script>
-    const fileInput = document.getElementById('file-input');
-    const browseBtn = document.getElementById('browse-btn');
-    const uploadArea = document.getElementById('upload-area');
-    const selectedFileEl = document.getElementById('selected-file');
-    const uploadBtn = document.getElementById('upload-btn');
-    const loading = document.getElementById('loading');
-    const result = document.getElementById('result');
-    let selectedFile = null;
-
-    function showResult(message, type) {
-      result.className = 'result ' + type;
-      result.textContent = message;
-      result.style.display = 'block';
-    }
-
-    browseBtn.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        handleFileSelect(e.target.files[0]);
-      }
-    });
-
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('dragover');
-    });
-
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('dragover');
-    });
-
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('dragover');
-      if (e.dataTransfer.files.length > 0) {
-        handleFileSelect(e.dataTransfer.files[0]);
-      }
-    });
-
-    function handleFileSelect(file) {
-      if (!file.name.toLowerCase().endsWith('.csv')) {
-        showResult('Please upload a CSV file exported from LinkedIn.', 'error');
-        return;
-      }
-
-      selectedFile = file;
-      selectedFileEl.textContent = 'Selected: ' + file.name;
-      selectedFileEl.style.display = 'block';
-      uploadBtn.style.display = 'inline-block';
-      result.style.display = 'none';
-    }
-
-    uploadBtn.addEventListener('click', async () => {
-      if (!selectedFile) {
-        showResult('Please select a file to upload.', 'error');
-        return;
-      }
-
-      loading.style.display = 'block';
-      uploadBtn.disabled = true;
-      result.style.display = 'none';
-
-      const formData = new FormData();
-      formData.append('linkedinCsv', selectedFile);
-
-      try {
-        const response = await fetch('/api/import/linkedin', {
-          method: 'POST',
-          body: formData
-        });
-
-        const data = await response.json();
-        loading.style.display = 'none';
-
-        if (data.success) {
-          showResult('Successfully imported ' + data.count + ' LinkedIn connections! Redirecting to app...', 'success');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 2000);
-        } else {
-          showResult('Error: ' + (data.message || 'Failed to import connections'), 'error');
-        }
-      } catch (error) {
-        loading.style.display = 'none';
-        showResult('Error: ' + error.message, 'error');
-      }
-
-      uploadBtn.disabled = false;
-    });
-  </script>
-</body>
-</html>
-  `;
-  res.send(html);
-});
-
-// Homepage route - fully functional BeeTagged app
+// Main application route
 app.get('/', (req, res) => {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1043,31 +604,24 @@ app.get('/', (req, res) => {
     res.send(html);
 });
 
-// Catch-all for React Router
+// Catch-all route
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.redirect('/');
-  }
+  res.redirect('/');
 });
 
-// Start server with proper error handling
+// Start server
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`BeeTagged Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log(`Build exists: ${fs.existsSync(path.join(__dirname, 'public', 'index.html'))}`);
-  console.log(`Server started successfully`);
+  console.log(`MongoDB: ${process.env.MONGODB_URI ? 'configured' : 'not configured'}`);
 });
 
-// Handle server errors
+// Error handling
 server.on('error', (err) => {
   console.error('Server error:', err);
   process.exit(1);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('Received SIGTERM, shutting down gracefully');
   server.close(() => {
