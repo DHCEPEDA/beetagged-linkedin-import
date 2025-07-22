@@ -1,121 +1,115 @@
-# BeeTagged - Professional Contact Intelligence Platform
+# BeeTagged - Professional Contact Management Platform
 
 ## Overview
 
-BeeTagged is a professional contact intelligence platform that transforms phone contacts into searchable professional networks by overlaying Facebook and LinkedIn data. The application enables contextual contact searches like "Who do I know at Google?", "Who do I know in marketing?", and "Who do I know in Seattle?".
+BeeTagged is a professional networking and contact management platform designed to help users organize and manage their professional relationships. The application integrates with social media platforms (particularly Facebook and LinkedIn) to import and consolidate contact information, providing AI-powered contact intelligence and tagging capabilities.
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Backend Architecture
-- **Framework**: Node.js with Express.js
-- **Runtime Environment**: Replit with dual-port configuration (ports 3000 and 5000)
-- **Database**: MongoDB Atlas for flexible social media data structures
-- **Authentication**: OAuth 2.0 for Facebook Graph API and LinkedIn API integration
-- **AI Integration**: OpenAI GPT-4 for intelligent tag generation and profile analysis
+The application uses a **Node.js/Express server** with the following key components:
+
+**Problem**: Need a scalable web server that can handle file uploads, social media integrations, and database operations.
+**Solution**: Express.js server with middleware for CORS, compression, and file handling.
+**Rationale**: Express provides a lightweight, flexible framework with extensive middleware ecosystem.
 
 ### Frontend Architecture
-- **Framework**: React.js 18 with modern hooks and context API
-- **Build System**: Webpack with Babel transpilation for ES6+ and JSX support
-- **Styling**: CSS3 with CSS variables and responsive design patterns
-- **Routing**: React Router DOM for single-page application navigation
-- **Mobile Support**: Capacitor framework for cross-platform mobile deployment
+The application employs a **hybrid approach** combining:
 
-### Database Design
-- **Primary Database**: MongoDB chosen for handling varied, nested JSON structures from social media APIs
-- **Schema Flexibility**: Accommodates frequently changing Facebook/LinkedIn data schemas
-- **Collections**: Users, Contacts, Tags, and Social Integration data with embedded document patterns
+1. **React-based SPA** for the main application interface
+2. **Static HTML pages** for standalone features and testing
+3. **Progressive Web App (PWA)** capabilities for mobile experience
+
+**Problem**: Need both rich interactive features and simple standalone pages.
+**Solution**: Webpack-bundled React app with static HTML fallbacks.
+**Pros**: Flexibility, faster development, easier testing
+**Cons**: Slightly more complex deployment
+
+### Data Storage
+**Database**: MongoDB Atlas (cloud-hosted)
+**Problem**: Need flexible schema for diverse contact data from multiple sources.
+**Solution**: MongoDB with Mongoose ODM for schema validation.
+**Rationale**: NoSQL flexibility handles varying contact formats from different social platforms.
 
 ## Key Components
 
 ### Contact Management System
-- **Phone Contact Import**: Automated import from device contact lists
-- **Social Media Matching**: Intelligent algorithms to match contacts with Facebook and LinkedIn profiles
-- **Data Enrichment**: Automatic extraction of professional context (employer, job function, location, education)
+- **Contact Schema**: Flexible MongoDB schema supporting multiple data sources
+- **CSV Import**: Multer-based file upload for LinkedIn CSV imports
+- **Data Consolidation**: Logic to merge contacts from multiple sources
+- **Search & Filtering**: Contact search with tagging capabilities
 
-### AI-Powered Tag System
-- **Automated Tagging**: GPT-4 powered analysis generates contextual tags without manual input
-- **Tag Categories**: Company, location, job function, industry, education, skills
-- **Conflict Detection**: Cross-platform data validation and discrepancy identification
-- **Quality Assurance**: Gamified validation system for improving tag accuracy
+### Social Media Integration
+- **Facebook OAuth**: JavaScript SDK integration for user authentication
+- **LinkedIn Import**: CSV-based contact import (OAuth implementation in development)
+- **Multi-source Consolidation**: Merges contacts from different platforms
 
-### Search Engine
-- **Natural Language Processing**: Contextual search understanding ("traveling to Seattle" → location-based results)
-- **Multi-dimensional Search**: Company, role, location, education, and skill-based queries
-- **Intelligent Ranking**: PageRank-style algorithm based on relevance and user behavior patterns
+### Authentication System
+- **Facebook Login**: Client-side OAuth using Facebook JavaScript SDK
+- **Session Management**: Basic session handling for social logins
+- **User Profile**: Stores user data from social platforms
 
-### Social Integration Services
-- **Facebook Service**: Comprehensive profile data extraction with privacy compliance
-- **LinkedIn Service**: Professional data focus with rate-limited API usage
-- **OAuth Flow**: Secure authentication and authorization handling
+### File Processing
+- **CSV Parser**: Processes LinkedIn connection exports
+- **File Upload**: Handles contact data file uploads
+- **Data Validation**: Validates and cleans imported contact data
 
 ## Data Flow
 
-1. **Contact Import**: Users import phone contacts or connect social media accounts
-2. **Profile Matching**: System matches contacts with Facebook/LinkedIn profiles using multiple algorithms
-3. **Data Extraction**: Comprehensive profile data extraction including work history, education, location
-4. **AI Analysis**: OpenAI processes extracted data to generate intelligent, categorized tags
-5. **Search Indexing**: Processed data is indexed for fast, contextual search capabilities
-6. **User Interaction**: Real-time search with natural language processing and ranked results
+1. **User Authentication**: Users authenticate via Facebook OAuth
+2. **Contact Import**: Users upload LinkedIn CSV files or connect Facebook
+3. **Data Processing**: Server processes and validates contact data
+4. **Database Storage**: Cleaned contact data stored in MongoDB
+5. **Contact Display**: React frontend displays consolidated contact list
+6. **Search & Filter**: Users can search and tag contacts
 
 ## External Dependencies
 
-### Social Media APIs
-- **Facebook Graph API**: Profile data, friends list, work history, education background
-- **LinkedIn API**: Professional profiles, connections, company information, skills
+### Third-Party Services
+- **MongoDB Atlas**: Cloud database hosting
+- **Facebook Graph API**: Social login and contact access
+- **LinkedIn**: CSV export processing (OAuth in development)
 
-### AI and Analytics
-- **OpenAI GPT-4**: Tag generation, profile analysis, conflict detection
-- **Natural Language Processing**: Search query understanding and intent detection
+### Core Libraries
+- **Express.js**: Web server framework
+- **Mongoose**: MongoDB object modeling
+- **React**: Frontend UI framework
+- **Multer**: File upload handling
+- **CSV-Parser**: LinkedIn data processing
+- **Compression**: Response compression middleware
 
-### Infrastructure Services
-- **MongoDB Atlas**: Cloud database with global distribution
-- **Replit Hosting**: Development and deployment platform with built-in CI/CD
-- **Capacitor**: Mobile app deployment for iOS and Android platforms
+### Build Tools
+- **Webpack**: Module bundling and build process
+- **Babel**: JavaScript transpilation for React
+- **CSS-Loader**: Stylesheet processing
 
 ## Deployment Strategy
 
-### Development Environment
-- **Platform**: Replit with hot-reload capabilities
-- **Dual-port Setup**: Port 5000 for main server, port 3000 for client development
-- **Environment Variables**: Secure handling of API keys and database credentials
+### Platform
+**Heroku Cloud Platform** with Node.js buildpack
 
-### Production Considerations
-- **Heroku Ready**: Configured for Heroku deployment with `Procfile` and `app.json`
-- **Development Environment**: Internal Heroku instance for troubleshooting and testing
-- **Public Integration**: Squarespace widget code for embedding on customer-facing site
-- **Mobile Deployment**: Android Studio project structure ready for Google Play Store
+**Problem**: Need reliable cloud hosting with easy deployment.
+**Solution**: Heroku with Git-based deployment.
+**Pros**: Easy deployment, managed infrastructure, environment variables
+**Cons**: Limited free tier, potential cold starts
 
-### Security Measures
-- **JWT Authentication**: Secure token-based user sessions
-- **Environment Variable Protection**: Sensitive credentials stored securely
-- **CORS Configuration**: Proper cross-origin resource sharing setup
-- **Social Auth Compliance**: OAuth 2.0 best practices implementation
+### Environment Configuration
+- **Production**: NODE_ENV=production with MongoDB Atlas
+- **Development**: Local MongoDB or cloud connection
+- **Build Process**: Webpack production build during deployment
 
-## Recent Changes
-- **July 22, 2025**: CREATED CLEAN HEROKU DEPLOYMENT PACKAGE - Eliminated all webpack build conflicts with self-contained solution
-- **July 22, 2025**: FIXED MONGODB ATLAS CONNECTION - Updated credentials and tested successful connection to ClusterBeeTagged
-- **July 22, 2025**: DISABLED WEBPACK CONFIGS - Renamed webpack files to prevent Heroku build detection
-- **July 17, 2025**: FINAL PRODUCTION DEPLOYMENT - App fully functional with no beta access restrictions
-- **July 17, 2025**: WIDGET FIXES - Updated Squarespace widgets to direct users to working app instead of access requests
-- **July 17, 2025**: ELIMINATED WINDOW.RELOAD - Replaced all window.location.reload() calls with proper React state management
-- **July 17, 2025**: ENHANCED REACT STATE MANAGEMENT - Implemented comprehensive useState/useEffect hooks for live updates
-- **July 17, 2025**: NATURAL LANGUAGE SEARCH - Added contextual search understanding ("who works at Google?", "in Seattle")
-- **July 17, 2025**: LIVE CONTACT MANAGEMENT - Real-time contact list updates after CSV import without page reloads
-- **July 17, 2025**: COMPREHENSIVE ERROR HANDLING - Added try-catch blocks and user-friendly error messages
-- **July 16, 2025**: SIMPLIFIED REACT APP - Removed complex navigation and auth, created clean two-button interface
-- **July 16, 2025**: ELIMINATED ROUTER ERRORS - Replaced React Router with simple state management
-- **July 16, 2025**: DEPLOYED TO HEROKU PRODUCTION - https://beetagged-app-53414697acd3.herokuapp.com/
-- **July 16, 2025**: REACT APP NOW WORKING - Fixed bundle deployment and React app now serves properly with search functionality
-- **July 16, 2025**: FIXED SEARCH FUNCTIONALITY - Added missing `/api/search/natural` endpoint for natural language contact search
-- **July 16, 2025**: LinkedIn CSV import fully functional - successfully imported up to 9,077 contacts in production test
-- **July 16, 2025**: Fixed `/squarespace-linkedin-import` route with embedded HTML page for reliable deployment
-- **July 16, 2025**: Added auto-redirect after successful CSV upload to improve user experience
-- **July 16, 2025**: CRITICAL - Fixed CORS dependency issue preventing Heroku deployment
-- **June 26, 2025**: LinkedIn CSV import fully operational with successful test import of 5 contacts
-- **June 26, 2025**: Enhanced CSV parser handles multiple LinkedIn export formats with flexible column mapping
-- **June 26, 2025**: Intelligent tag generation working - automatically categorizes by company, location, position, industry
+### Static Assets
+- **Bundled Assets**: Webpack generates bundle.js and bundle.css
+- **Public Files**: Static HTML pages served directly
+- **Images**: SVG icons and logos served from public directory
 
-## User Preferences
-```
-Preferred communication style: Simple, everyday language.
-```
+### Scaling Considerations
+- **Database**: MongoDB Atlas handles scaling automatically
+- **File Storage**: Currently using server storage (could migrate to cloud storage)
+- **Session Management**: Basic in-memory sessions (would need Redis for scaling)
+
+The architecture prioritizes rapid development and deployment while maintaining flexibility for future enhancements like advanced OAuth integrations and real-time features.
