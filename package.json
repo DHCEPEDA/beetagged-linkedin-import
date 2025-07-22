@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build:dev": "vite build --mode development"
   },
   "engines": {
     "node": "18.x || 20.x",
