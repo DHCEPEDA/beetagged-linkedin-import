@@ -24,7 +24,8 @@ This file contains your complete BeeTagged application with embedded UI.
     "start": "node index.js"
   },
   "engines": {
-    "node": "18.x"
+    "node": "18.x || 20.x",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "express": "4.18.2",
