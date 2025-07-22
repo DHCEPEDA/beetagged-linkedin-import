@@ -1,15 +1,15 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
-const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  mode: 'development',
+  mode: 'production',
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'bundle.js',
-    publicPath: '/'
+    publicPath: '/',
+    clean: true
   },
   module: {
     rules: [
@@ -23,10 +23,6 @@ module.exports = {
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader']
-      },
-      {
-        test: /\.(png|svg|jpg|jpeg|gif)$/i,
-        type: 'asset/resource',
       }
     ]
   },
@@ -46,19 +42,14 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       inject: 'body',
-      title: 'BeeTagged',
-      templateContent: `
-<!DOCTYPE html>
+      title: 'BeeTagged - Professional Contact Intelligence',
+      templateContent: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BeeTagged</title>
+    <title>BeeTagged - Professional Contact Intelligence</title>
     <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
@@ -71,51 +62,19 @@ module.exports = {
 <body>
     <div id="root"></div>
 </body>
-</html>
-      `.trim()
+</html>`
     }),
     new webpack.DefinePlugin({
-      // Define environment variables for client-side access
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      'process.env.NODE_ENV': JSON.stringify('production')
     }),
-    // Provide process for browser compatibility
     new webpack.ProvidePlugin({
       process: 'process/browser'
-    }),
-    // Copy assets only if they exist - Heroku compatible
-    new CopyPlugin({
-      patterns: [
-        { 
-          from: 'public/images', 
-          to: 'images',
-          noErrorOnMissing: true
-        }
-      ],
-    }),
+    })
   ],
-  devServer: {
-    historyApiFallback: true,
-    static: [
-      {
-        directory: path.join(__dirname, 'public'),
-        publicPath: '/'
-      },
-      {
-        directory: path.join(__dirname, 'dist'),
-        publicPath: '/'
-      }
-    ],
-    port: 3000,
-    host: '0.0.0.0',
-    allowedHosts: 'all',
-    headers: {
-      'Access-Control-Allow-Origin': '*'
-    },
-    proxy: [
-      {
-        context: ['/api'],
-        target: 'http://localhost:5000'
-      }
-    ]
+  optimization: {
+    minimize: true
+  },
+  performance: {
+    hints: false
   }
 };

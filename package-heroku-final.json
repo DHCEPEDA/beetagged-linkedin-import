@@ -1,0 +1,42 @@
+{
+  "name": "beetagged",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "npx webpack --config webpack.production.config.js",
+    "heroku-postbuild": "npm run build"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "8.x"
+  },
+  "keywords": ["beetagged", "contacts", "networking", "facebook", "linkedin"],
+  "author": "BeeTagged Team",
+  "license": "ISC",
+  "description": "Professional networking platform with AI-powered contact management",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.2",
+    "csv-parser": "^3.2.0",
+    "mongoose": "^8.13.2",
+    "dotenv": "^16.5.0",
+    "compression": "^1.8.0",
+    "axios": "^1.9.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.30.0",
+    "prop-types": "^15.8.1",
+    "@babel/core": "^7.26.10",
+    "@babel/preset-env": "^7.26.9",
+    "@babel/preset-react": "^7.26.3",
+    "babel-loader": "^10.0.0",
+    "webpack": "^5.99.6",
+    "webpack-cli": "^6.0.1",
+    "html-webpack-plugin": "^5.6.3",
+    "css-loader": "^7.1.2",
+    "style-loader": "^4.0.0",
+    "process": "^0.11.10"
+  }
+}
