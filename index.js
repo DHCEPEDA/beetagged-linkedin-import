@@ -762,7 +762,7 @@ app.get('/', (req, res) => {
             
             <div class="section hidden" id="searchSection">
                 <h2>🔍 Search Contacts</h2>
-                <input type="text" id="searchInput" class="search-bar" placeholder="Try: 'Who works at Google?', 'Engineers in Seattle', 'Basketball fans in Round Rock'..." onkeyup="handleSearch(event)">
+                <input type="text" id="searchInput" class="search-bar" placeholder="Try: 'Who works at Google?', 'Engineers in Seattle', 'Basketball fans in Round Rock'..." onkeyup="handleSearch(event)" onkeydown="handleKeyDown(event)">
                 
                 <div style="margin-bottom: 20px; padding: 15px; background: #f0f7ff; border-radius: 10px; border-left: 4px solid #0066cc;">
                     <h4 style="margin: 0 0 10px 0; color: #0066cc;">💡 Search Examples:</h4>
@@ -1002,9 +1002,7 @@ app.get('/', (req, res) => {
                 '<div class="contact-list">' + contactsHtml + '</div>';
         }
         
-        async function handleSearch(event) {
-            const query = event.target.value.trim();
-            
+        async function performSearch(query) {
             if (query.length < 2) {
                 displayContacts(contacts);
                 return;
@@ -1026,6 +1024,19 @@ app.get('/', (req, res) => {
                 // Show error message to user
                 const resultsDiv = document.getElementById('searchResults');
                 resultsDiv.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">Search failed. Please try again.</p>';
+            }
+        }
+        
+        async function handleSearch(event) {
+            const query = event.target.value.trim();
+            await performSearch(query);
+        }
+        
+        function handleKeyDown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission
+                const query = event.target.value.trim();
+                performSearch(query);
             }
         }
         
