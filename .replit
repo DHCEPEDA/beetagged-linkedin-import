@@ -28,6 +28,10 @@ args = "UpdateHerokuBuild"
 task = "workflow.run"
 args = "BuildDev"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BuildDevScript"
+
 [[workflows.workflow]]
 name = "BuildClient"
 author = "agent"
@@ -60,6 +64,14 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "vite build --mode development"
+
+[[workflows.workflow]]
+name = "BuildDevScript"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node build-dev.js"
 
 [deployment]
 run = ["sh", "-c", "node index.js"]
