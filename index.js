@@ -843,6 +843,7 @@ app.get('/', (req, res) => {
                     appId: appId,
                     cookie: true,
                     xfbml: true,
+                    status: true,
                     version: 'v18.0'
                 });
                 
