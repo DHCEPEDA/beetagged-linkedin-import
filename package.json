@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build:dev": "vite build --mode development"
+    "build": "npx webpack --mode production",
+    "build:dev": "vite build --mode development",
+    "heroku-postbuild": "npm run build"
   },
   "engines": {
     "node": "18.x || 20.x",
