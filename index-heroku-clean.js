@@ -898,7 +898,7 @@ app.get('/', (req, res) => {
                 })
                 .then(response => response.json())
                 .then(data => {
-                    alert('Successfully imported ' + contacts.length + ' Facebook contacts!');
+                    alert(`Successfully imported ${contacts.length} Facebook contacts!`);
                     closeFacebookModal();
                     loadContacts(); // Refresh contact list
                 })
@@ -927,13 +927,13 @@ app.get('/', (req, res) => {
                 const result = await response.json();
                 
                 if (result.success) {
-                    statusDiv.innerHTML = '<div style="color: green; font-weight: bold;">✅ Successfully imported ' + result.count + ' contacts!</div>';
+                    statusDiv.innerHTML = \`<div style="color: green; font-weight: bold;">✅ Successfully imported \${result.count} contacts!</div>\`;
                     setTimeout(() => showSearch(), 1500);
                 } else {
-                    statusDiv.innerHTML = '<div style="color: red;">❌ Import failed: ' + result.message + '</div>';
+                    statusDiv.innerHTML = \`<div style="color: red;">❌ Import failed: \${result.message}</div>\`;
                 }
             } catch (error) {
-                statusDiv.innerHTML = '<div style="color: red;">❌ Upload error: ' + error.message + '</div>';
+                statusDiv.innerHTML = \`<div style="color: red;">❌ Upload error: \${error.message}</div>\`;
             }
         }
         
@@ -955,26 +955,27 @@ app.get('/', (req, res) => {
                 return;
             }
             
-            const contactsHtml = contactList.map(contact => 
-                '<div class="contact-item">' +
-                    '<div>' +
-                        '<strong>' + (contact.name || 'Unknown') + '</strong>' +
-                        '<div style="font-size: 14px; color: #666;">' +
-                            (contact.position || '') + (contact.position && contact.company ? ' at ' : '') + (contact.company || '') +
-                        '</div>' +
-                        '<div style="font-size: 12px; color: #999;">' +
-                            (contact.location || '') + (contact.tags ? ' • ' + contact.tags.join(', ') : '') +
-                        '</div>' +
-                    '</div>' +
-                    '<div style="font-size: 12px; color: #666;">' +
-                        (contact.email || '') +
-                    '</div>' +
-                '</div>'
-            ).join('');
+            const contactsHtml = contactList.map(contact => \`
+                <div class="contact-item">
+                    <div>
+                        <strong>\${contact.name || 'Unknown'}</strong>
+                        <div style="font-size: 14px; color: #666;">
+                            \${contact.position || ''} \${contact.position && contact.company ? 'at' : ''} \${contact.company || ''}
+                        </div>
+                        <div style="font-size: 12px; color: #999;">
+                            \${contact.location || ''} \${contact.tags ? '• ' + contact.tags.join(', ') : ''}
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        \${contact.email || ''}
+                    </div>
+                </div>
+            \`).join('');
             
-            resultsDiv.innerHTML = 
-                '<div style="margin-bottom: 15px; font-weight: bold;">Found ' + contactList.length + ' contacts</div>' +
-                '<div class="contact-list">' + contactsHtml + '</div>';
+            resultsDiv.innerHTML = \`
+                <div style="margin-bottom: 15px; font-weight: bold;">Found \${contactList.length} contacts</div>
+                <div class="contact-list">\${contactsHtml}</div>
+            \`;
         }
         
         async function handleSearch(event) {
@@ -986,7 +987,7 @@ app.get('/', (req, res) => {
             }
             
             try {
-                const response = await fetch('/api/search/natural?q=' + encodeURIComponent(query));
+                const response = await fetch(\`/api/search/natural?q=\${encodeURIComponent(query)}\`);
                 const result = await response.json();
                 displayContacts(result.results || []);
             } catch (error) {
