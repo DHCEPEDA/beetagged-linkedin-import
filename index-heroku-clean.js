@@ -151,6 +151,46 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
+// Handle Facebook contact import
+app.post('/api/import/facebook', async (req, res) => {
+    try {
+        const { contacts } = req.body;
+        
+        if (!contacts || !Array.isArray(contacts)) {
+            return res.status(400).json({ error: 'Invalid contacts data' });
+        }
+        
+        const savedContacts = [];
+        
+        for (const contactData of contacts) {
+            const contact = new Contact({
+                name: contactData.name,
+                email: contactData.email || '',
+                source: 'facebook',
+                facebookId: contactData.facebookId,
+                profileImage: contactData.profileImage,
+                tags: ['facebook-friend'],
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            
+            const saved = await contact.save();
+            savedContacts.push(saved);
+        }
+        
+        console.log(`Imported ${savedContacts.length} Facebook contacts`);
+        res.json({ 
+            success: true, 
+            message: `Successfully imported ${savedContacts.length} contacts`,
+            contacts: savedContacts 
+        });
+        
+    } catch (error) {
+        console.error('Facebook import error:', error);
+        res.status(500).json({ error: 'Failed to import Facebook contacts' });
+    }
+});
+
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
     if (!req.file) {
@@ -534,8 +574,103 @@ app.get('/', (req, res) => {
         }
         
         function showFacebookImport() {
-            // Placeholder for Facebook import functionality
-            alert('Facebook import coming soon! Use LinkedIn CSV import for now.');
+            // Show Facebook import modal
+            showFacebookModal();
+        }
+        
+        function showFacebookModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+            
+            modal.innerHTML = '<div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%;"><h3 style="margin: 0 0 20px 0; color: #1877f2;">Facebook Contact Import</h3><div style="margin-bottom: 20px;"><label style="display: block; margin-bottom: 5px; font-weight: 600;">Facebook App ID:</label><input type="text" id="fbAppId" placeholder="Enter your Facebook App ID" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"><p style="font-size: 12px; color: #666; margin-top: 5px;">Create an app at <a href="https://developers.facebook.com" target="_blank">developers.facebook.com</a></p></div><div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 5px;"><strong>Important:</strong> Facebook restricts friend data access. You will only see friends who have also authorized your app.</div><div style="display: flex; gap: 10px;"><button onclick="initFacebookImport()" style="flex: 1; background: #1877f2; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer;">Connect & Import</button><button onclick="closeFacebookModal()" style="flex: 1; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer;">Cancel</button></div></div>';
+            
+            document.body.appendChild(modal);
+            window.currentModal = modal;
+        }
+        
+        function closeFacebookModal() {
+            if (window.currentModal) {
+                document.body.removeChild(window.currentModal);
+                window.currentModal = null;
+            }
+        }
+        
+        function initFacebookImport() {
+            const appId = document.getElementById('fbAppId').value.trim();
+            if (!appId) {
+                alert('Please enter your Facebook App ID');
+                return;
+            }
+            
+            // Initialize Facebook SDK
+            window.fbAsyncInit = function() {
+                window.FB.init({
+                    appId: appId,
+                    cookie: true,
+                    xfbml: true,
+                    version: 'v18.0'
+                });
+                
+                // Login and import
+                window.FB.login(function(response) {
+                    if (response.authResponse) {
+                        importFacebookContacts();
+                    } else {
+                        alert('Facebook login failed or was cancelled');
+                    }
+                }, {scope: 'email,user_friends'});
+            };
+            
+            // Load Facebook SDK
+            if (!document.getElementById('facebook-jssdk')) {
+                const js = document.createElement('script');
+                js.id = 'facebook-jssdk';
+                js.src = 'https://connect.facebook.net/en_US/sdk.js';
+                document.head.appendChild(js);
+            } else {
+                window.fbAsyncInit();
+            }
+        }
+        
+        function importFacebookContacts() {
+            window.FB.api('/me/friends', {fields: 'id,name,email,picture'}, function(response) {
+                if (response.error) {
+                    alert('Error fetching Facebook friends: ' + response.error.message);
+                    return;
+                }
+                
+                const friends = response.data || [];
+                if (friends.length === 0) {
+                    alert('No Facebook friends found. This is normal due to Facebook privacy restrictions.');
+                    closeFacebookModal();
+                    return;
+                }
+                
+                // Convert to contacts format and send to server
+                const contacts = friends.map(friend => ({
+                    name: friend.name,
+                    email: friend.email || '',
+                    source: 'facebook',
+                    facebookId: friend.id,
+                    profileImage: friend.picture && friend.picture.data ? friend.picture.data.url : null
+                }));
+                
+                // Send to backend
+                fetch('/api/import/facebook', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contacts})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(`Successfully imported ${contacts.length} Facebook contacts!`);
+                    closeFacebookModal();
+                    loadContacts(); // Refresh contact list
+                })
+                .catch(error => {
+                    alert('Error importing contacts: ' + error.message);
+                });
+            });
         }
         
         async function handleFileUpload(event) {
