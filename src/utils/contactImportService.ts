@@ -1,6 +1,26 @@
 import { Contact } from '../types/contact';
 
-// Enhanced CSV parsing service for LinkedIn contact imports
+/**
+ * Contact Import Service
+ * 
+ * Handles CSV file processing for LinkedIn connection exports with enhanced
+ * parsing capabilities for quoted fields and multiple header formats.
+ * 
+ * Key Features:
+ * - Robust CSV parsing with quote handling
+ * - Multiple header format support
+ * - Data validation and cleaning
+ * - Contact object transformation
+ * 
+ * @author BeeTagged Development Team
+ */
+
+/**
+ * Contact Data Interface
+ * 
+ * Represents the structure of contact data extracted from CSV files
+ * before transformation into the full Contact object.
+ */
 export interface ContactData {
   name: string;
   email: string;
@@ -12,7 +32,22 @@ export interface ContactData {
 }
 
 export class ContactImportService {
-  // Client-side CSV Import for file uploads
+  /**
+   * Import Contacts from CSV File
+   * 
+   * Reads a CSV file using FileReader API and processes it into Contact objects.
+   * Handles LinkedIn exports with various formats and quoted field parsing.
+   * 
+   * @param {File} file - CSV file uploaded by user
+   * @returns {Promise<Contact[]>} Promise resolving to array of Contact objects
+   * @throws {Error} If file reading fails or CSV format is invalid
+   * 
+   * Usage Example:
+   * ```typescript
+   * const contacts = await ContactImportService.importFromCSV(csvFile);
+   * console.log(`Imported ${contacts.length} contacts`);
+   * ```
+   */
   static async importFromCSV(file: File): Promise<Contact[]> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -32,7 +67,23 @@ export class ContactImportService {
     });
   }
 
-  // Enhanced CSV to Contact parsing
+  /**
+   * Parse CSV String to Contact Objects
+   * 
+   * Converts raw CSV data into structured Contact objects with proper
+   * field mapping and data validation. Handles multiple LinkedIn export formats.
+   * 
+   * @param {string} csv - Raw CSV content as string
+   * @returns {Contact[]} Array of parsed and validated Contact objects
+   * @throws {Error} If CSV has invalid format or insufficient data
+   * 
+   * Parsing Process:
+   * 1. Split CSV into lines and parse headers
+   * 2. Map headers to standard field names
+   * 3. Process each data row with quote handling
+   * 4. Transform to Contact objects with defaults
+   * 5. Apply data validation and cleaning
+   */
   private static parseCSVToContacts(csv: string): Contact[] {
     const lines = csv.split('\n').filter(line => line.trim());
     if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row');

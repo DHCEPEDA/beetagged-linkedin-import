@@ -1,4 +1,18 @@
-// Facebook SDK integration for contact import
+/**
+ * Facebook Service for Contact Import
+ * 
+ * Provides integration with Facebook SDK for importing user connections
+ * and friends as contacts. Handles OAuth authentication, API calls,
+ * and contact data transformation.
+ * 
+ * Important Notes:
+ * - Facebook restricts friend data access due to privacy policies
+ * - Only friends who have also authorized your app will be accessible
+ * - Requires Facebook App ID and proper OAuth setup
+ * 
+ * @author BeeTagged Development Team
+ */
+
 declare global {
   interface Window {
     FB: any;
@@ -6,6 +20,12 @@ declare global {
   }
 }
 
+/**
+ * Facebook Contact Interface
+ * 
+ * Represents contact data structure returned by Facebook Graph API.
+ * Limited by Facebook's privacy restrictions on friend data access.
+ */
 export interface FacebookContact {
   id: string;
   name: string;
@@ -31,16 +51,40 @@ export interface Contact {
   updatedAt: Date;
 }
 
+/**
+ * Facebook Service Class
+ * 
+ * Manages Facebook SDK integration for contact import functionality.
+ * Handles authentication, API interactions, and contact data processing.
+ */
 export class FacebookService {
   private appId: string;
   private isInitialized = false;
   private accessToken: string | null = null;
 
+  /**
+   * Create Facebook Service Instance
+   * 
+   * @param {string} appId - Facebook Application ID from developers.facebook.com
+   */
   constructor(appId: string) {
     this.appId = appId;
   }
 
-  // Initialize Facebook SDK
+  /**
+   * Initialize Facebook SDK
+   * 
+   * Loads and configures the Facebook JavaScript SDK with the provided App ID.
+   * Must be called before any other Facebook operations.
+   * 
+   * @returns {Promise<void>} Promise that resolves when SDK is ready
+   * @throws {Error} If SDK fails to load or initialization fails
+   * 
+   * SDK Configuration:
+   * - Enables cookies for session persistence
+   * - Sets up XFBML parsing for social plugins
+   * - Uses Facebook API version v18.0
+   */
   async initialize(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.isInitialized) {
