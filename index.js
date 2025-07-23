@@ -481,59 +481,71 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
 app.get('/api/search/natural', async (req, res) => {
   try {
     const query = req.query.q?.toLowerCase() || '';
+    console.log(`Search query: "${query}"`);
     
     if (!query) {
       const allContacts = await Contact.find().sort({ createdAt: -1 });
+      console.log(`Returning all ${allContacts.length} contacts`);
       return res.json({ results: allContacts });
     }
 
-    // Build search conditions
+    // Enhanced search with broader patterns
     const searchConditions = [];
     
-    // Company search
-    if (query.includes('google') || query.includes('at google')) {
-      searchConditions.push({ company: /google/i });
-    } else if (query.includes('microsoft')) {
-      searchConditions.push({ company: /microsoft/i });
-    } else if (query.includes('apple')) {
-      searchConditions.push({ company: /apple/i });
-    }
+    // Smart keyword-based search
+    const keywords = query.split(/\s+/);
     
-    // Location search
-    if (query.includes('seattle')) {
-      searchConditions.push({ location: /seattle/i });
-    } else if (query.includes('san francisco') || query.includes('sf')) {
-      searchConditions.push({ location: /san francisco|sf/i });
-    } else if (query.includes('new york') || query.includes('nyc')) {
-      searchConditions.push({ location: /new york|nyc/i });
-    }
-    
-    // Role/function search
-    if (query.includes('engineer') || query.includes('developer')) {
-      searchConditions.push({ position: /engineer|developer/i });
-    } else if (query.includes('marketing')) {
-      searchConditions.push({ position: /marketing/i });
-    } else if (query.includes('sales')) {
-      searchConditions.push({ position: /sales/i });
-    } else if (query.includes('manager')) {
-      searchConditions.push({ position: /manager|director/i });
+    // Build comprehensive search conditions
+    for (const keyword of keywords) {
+      if (keyword.length > 1) { // Skip single characters
+        searchConditions.push({
+          $or: [
+            { name: { $regex: keyword, $options: 'i' } },
+            { company: { $regex: keyword, $options: 'i' } },
+            { position: { $regex: keyword, $options: 'i' } },
+            { location: { $regex: keyword, $options: 'i' } },
+            { email: { $regex: keyword, $options: 'i' } },
+            { tags: { $elemMatch: { $regex: keyword, $options: 'i' } } }
+          ]
+        });
+      }
     }
 
-    // General text search if no specific patterns found
-    if (searchConditions.length === 0) {
+    // Specific pattern matching for common queries
+    if (query.includes('basketball') || query.includes('sports')) {
       searchConditions.push({
         $or: [
-          { name: { $regex: query, $options: 'i' } },
-          { company: { $regex: query, $options: 'i' } },
-          { position: { $regex: query, $options: 'i' } },
-          { location: { $regex: query, $options: 'i' } },
-          { tags: { $regex: query, $options: 'i' } }
+          { tags: { $elemMatch: { $regex: 'basketball|sports|athletic', $options: 'i' } } },
+          { company: { $regex: 'nba|basketball|sports', $options: 'i' } },
+          { position: { $regex: 'basketball|sports|athletic', $options: 'i' } }
         ]
       });
     }
 
-    const searchQuery = searchConditions.length > 0 ? { $or: searchConditions } : {};
+    if (query.includes('round rock') || query.includes('austin')) {
+      searchConditions.push({
+        $or: [
+          { location: { $regex: 'round rock|austin|texas', $options: 'i' } },
+          { tags: { $elemMatch: { $regex: 'round rock|austin|texas', $options: 'i' } } }
+        ]
+      });
+    }
+
+    // Tech companies search
+    if (query.includes('tech') || query.includes('google') || query.includes('microsoft') || query.includes('apple')) {
+      searchConditions.push({
+        $or: [
+          { company: { $regex: 'google|microsoft|apple|amazon|meta|facebook|tech', $options: 'i' } },
+          { tags: { $elemMatch: { $regex: 'technology|tech|google|microsoft|apple', $options: 'i' } } }
+        ]
+      });
+    }
+
+    const searchQuery = searchConditions.length > 0 ? { $and: searchConditions } : {};
+    console.log('Search query object:', JSON.stringify(searchQuery, null, 2));
+    
     const results = await Contact.find(searchQuery).sort({ createdAt: -1 });
+    console.log(`Found ${results.length} results for "${query}"`);
     
     res.json({ results });
   } catch (error) {
@@ -750,7 +762,19 @@ app.get('/', (req, res) => {
             
             <div class="section hidden" id="searchSection">
                 <h2>🔍 Search Contacts</h2>
-                <input type="text" id="searchInput" class="search-bar" placeholder="Try: 'Who works at Google?', 'Marketing contacts in NYC', 'People in Seattle'..." onkeyup="handleSearch(event)">
+                <input type="text" id="searchInput" class="search-bar" placeholder="Try: 'Who works at Google?', 'Engineers in Seattle', 'Basketball fans in Round Rock'..." onkeyup="handleSearch(event)">
+                
+                <div style="margin-bottom: 20px; padding: 15px; background: #f0f7ff; border-radius: 10px; border-left: 4px solid #0066cc;">
+                    <h4 style="margin: 0 0 10px 0; color: #0066cc;">💡 Search Examples:</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 14px;">
+                        <div><strong>"Google"</strong> - Find Google employees</div>
+                        <div><strong>"Engineer"</strong> - Find all engineers</div>
+                        <div><strong>"Seattle"</strong> - People in Seattle</div>
+                        <div><strong>"John"</strong> - Find people named John</div>
+                        <div><strong>"Microsoft manager"</strong> - Managers at Microsoft</div>
+                        <div><strong>"Apple designer"</strong> - Designers at Apple</div>
+                    </div>
+                </div>
                 
                 <!-- Import Buttons underneath search bar -->
                 <div style="text-align: center; margin: 20px 0; padding: 20px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
@@ -986,13 +1010,22 @@ app.get('/', (req, res) => {
                 return;
             }
             
+            console.log('Searching for:', query);
+            
             try {
                 const response = await fetch('/api/search/natural?q=' + encodeURIComponent(query));
+                if (!response.ok) {
+                    throw new Error('Search request failed');
+                }
                 const result = await response.json();
+                console.log('Search results:', result.results.length, 'contacts found');
                 displayContacts(result.results || []);
             } catch (error) {
                 console.error('Search error:', error);
                 displayContacts([]);
+                // Show error message to user
+                const resultsDiv = document.getElementById('searchResults');
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">Search failed. Please try again.</p>';
             }
         }
         
