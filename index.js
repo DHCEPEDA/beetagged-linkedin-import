@@ -109,8 +109,72 @@ function generateTags(contact) {
   return tags;
 }
 
+// Enhanced CSV parsing function that handles quoted fields properly
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote within quotes
+        current += '"';
+        i += 2;
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+        i++;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Field separator outside quotes
+      result.push(current.trim());
+      current = '';
+      i++;
+    } else {
+      current += char;
+      i++;
+    }
+  }
+
+  // Add the last field
+  result.push(current.trim());
+  return result;
+}
+
+// LinkedIn header mappings - handles multiple variations
+const LINKEDIN_HEADER_MAPPINGS = {
+  firstName: ['first name', 'firstname', 'given name'],
+  lastName: ['last name', 'lastname', 'surname', 'family name'],
+  name: ['first name', 'last name', 'name', 'full name', 'contact name'],
+  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email'],
+  company: ['company', 'current company', 'organization', 'employer', 'workplace'],
+  position: ['position', 'current position', 'title', 'job title', 'current title', 'role'],
+  location: ['location', 'current location', 'address', 'city', 'region'],
+  connectedOn: ['connected on', 'connection date', 'date connected', 'connected'],
+  url: ['url', 'profile url', 'linkedin url', 'profile link']
+};
+
+// Find header index by checking multiple possible names
+function findHeaderIndex(headers, fieldMappings) {
+  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+  
+  for (const mapping of fieldMappings) {
+    const index = normalizedHeaders.indexOf(mapping.toLowerCase());
+    if (index !== -1) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 function parseCSVData(data) {
-  // Handle different LinkedIn CSV formats
+  // This function is now legacy - kept for compatibility
+  // Real parsing happens in the enhanced CSV processor
   const name = data['First Name'] && data['Last Name'] 
     ? `${data['First Name']} ${data['Last Name']}`.trim()
     : data['Name'] || data['Full Name'] || '';
@@ -151,6 +215,46 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
+// Handle Facebook contact import
+app.post('/api/import/facebook', async (req, res) => {
+    try {
+        const { contacts } = req.body;
+        
+        if (!contacts || !Array.isArray(contacts)) {
+            return res.status(400).json({ error: 'Invalid contacts data' });
+        }
+        
+        const savedContacts = [];
+        
+        for (const contactData of contacts) {
+            const contact = new Contact({
+                name: contactData.name,
+                email: contactData.email || '',
+                source: 'facebook',
+                facebookId: contactData.facebookId,
+                profileImage: contactData.profileImage,
+                tags: ['facebook-friend'],
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            
+            const saved = await contact.save();
+            savedContacts.push(saved);
+        }
+        
+        console.log(`Imported ${savedContacts.length} Facebook contacts`);
+        res.json({ 
+            success: true, 
+            message: `Successfully imported ${savedContacts.length} contacts`,
+            contacts: savedContacts 
+        });
+        
+    } catch (error) {
+        console.error('Facebook import error:', error);
+        res.status(500).json({ error: 'Failed to import Facebook contacts' });
+    }
+});
+
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
     if (!req.file) {
@@ -158,57 +262,114 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     }
 
     const csvData = req.file.buffer.toString('utf8');
+    console.log('Processing LinkedIn CSV file...');
+
+    // Enhanced CSV parsing
+    const lines = csvData.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'CSV file must contain at least a header row and one data row' 
+      });
+    }
+
+    // Parse headers using enhanced parser
+    const headerLine = lines[0];
+    const headers = parseCSVLine(headerLine);
+    console.log('CSV Headers found:', headers);
+    
+    // Find column indices for each field
+    const indices = {
+      firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
+      lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
+      name: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.name),
+      email: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.email),
+      company: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.company),
+      position: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.position),
+      location: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.location),
+      connectedOn: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.connectedOn),
+      url: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.url)
+    };
+
+    console.log('Field indices:', indices);
+
     const contacts = [];
     let processed = 0;
+    let skipped = 0;
 
-    const stream = require('stream');
-    const readable = new stream.Readable();
-    readable.push(csvData);
-    readable.push(null);
-
-    readable
-      .pipe(csv())
-      .on('data', (data) => {
-        const contactData = parseCSVData(data);
+    // Process data rows with enhanced parsing
+    for (let i = 1; i < lines.length; i++) {
+      try {
+        const fields = parseCSVLine(lines[i]);
+        processed++;
         
-        if (contactData.name) {
-          const contact = {
-            id: contactIdCounter++,
-            ...contactData,
-            tags: generateTags(contactData),
-            source: 'linkedin',
-            createdAt: new Date()
-          };
-          contacts.push(contact);
-          processed++;
+        // Build name from firstName/lastName or use full name field
+        let name = '';
+        if (indices.firstName >= 0 && indices.lastName >= 0) {
+          const firstName = fields[indices.firstName]?.trim() || '';
+          const lastName = fields[indices.lastName]?.trim() || '';
+          name = `${firstName} ${lastName}`.trim();
+        } else if (indices.name >= 0) {
+          name = fields[indices.name]?.trim() || '';
         }
-      })
-      .on('end', async () => {
-        try {
-          if (contacts.length > 0) {
-            await Contact.insertMany(contacts, { ordered: false });
-          }
-          
-          console.log(`Successfully imported ${contacts.length} contacts`);
-          res.json({
-            success: true,
-            count: contacts.length,
-            processed: processed,
-            message: `Successfully imported ${contacts.length} LinkedIn contacts`
-          });
-        } catch (error) {
-          console.error('Database insert error:', error);
-          res.json({
-            success: true,
-            count: contacts.length,
-            message: `Processed ${contacts.length} contacts (some may have been duplicates)`
-          });
+
+        // Skip rows without a name
+        if (!name) {
+          skipped++;
+          continue;
         }
-      })
-      .on('error', (error) => {
-        console.error('CSV parsing error:', error);
-        res.status(500).json({ success: false, message: 'Error parsing CSV file' });
+
+        const contactData = {
+          name,
+          email: indices.email >= 0 ? (fields[indices.email]?.trim().toLowerCase() || '') : '',
+          company: indices.company >= 0 ? (fields[indices.company]?.trim() || '') : '',
+          position: indices.position >= 0 ? (fields[indices.position]?.trim() || '') : '',
+          location: indices.location >= 0 ? (fields[indices.location]?.trim() || '') : '',
+          connectedOn: indices.connectedOn >= 0 ? (fields[indices.connectedOn]?.trim() || '') : '',
+          url: indices.url >= 0 ? (fields[indices.url]?.trim() || '') : ''
+        };
+
+        const contact = new Contact({
+          ...contactData,
+          tags: generateTags(contactData),
+          source: 'linkedin',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+
+        contacts.push(contact);
+      } catch (error) {
+        console.warn(`Error parsing CSV line ${i + 1}:`, error);
+        skipped++;
+      }
+    }
+
+    // Save to database
+    try {
+      if (contacts.length > 0) {
+        await Contact.insertMany(contacts, { ordered: false });
+      }
+      
+      console.log(`Successfully imported ${contacts.length} contacts (processed: ${processed}, skipped: ${skipped})`);
+      res.json({
+        success: true,
+        count: contacts.length,
+        processed: processed,
+        skipped: skipped,
+        message: `Successfully imported ${contacts.length} LinkedIn contacts`
       });
+    } catch (error) {
+      console.error('Database insert error:', error);
+      // Even if some fail, return success for the ones that worked
+      res.json({
+        success: true,
+        count: contacts.length,
+        processed: processed,
+        skipped: skipped,
+        message: `Processed ${contacts.length} contacts (some may have been duplicates)`
+      });
+    }
 
   } catch (error) {
     console.error('Import error:', error);
@@ -278,6 +439,19 @@ app.get('/api/search/natural', async (req, res) => {
     console.error('Search error:', error);
     res.status(500).json({ error: 'Search failed', results: [] });
   }
+});
+
+// Download CSV template endpoint
+app.get('/api/csv-template', (req, res) => {
+  const template = [
+    'name,company,job title,industry,email,phone,linkedin,how we met,notes,tags',
+    'John Smith,Tesla,Software Engineer,Automotive,john@tesla.com,555-0123,linkedin.com/in/johnsmith,Conference,Great engineer,engineering;tesla',
+    'Jane Doe,Google,Product Manager,Technology,jane@google.com,555-0456,linkedin.com/in/janedoe,Mutual friend,PM for Chrome,product;google;chrome'
+  ].join('\n');
+  
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="beetagged-contacts-template.csv"');
+  res.send(template);
 });
 
 // Main application route
@@ -534,8 +708,103 @@ app.get('/', (req, res) => {
         }
         
         function showFacebookImport() {
-            // Placeholder for Facebook import functionality
-            alert('Facebook import coming soon! Use LinkedIn CSV import for now.');
+            // Show Facebook import modal
+            showFacebookModal();
+        }
+        
+        function showFacebookModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+            
+            modal.innerHTML = '<div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%;"><h3 style="margin: 0 0 20px 0; color: #1877f2;">Facebook Contact Import</h3><div style="margin-bottom: 20px;"><label style="display: block; margin-bottom: 5px; font-weight: 600;">Facebook App ID:</label><input type="text" id="fbAppId" placeholder="Enter your Facebook App ID" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"><p style="font-size: 12px; color: #666; margin-top: 5px;">Create an app at <a href="https://developers.facebook.com" target="_blank">developers.facebook.com</a></p></div><div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 5px;"><strong>Important:</strong> Facebook restricts friend data access. You will only see friends who have also authorized your app.</div><div style="display: flex; gap: 10px;"><button onclick="initFacebookImport()" style="flex: 1; background: #1877f2; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer;">Connect & Import</button><button onclick="closeFacebookModal()" style="flex: 1; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer;">Cancel</button></div></div>';
+            
+            document.body.appendChild(modal);
+            window.currentModal = modal;
+        }
+        
+        function closeFacebookModal() {
+            if (window.currentModal) {
+                document.body.removeChild(window.currentModal);
+                window.currentModal = null;
+            }
+        }
+        
+        function initFacebookImport() {
+            const appId = document.getElementById('fbAppId').value.trim();
+            if (!appId) {
+                alert('Please enter your Facebook App ID');
+                return;
+            }
+            
+            // Initialize Facebook SDK
+            window.fbAsyncInit = function() {
+                window.FB.init({
+                    appId: appId,
+                    cookie: true,
+                    xfbml: true,
+                    version: 'v18.0'
+                });
+                
+                // Login and import
+                window.FB.login(function(response) {
+                    if (response.authResponse) {
+                        importFacebookContacts();
+                    } else {
+                        alert('Facebook login failed or was cancelled');
+                    }
+                }, {scope: 'email,user_friends'});
+            };
+            
+            // Load Facebook SDK
+            if (!document.getElementById('facebook-jssdk')) {
+                const js = document.createElement('script');
+                js.id = 'facebook-jssdk';
+                js.src = 'https://connect.facebook.net/en_US/sdk.js';
+                document.head.appendChild(js);
+            } else {
+                window.fbAsyncInit();
+            }
+        }
+        
+        function importFacebookContacts() {
+            window.FB.api('/me/friends', {fields: 'id,name,email,picture'}, function(response) {
+                if (response.error) {
+                    alert('Error fetching Facebook friends: ' + response.error.message);
+                    return;
+                }
+                
+                const friends = response.data || [];
+                if (friends.length === 0) {
+                    alert('No Facebook friends found. This is normal due to Facebook privacy restrictions.');
+                    closeFacebookModal();
+                    return;
+                }
+                
+                // Convert to contacts format and send to server
+                const contacts = friends.map(friend => ({
+                    name: friend.name,
+                    email: friend.email || '',
+                    source: 'facebook',
+                    facebookId: friend.id,
+                    profileImage: friend.picture && friend.picture.data ? friend.picture.data.url : null
+                }));
+                
+                // Send to backend
+                fetch('/api/import/facebook', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contacts})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(`Successfully imported ${contacts.length} Facebook contacts!`);
+                    closeFacebookModal();
+                    loadContacts(); // Refresh contact list
+                })
+                .catch(error => {
+                    alert('Error importing contacts: ' + error.message);
+                });
+            });
         }
         
         async function handleFileUpload(event) {
