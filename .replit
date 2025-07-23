@@ -14,31 +14,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "BuildClient"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "BeeTaggedServer"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "UpdateHerokuBuild"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "BuildDev"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "BuildDevScript"
-
-[[workflows.workflow]]
-name = "BuildClient"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx webpack --mode production"
 
 [[workflows.workflow]]
 name = "BeeTaggedServer"
@@ -56,22 +36,6 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo '{\"scripts\":{\"start\":\"node index.js\",\"build\":\"npx webpack --config webpack.production.config.js\",\"heroku-postbuild\":\"npm run build\"}}' > temp-scripts.json && cat temp-scripts.json"
-
-[[workflows.workflow]]
-name = "BuildDev"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "vite build --mode development"
-
-[[workflows.workflow]]
-name = "BuildDevScript"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node build-dev.js"
 
 [deployment]
 run = ["sh", "-c", "node index.js"]
