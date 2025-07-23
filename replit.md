@@ -113,3 +113,12 @@ The application employs a **hybrid approach** combining:
 - **Session Management**: Basic in-memory sessions (would need Redis for scaling)
 
 The architecture prioritizes rapid development and deployment while maintaining flexibility for future enhancements like advanced OAuth integrations and real-time features.
+
+## Recent Changes: Latest modifications with dates
+
+### July 23, 2025 - Deployment Package Fix
+- **Issue**: Heroku deployment failed due to package-lock.json conflicts with TypeScript/Vite dependencies
+- **Solution**: Created simplified package.json without build tools for server-only deployment
+- **Action Required**: User needs to delete package-lock.json and use simplified package.json
+- **Files**: package-heroku-fixed.json contains clean dependency list for successful deployment
+- **Note**: Added "build:dev" script as requested by user while maintaining deployment compatibility

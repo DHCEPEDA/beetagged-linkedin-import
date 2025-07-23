@@ -10,6 +10,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "build:dev": "echo 'Build dev command available but not used in production'",
     "heroku-postbuild": "echo 'No build step required - using static files'"
   },
   "engines": {
