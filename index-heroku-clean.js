@@ -109,8 +109,72 @@ function generateTags(contact) {
   return tags;
 }
 
+// Enhanced CSV parsing function that handles quoted fields properly
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote within quotes
+        current += '"';
+        i += 2;
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+        i++;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Field separator outside quotes
+      result.push(current.trim());
+      current = '';
+      i++;
+    } else {
+      current += char;
+      i++;
+    }
+  }
+
+  // Add the last field
+  result.push(current.trim());
+  return result;
+}
+
+// LinkedIn header mappings - handles multiple variations
+const LINKEDIN_HEADER_MAPPINGS = {
+  firstName: ['first name', 'firstname', 'given name'],
+  lastName: ['last name', 'lastname', 'surname', 'family name'],
+  name: ['first name', 'last name', 'name', 'full name', 'contact name'],
+  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email'],
+  company: ['company', 'current company', 'organization', 'employer', 'workplace'],
+  position: ['position', 'current position', 'title', 'job title', 'current title', 'role'],
+  location: ['location', 'current location', 'address', 'city', 'region'],
+  connectedOn: ['connected on', 'connection date', 'date connected', 'connected'],
+  url: ['url', 'profile url', 'linkedin url', 'profile link']
+};
+
+// Find header index by checking multiple possible names
+function findHeaderIndex(headers, fieldMappings) {
+  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+  
+  for (const mapping of fieldMappings) {
+    const index = normalizedHeaders.indexOf(mapping.toLowerCase());
+    if (index !== -1) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 function parseCSVData(data) {
-  // Handle different LinkedIn CSV formats
+  // This function is now legacy - kept for compatibility
+  // Real parsing happens in the enhanced CSV processor
   const name = data['First Name'] && data['Last Name'] 
     ? `${data['First Name']} ${data['Last Name']}`.trim()
     : data['Name'] || data['Full Name'] || '';
@@ -198,57 +262,114 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     }
 
     const csvData = req.file.buffer.toString('utf8');
+    console.log('Processing LinkedIn CSV file...');
+
+    // Enhanced CSV parsing
+    const lines = csvData.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'CSV file must contain at least a header row and one data row' 
+      });
+    }
+
+    // Parse headers using enhanced parser
+    const headerLine = lines[0];
+    const headers = parseCSVLine(headerLine);
+    console.log('CSV Headers found:', headers);
+    
+    // Find column indices for each field
+    const indices = {
+      firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
+      lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
+      name: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.name),
+      email: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.email),
+      company: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.company),
+      position: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.position),
+      location: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.location),
+      connectedOn: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.connectedOn),
+      url: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.url)
+    };
+
+    console.log('Field indices:', indices);
+
     const contacts = [];
     let processed = 0;
+    let skipped = 0;
 
-    const stream = require('stream');
-    const readable = new stream.Readable();
-    readable.push(csvData);
-    readable.push(null);
-
-    readable
-      .pipe(csv())
-      .on('data', (data) => {
-        const contactData = parseCSVData(data);
+    // Process data rows with enhanced parsing
+    for (let i = 1; i < lines.length; i++) {
+      try {
+        const fields = parseCSVLine(lines[i]);
+        processed++;
         
-        if (contactData.name) {
-          const contact = {
-            id: contactIdCounter++,
-            ...contactData,
-            tags: generateTags(contactData),
-            source: 'linkedin',
-            createdAt: new Date()
-          };
-          contacts.push(contact);
-          processed++;
+        // Build name from firstName/lastName or use full name field
+        let name = '';
+        if (indices.firstName >= 0 && indices.lastName >= 0) {
+          const firstName = fields[indices.firstName]?.trim() || '';
+          const lastName = fields[indices.lastName]?.trim() || '';
+          name = `${firstName} ${lastName}`.trim();
+        } else if (indices.name >= 0) {
+          name = fields[indices.name]?.trim() || '';
         }
-      })
-      .on('end', async () => {
-        try {
-          if (contacts.length > 0) {
-            await Contact.insertMany(contacts, { ordered: false });
-          }
-          
-          console.log(`Successfully imported ${contacts.length} contacts`);
-          res.json({
-            success: true,
-            count: contacts.length,
-            processed: processed,
-            message: `Successfully imported ${contacts.length} LinkedIn contacts`
-          });
-        } catch (error) {
-          console.error('Database insert error:', error);
-          res.json({
-            success: true,
-            count: contacts.length,
-            message: `Processed ${contacts.length} contacts (some may have been duplicates)`
-          });
+
+        // Skip rows without a name
+        if (!name) {
+          skipped++;
+          continue;
         }
-      })
-      .on('error', (error) => {
-        console.error('CSV parsing error:', error);
-        res.status(500).json({ success: false, message: 'Error parsing CSV file' });
+
+        const contactData = {
+          name,
+          email: indices.email >= 0 ? (fields[indices.email]?.trim().toLowerCase() || '') : '',
+          company: indices.company >= 0 ? (fields[indices.company]?.trim() || '') : '',
+          position: indices.position >= 0 ? (fields[indices.position]?.trim() || '') : '',
+          location: indices.location >= 0 ? (fields[indices.location]?.trim() || '') : '',
+          connectedOn: indices.connectedOn >= 0 ? (fields[indices.connectedOn]?.trim() || '') : '',
+          url: indices.url >= 0 ? (fields[indices.url]?.trim() || '') : ''
+        };
+
+        const contact = new Contact({
+          ...contactData,
+          tags: generateTags(contactData),
+          source: 'linkedin',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+
+        contacts.push(contact);
+      } catch (error) {
+        console.warn(`Error parsing CSV line ${i + 1}:`, error);
+        skipped++;
+      }
+    }
+
+    // Save to database
+    try {
+      if (contacts.length > 0) {
+        await Contact.insertMany(contacts, { ordered: false });
+      }
+      
+      console.log(`Successfully imported ${contacts.length} contacts (processed: ${processed}, skipped: ${skipped})`);
+      res.json({
+        success: true,
+        count: contacts.length,
+        processed: processed,
+        skipped: skipped,
+        message: `Successfully imported ${contacts.length} LinkedIn contacts`
       });
+    } catch (error) {
+      console.error('Database insert error:', error);
+      // Even if some fail, return success for the ones that worked
+      res.json({
+        success: true,
+        count: contacts.length,
+        processed: processed,
+        skipped: skipped,
+        message: `Processed ${contacts.length} contacts (some may have been duplicates)`
+      });
+    }
 
   } catch (error) {
     console.error('Import error:', error);
