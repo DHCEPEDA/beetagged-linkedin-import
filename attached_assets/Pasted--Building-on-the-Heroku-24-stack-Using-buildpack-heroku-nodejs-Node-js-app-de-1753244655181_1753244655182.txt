@@ -1,0 +1,120 @@
+-----> Building on the Heroku-24 stack
+-----> Using buildpack: heroku/nodejs
+-----> Node.js app detected
+       
+-----> Creating runtime environment
+       
+       NPM_CONFIG_LOGLEVEL=error
+       NODE_VERBOSE=false
+       NODE_ENV=production
+       NODE_MODULES_CACHE=true
+       
+-----> Installing binaries
+       engines.node (package.json):   >=18.0.0
+       engines.npm (package.json):    >=8.0.0
+       
+       Resolving node version >=18.0.0...
+       Downloading and installing node 24.4.1...
+       Bootstrapping npm >=8.0.0 (replacing 11.4.2)...
+npm warn Unknown cli config "--unsafe-perm". This will stop working in the next major version of npm.
+       npm 11.4.2 installed
+       
+-----> Restoring cache
+       Cached directories were not restored due to a change in version of node, npm, yarn or stack
+       Module installation may take longer for this build
+       
+-----> Installing dependencies
+       Installing node modules
+       npm error code EUSAGE
+       npm error
+       npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+       npm error
+       npm error Missing: vite@7.0.5 from lock file
+       npm error Missing: esbuild@0.25.8 from lock file
+       npm error Missing: fdir@6.4.6 from lock file
+       npm error Missing: fsevents@2.3.3 from lock file
+       npm error Missing: picomatch@4.0.3 from lock file
+       npm error Invalid: lock file's postcss@8.5.3 does not satisfy postcss@8.5.6
+       npm error Missing: rollup@4.45.1 from lock file
+       npm error Invalid: lock file's tinyglobby@0.2.13 does not satisfy tinyglobby@0.2.14
+       npm error Missing: @esbuild/aix-ppc64@0.25.8 from lock file
+       npm error Missing: @esbuild/android-arm@0.25.8 from lock file
+       npm error Missing: @esbuild/android-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/android-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/darwin-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/darwin-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/freebsd-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/freebsd-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-arm@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-ia32@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-loong64@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-mips64el@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-ppc64@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-riscv64@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-s390x@0.25.8 from lock file
+       npm error Missing: @esbuild/linux-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/netbsd-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/netbsd-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/openbsd-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/openbsd-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/openharmony-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/sunos-x64@0.25.8 from lock file
+       npm error Missing: @esbuild/win32-arm64@0.25.8 from lock file
+       npm error Missing: @esbuild/win32-ia32@0.25.8 from lock file
+       npm error Missing: @esbuild/win32-x64@0.25.8 from lock file
+       npm error Missing: @rollup/rollup-android-arm-eabi@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-android-arm64@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-darwin-arm64@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-darwin-x64@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-freebsd-arm64@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-freebsd-x64@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-arm-gnueabihf@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-arm-musleabihf@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-arm64-gnu@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-arm64-musl@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-loongarch64-gnu@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-powerpc64le-gnu@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-riscv64-gnu@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-riscv64-musl@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-s390x-gnu@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-x64-gnu@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-linux-x64-musl@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-win32-arm64-msvc@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-win32-ia32-msvc@4.45.1 from lock file
+       npm error Missing: @rollup/rollup-win32-x64-msvc@4.45.1 from lock file
+       npm error Invalid: lock file's @types/estree@1.0.7 does not satisfy @types/estree@1.0.8
+       npm error
+       npm error Clean install a project
+       npm error
+       npm error Usage:
+       npm error npm ci
+       npm error
+       npm error Options:
+       npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+       npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+       npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+       npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+       npm error [--no-bin-links] [--no-fund] [--dry-run]
+       npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+       npm error [--workspaces] [--include-workspace-root] [--install-links]
+       npm error
+       npm error aliases: clean-install, ic, install-clean, isntall-clean
+       npm error
+       npm error Run "npm help ci" for more info
+       npm error A complete log of this run can be found in: /tmp/npmcache.Lt1tf/_logs/2025-07-23T04_23_57_725Z-debug-0.log
+-----> Build failed
+       
+       We're sorry this build is failing! You can troubleshoot common issues here:
+       https://devcenter.heroku.com/articles/troubleshooting-node-deploys
+       
+       Some possible problems:
+       
+       - Dangerous semver range (>) in engines.node
+         https://devcenter.heroku.com/articles/nodejs-support#specifying-a-node-js-version
+       
+       Love,
+       Heroku
+       
+ !     Push rejected, failed to compile Node.js app.
+ !     Push failed
