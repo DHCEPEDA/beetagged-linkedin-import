@@ -1,0 +1,33 @@
+HEROKU DEPLOYMENT FILES SUMMARY:
+
+COPY THESE 3 FILES TO HEROKU:
+
+1. package.json (from package-heroku-fixed.json)
+   - Clean dependencies without build tool conflicts
+   - Node 18.x engine specification
+   - Includes "build:dev" script as requested
+
+2. index.js (from index-heroku-clean.js) 
+   - Complete Express server with enhanced features
+   - Enhanced CSV parsing with quote handling
+   - Facebook SDK integration
+   - MongoDB connection and contact storage
+   - Natural language search API
+   - File size: ~35KB with all features
+
+3. Procfile
+   - Simple: "web: node index.js"
+   - Already exists and correct
+
+ENVIRONMENT VARIABLES TO SET:
+- MONGODB_URI: mongodb+srv://dhcepeda:EXLqA9xeQGpIaN0N@clusterbeetagged.mpruwpw.mongodb.net/
+- NODE_ENV: production
+
+DEPLOYMENT COMMAND:
+rm package-lock.json && git add . && git commit -m "Deploy BeeTagged" && git push heroku main
+
+RESULT: Fully functional BeeTagged app with:
+- Enhanced LinkedIn CSV import
+- Facebook contact integration  
+- Smart search and tagging
+- Professional contact management
