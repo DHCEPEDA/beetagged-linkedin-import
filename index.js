@@ -1,4 +1,18 @@
-// BeeTagged - Self-contained Express server for Heroku deployment
+/**
+ * BeeTagged - Professional Contact Management Platform
+ * Self-contained Express server optimized for Heroku deployment
+ * 
+ * Features:
+ * - Enhanced LinkedIn CSV import with quoted field handling
+ * - Facebook contact integration via SDK
+ * - Natural language search with OpenAI integration
+ * - Smart contact tagging and categorization
+ * - MongoDB Atlas cloud storage
+ * 
+ * @author BeeTagged Development Team
+ * @version 1.0.0
+ */
+
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
@@ -34,18 +48,23 @@ if (process.env.MONGODB_URI) {
     .catch(err => console.error('MongoDB connection error:', err));
 }
 
-// MongoDB Schemas
+/**
+ * MongoDB Contact Schema Definition
+ * 
+ * Defines the structure for storing professional contact information
+ * with support for multi-source imports (LinkedIn, Facebook, manual entry)
+ */
 const contactSchema = new mongoose.Schema({
-  id: { type: Number, unique: true },
-  name: String,
-  email: String,
-  phone: String,
-  company: String,
-  position: String,
-  location: String,
-  tags: [String],
-  source: String,
-  createdAt: { type: Date, default: Date.now }
+  id: { type: Number, unique: true }, // Auto-incrementing unique identifier
+  name: String,                       // Full contact name (required)
+  email: String,                      // Primary email address
+  phone: String,                      // Primary phone number
+  company: String,                    // Current employer/organization
+  position: String,                   // Job title/role
+  location: String,                   // Geographic location (city, state)
+  tags: [String],                     // Smart categorization tags (auto-generated + manual)
+  source: String,                     // Import source: 'linkedin', 'facebook', 'manual'
+  createdAt: { type: Date, default: Date.now } // Timestamp of contact creation
 });
 
 const Contact = mongoose.model('Contact', contactSchema);
@@ -57,14 +76,30 @@ const upload = multer({ storage: storage });
 // In-memory counters
 let contactIdCounter = 1;
 
-// Helper functions
+/**
+ * Smart Tag Generation System
+ * 
+ * Automatically generates contextual tags for contacts based on their
+ * company, position, and other attributes to enable intelligent search
+ * 
+ * @param {Object} contact - Contact object with company, position, location data
+ * @returns {Array<string>} Array of generated tags for categorization
+ * 
+ * Business Logic:
+ * 1. Company-based tags: Direct company name mapping
+ * 2. Industry classification: Pattern matching against known companies
+ * 3. Role categorization: Job title analysis for function-based grouping
+ * 4. Location grouping: Geographic categorization for regional searches
+ */
 function generateTags(contact) {
   const tags = [];
   
+  // Company-based tagging - enables "Who works at X" searches
   if (contact.company) {
     tags.push(`company:${contact.company.toLowerCase()}`);
     
-    // Industry tags based on company
+    // Industry classification using company pattern matching
+    // This enables searches like "Who works in tech?" or "Finance contacts"
     const techCompanies = ['google', 'microsoft', 'apple', 'amazon', 'meta', 'facebook', 'netflix', 'uber', 'airbnb'];
     const financeCompanies = ['goldman', 'jpmorgan', 'chase', 'morgan stanley', 'blackrock'];
     
@@ -109,7 +144,26 @@ function generateTags(contact) {
   return tags;
 }
 
-// Enhanced CSV parsing function that handles quoted fields properly
+/**
+ * Enhanced CSV Line Parser for LinkedIn Exports
+ * 
+ * Handles complex CSV formats including quoted fields with commas and escaped quotes.
+ * Essential for processing LinkedIn connection exports which often contain company names
+ * like "Company, Inc." that would break standard CSV parsing.
+ * 
+ * @param {string} line - Single CSV line to parse
+ * @returns {Array<string>} Array of field values with quotes and escaping handled
+ * 
+ * Parsing Logic:
+ * 1. Track quote state to handle embedded commas
+ * 2. Handle escaped quotes ("") within quoted fields
+ * 3. Preserve field boundaries even with complex company names
+ * 4. Trim whitespace while preserving intentional spacing
+ * 
+ * Examples:
+ * - "John Doe","Company, Inc.",Engineer → ["John Doe", "Company, Inc.", "Engineer"]
+ * - Name,"Big ""Tech"" Corp",Role → ["Name", "Big \"Tech\" Corp", "Role"]
+ */
 function parseCSVLine(line) {
   const result = [];
   let current = '';
@@ -122,20 +176,21 @@ function parseCSVLine(line) {
 
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
-        // Escaped quote within quotes
+        // Handle escaped quotes within quoted fields ("")
         current += '"';
         i += 2;
       } else {
-        // Toggle quote state
+        // Toggle quote state - entering or exiting quoted field
         inQuotes = !inQuotes;
         i++;
       }
     } else if (char === ',' && !inQuotes) {
-      // Field separator outside quotes
+      // Field separator found outside quoted context
       result.push(current.trim());
       current = '';
       i++;
     } else {
+      // Regular character - add to current field
       current += char;
       i++;
     }
