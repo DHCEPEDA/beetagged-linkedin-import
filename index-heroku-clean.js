@@ -441,6 +441,19 @@ app.get('/api/search/natural', async (req, res) => {
   }
 });
 
+// Download CSV template endpoint
+app.get('/api/csv-template', (req, res) => {
+  const template = [
+    'name,company,job title,industry,email,phone,linkedin,how we met,notes,tags',
+    'John Smith,Tesla,Software Engineer,Automotive,john@tesla.com,555-0123,linkedin.com/in/johnsmith,Conference,Great engineer,engineering;tesla',
+    'Jane Doe,Google,Product Manager,Technology,jane@google.com,555-0456,linkedin.com/in/janedoe,Mutual friend,PM for Chrome,product;google;chrome'
+  ].join('\n');
+  
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="beetagged-contacts-template.csv"');
+  res.send(template);
+});
+
 // Main application route
 app.get('/', (req, res) => {
   const html = `<!DOCTYPE html>

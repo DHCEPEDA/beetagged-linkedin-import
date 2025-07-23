@@ -1,3 +1,5 @@
+import { Contact } from '../types/contact';
+
 // Enhanced CSV parsing service for LinkedIn contact imports
 export interface ContactData {
   name: string;
@@ -10,6 +12,132 @@ export interface ContactData {
 }
 
 export class ContactImportService {
+  // Client-side CSV Import for file uploads
+  static async importFromCSV(file: File): Promise<Contact[]> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const csv = e.target?.result as string;
+          const contacts = this.parseCSVToContacts(csv);
+          resolve(contacts);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read CSV file'));
+      reader.readAsText(file);
+    });
+  }
+
+  // Enhanced CSV to Contact parsing
+  private static parseCSVToContacts(csv: string): Contact[] {
+    const lines = csv.split('\n').filter(line => line.trim());
+    if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row');
+    
+    const headers = this.parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+    const contacts: Contact[] = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = this.parseCSVLine(lines[i]);
+      
+      if (values.length !== headers.length) continue;
+      
+      // Build name from separate fields or use full name
+      let name = this.getCSVValue(headers, values, ['name', 'full name', 'contact name']);
+      if (!name) {
+        const firstName = this.getCSVValue(headers, values, ['first name', 'firstname']);
+        const lastName = this.getCSVValue(headers, values, ['last name', 'lastname', 'surname']);
+        name = firstName && lastName ? `${firstName} ${lastName}`.trim() : `Contact ${i}`;
+      }
+      
+      const contact: Contact = {
+        id: crypto.randomUUID(),
+        name,
+        company: this.getCSVValue(headers, values, ['company', 'organization', 'employer', 'current company']) || 'Unknown Company',
+        jobTitle: this.getCSVValue(headers, values, ['job title', 'title', 'position', 'role', 'current position']) || 'Unknown Title',
+        industry: this.getCSVValue(headers, values, ['industry', 'sector', 'company industry']) || 'Unknown Industry',
+        email: this.getCSVValue(headers, values, ['email', 'email address', 'email addresses']),
+        phone: this.getCSVValue(headers, values, ['phone', 'phone number', 'mobile', 'phone numbers']),
+        linkedinUrl: this.getCSVValue(headers, values, ['linkedin', 'linkedin url', 'linkedin profile', 'url']),
+        location: this.getCSVValue(headers, values, ['location', 'current location', 'address', 'city']),
+        howWeMet: this.getCSVValue(headers, values, ['how we met', 'source', 'connection']) || 'CSV Import',
+        notes: this.getCSVValue(headers, values, ['notes', 'comments', 'description']),
+        tags: this.getCSVValue(headers, values, ['tags'])?.split(';').map(t => t.trim()).filter(Boolean) || [],
+        createdAt: new Date(),
+        source: 'linkedin'
+      };
+      
+      contacts.push(contact);
+    }
+    
+    return contacts;
+  }
+
+  private static getCSVValue(headers: string[], values: string[], possibleKeys: string[]): string | undefined {
+    for (const key of possibleKeys) {
+      const index = headers.indexOf(key);
+      if (index !== -1 && values[index]) {
+        return values[index].trim();
+      }
+    }
+    return undefined;
+  }
+
+  // Phone Contacts Import (Web Contacts API - limited browser support)
+  static async importFromPhone(): Promise<Contact[]> {
+    if (!('contacts' in navigator)) {
+      throw new Error('Phone contacts access not supported in this browser');
+    }
+
+    try {
+      // @ts-ignore - Web Contacts API is experimental
+      const contacts = await navigator.contacts.select(['name', 'email', 'tel'], { multiple: true });
+      
+      return contacts.map((contact: any) => ({
+        id: crypto.randomUUID(),
+        name: contact.name?.[0] || 'Unknown Contact',
+        company: 'Unknown Company',
+        jobTitle: 'Unknown Title',
+        industry: 'Unknown Industry',
+        email: contact.email?.[0],
+        phone: contact.tel?.[0],
+        howWeMet: 'Phone Import',
+        createdAt: new Date(),
+        tags: ['phone-import'],
+        source: 'phone' as const
+      }));
+    } catch (error) {
+      throw new Error('Failed to access phone contacts: ' + (error as Error).message);
+    }
+  }
+
+  // Generate sample CSV template
+  static generateCSVTemplate(): string {
+    return [
+      'name,company,job title,industry,email,phone,linkedin,how we met,notes,tags',
+      'John Smith,Tesla,Software Engineer,Automotive,john@tesla.com,555-0123,linkedin.com/in/johnsmith,Conference,Great engineer,engineering;tesla',
+      'Jane Doe,Google,Product Manager,Technology,jane@google.com,555-0456,linkedin.com/in/janedoe,Mutual friend,PM for Chrome,product;google;chrome'
+    ].join('\n');
+  }
+
+  // Download CSV template
+  static downloadCSVTemplate(): void {
+    const template = this.generateCSVTemplate();
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'beetagged-contacts-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(url);
+  }
   // LinkedIn CSV header mappings - handles multiple variations
   private static LINKEDIN_HEADER_MAPPINGS = {
     name: [
