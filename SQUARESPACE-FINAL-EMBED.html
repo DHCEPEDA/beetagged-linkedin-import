@@ -1,0 +1,141 @@
+<!-- BeeTagged Professional Contact Search Widget for Squarespace -->
+<!-- FINAL VERSION - Ready for Production -->
+
+<div id="beetagged-widget" style="width: 100%; max-width: 900px; margin: 20px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <style>
+    #beetagged-widget {
+      border: 1px solid #e2e8f0;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+      background: white;
+    }
+    #beetagged-frame {
+      width: 100%;
+      height: 700px;
+      border: none;
+      display: block;
+      background: white;
+    }
+    .beetagged-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 25px;
+      text-align: center;
+      position: relative;
+    }
+    .beetagged-header h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .beetagged-header p {
+      margin: 0;
+      font-size: 1rem;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+    .beetagged-features {
+      background: #f8fafc;
+      padding: 15px 25px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 14px;
+      color: #64748b;
+      text-align: center;
+    }
+    .beetagged-features strong {
+      color: #334155;
+    }
+    @media (max-width: 768px) {
+      #beetagged-frame {
+        height: 600px;
+      }
+      .beetagged-header {
+        padding: 15px 20px;
+      }
+      .beetagged-header h3 {
+        font-size: 1.2rem;
+      }
+      .beetagged-header p {
+        font-size: 0.9rem;
+      }
+    }
+    @media (max-width: 480px) {
+      #beetagged-frame {
+        height: 500px;
+      }
+    }
+  </style>
+  
+  <div class="beetagged-header">
+    <h3>🐝 BeeTagged Contact Search</h3>
+    <p>AI-powered professional network search with natural language queries</p>
+  </div>
+  
+  <div class="beetagged-features">
+    <strong>Features:</strong> LinkedIn Import • Natural Language Search • Smart Tagging • Enter Key Support
+  </div>
+  
+  <iframe 
+    id="beetagged-frame"
+    src="https://your-heroku-app-name.herokuapp.com"
+    title="BeeTagged Professional Contact Search"
+    loading="lazy"
+    allow="clipboard-read; clipboard-write">
+  </iframe>
+</div>
+
+<script>
+// Enhanced iframe communication and responsive design
+(function() {
+  const frame = document.getElementById('beetagged-frame');
+  
+  // Auto-resize iframe based on content
+  window.addEventListener('message', function(event) {
+    if (event.origin.includes('herokuapp.com') && event.data.height && frame) {
+      frame.style.height = Math.max(500, event.data.height) + 'px';
+    }
+  });
+  
+  // Loading state
+  frame.onload = function() {
+    console.log('BeeTagged widget loaded successfully');
+  };
+  
+  // Error handling
+  frame.onerror = function() {
+    frame.style.height = '200px';
+    frame.srcdoc = '<div style="padding: 40px; text-align: center; font-family: sans-serif;"><h3>BeeTagged Temporarily Unavailable</h3><p>Please refresh the page or try again later.</p></div>';
+  };
+})();
+</script>
+
+<!-- 
+SETUP INSTRUCTIONS:
+1. Replace "your-heroku-app-name" with your actual Heroku app name
+2. In Squarespace: 
+   - Go to the page where you want this widget
+   - Add a "Code" block 
+   - Paste this entire code
+   - Save and publish
+
+EXAMPLE: If your Heroku app is "beetagged-contacts":
+Change: src="https://your-heroku-app-name.herokuapp.com"
+To: src="https://beetagged-contacts.herokuapp.com"
+
+FEATURES INCLUDED:
+✅ Professional styling with gradient header
+✅ Responsive design for all devices
+✅ Feature highlights bar
+✅ Auto-resize capability
+✅ Error handling with fallback
+✅ Loading optimization
+✅ Mobile-friendly layout
+
+This widget showcases your BeeTagged app with:
+- LinkedIn CSV import functionality
+- Natural language search with Enter key support
+- Smart contact tagging and categorization
+- Professional network mining capabilities
+-->
