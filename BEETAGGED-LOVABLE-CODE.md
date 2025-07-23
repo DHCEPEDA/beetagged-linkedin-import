@@ -16,10 +16,15 @@ BeeTagged is a professional contact management platform with LinkedIn CSV import
 {
   "name": "beetagged-app",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build", 
+    "build:dev": "vite build --mode development",
+    "preview": "vite preview",
     "start": "node index.js",
-    "heroku-postbuild": "echo 'No build step required - using static files'"
+    "heroku-postbuild": "npm run build"
   },
   "engines": {
     "node": "18.x",
@@ -33,6 +38,11 @@ BeeTagged is a professional contact management platform with LinkedIn CSV import
     "express": "^4.21.2",
     "mongoose": "^8.16.4",
     "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
   }
 }
 ```
