@@ -41,7 +41,7 @@ function App() {
     }
   };
 
-  const loadContacts = async () => {
+  const loadContacts = async (): Promise<void> => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/contacts`);
       if (response.ok) {
@@ -54,7 +54,7 @@ function App() {
     }
   };
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = async (query: string): Promise<void> => {
     if (!query.trim()) {
       setSearchResults(contacts);
       return;
@@ -68,7 +68,7 @@ function App() {
         setSearchResults(result.results || []);
       } else {
         // Fallback to local search
-        const filtered = contacts.filter(contact =>
+        const filtered = contacts.filter((contact: Contact) =>
           contact.name?.toLowerCase().includes(query.toLowerCase()) ||
           contact.company?.toLowerCase().includes(query.toLowerCase()) ||
           contact.position?.toLowerCase().includes(query.toLowerCase())
@@ -78,7 +78,7 @@ function App() {
     } catch (error) {
       console.error('Search failed:', error);
       // Fallback to local search
-      const filtered = contacts.filter(contact =>
+      const filtered = contacts.filter((contact: Contact) =>
         contact.name?.toLowerCase().includes(query.toLowerCase()) ||
         contact.company?.toLowerCase().includes(query.toLowerCase()) ||
         contact.position?.toLowerCase().includes(query.toLowerCase())
