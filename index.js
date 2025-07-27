@@ -98,6 +98,25 @@ const contactSchema = new mongoose.Schema({
 
 const Contact = mongoose.model('Contact', contactSchema);
 
+// Clean up old problematic indexes on startup
+mongoose.connection.once('open', async () => {
+  try {
+    const indexes = await Contact.collection.indexes();
+    console.log('Current indexes:', indexes.map(i => i.name));
+    
+    // Drop the problematic id_1 index if it exists
+    for (const index of indexes) {
+      if (index.name === 'id_1') {
+        await Contact.collection.dropIndex('id_1');
+        console.log('Dropped problematic id_1 index');
+        break;
+      }
+    }
+  } catch (error) {
+    console.log('Index cleanup completed or not needed:', error.message);
+  }
+});
+
 // File upload setup
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -534,31 +553,43 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       }
     }
 
-    // Save to database
-    try {
-      if (contacts.length > 0) {
-        await Contact.insertMany(contacts, { ordered: false });
+    // Insert contacts one by one to handle duplicates gracefully
+    let insertedCount = 0;
+    let duplicateCount = 0;
+    
+    for (const contactData of contacts) {
+      try {
+        // Check if contact already exists (by name and company)
+        const existingContact = await Contact.findOne({
+          name: contactData.name,
+          company: contactData.company
+        });
+        
+        if (existingContact) {
+          duplicateCount++;
+          console.log(`Skipping duplicate: ${contactData.name} at ${contactData.company}`);
+          continue;
+        }
+        
+        const savedContact = await contactData.save();
+        insertedCount++;
+        console.log(`Inserted: ${contactData.name} at ${contactData.company}`);
+      } catch (error) {
+        console.error(`Failed to insert ${contactData.name}:`, error.message);
+        duplicateCount++;
       }
-      
-      console.log(`Successfully imported ${contacts.length} contacts (processed: ${processed}, skipped: ${skipped})`);
-      res.json({
-        success: true,
-        count: contacts.length,
-        processed: processed,
-        skipped: skipped,
-        message: `Successfully imported ${contacts.length} LinkedIn contacts`
-      });
-    } catch (error) {
-      console.error('Database insert error:', error);
-      // Even if some fail, return success for the ones that worked
-      res.json({
-        success: true,
-        count: contacts.length,
-        processed: processed,
-        skipped: skipped,
-        message: `Processed ${contacts.length} contacts (some may have been duplicates)`
-      });
     }
+    
+    console.log(`Import complete: ${insertedCount} new, ${duplicateCount} duplicates/errors`);
+    res.json({
+      success: insertedCount > 0,
+      count: insertedCount,
+      processed: processed,
+      skipped: skipped + duplicateCount,
+      message: insertedCount > 0 
+        ? `Successfully imported ${insertedCount} new contacts. ${duplicateCount} duplicates skipped.`
+        : `No new contacts imported. ${duplicateCount} duplicates or errors found.`
+    });
 
   } catch (error) {
     console.error('Import error:', error);

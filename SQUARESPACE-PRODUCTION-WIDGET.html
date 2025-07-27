@@ -400,22 +400,28 @@
 
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('Upload result:', result);
                     
-                    // Show success message
-                    const count = result.count || result.imported || result.processed || 'Multiple';
-                    uploadSuccessText.textContent = `${count} contacts imported successfully!`;
-                    uploadSuccess.classList.remove('hidden');
-                    
-                    // Reload contacts to show new data
-                    setTimeout(() => {
-                        loadContacts();
-                        checkBackendHealth();
-                    }, 1000);
-                    
-                    // Hide success message after 5 seconds
-                    setTimeout(() => {
-                        uploadSuccess.classList.add('hidden');
-                    }, 5000);
+                    // Check if upload was actually successful
+                    if (result.success && result.count > 0) {
+                        uploadSuccessText.textContent = `${result.count} contacts imported successfully!`;
+                        uploadSuccess.classList.remove('hidden');
+                        
+                        // Reload contacts to show new data
+                        setTimeout(() => {
+                            loadContacts();
+                            checkBackendHealth();
+                        }, 1000);
+                        
+                        // Hide success message after 5 seconds
+                        setTimeout(() => {
+                            uploadSuccess.classList.add('hidden');
+                        }, 5000);
+                    } else {
+                        // Handle case where API says success=false or count=0
+                        const message = result.message || 'No new contacts were imported';
+                        throw new Error(message);
+                    }
                     
                 } else {
                     const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
@@ -428,6 +434,10 @@
                 let errorMessage = 'Upload failed. Please check your CSV format and try again.';
                 if (error.message.includes('No valid contacts')) {
                     errorMessage = 'No valid contacts found. Required columns: First Name, Last Name, Company, Position.';
+                } else if (error.message.includes('No new contacts imported')) {
+                    errorMessage = 'All contacts in this file already exist in your database. Try a different CSV file.';
+                } else if (error.message.includes('duplicates or errors')) {
+                    errorMessage = 'These contacts already exist or there was a database error. Try different contacts.';
                 }
                 
                 uploadErrorText.textContent = errorMessage;
