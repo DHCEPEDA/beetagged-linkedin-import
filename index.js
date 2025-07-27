@@ -41,11 +41,39 @@ app.use((req, res, next) => {
   }
 });
 
-// MongoDB connection
+// MongoDB connection with optimized settings for Heroku/Atlas
 if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB connected'))
-    .catch(err => console.error('MongoDB connection error:', err));
+  const mongoOptions = {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 15000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
+    maxIdleTimeMS: 30000,
+    retryWrites: true,
+    w: 'majority'
+  };
+
+  mongoose.connect(process.env.MONGODB_URI, mongoOptions)
+    .then(() => {
+      console.log('MongoDB Atlas connected successfully');
+      console.log('Database:', mongoose.connection.db.databaseName);
+    })
+    .catch(err => {
+      console.error('MongoDB connection error:', err);
+      console.error('Connection string prefix:', process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 20) + '...' : 'undefined');
+    });
+
+  mongoose.connection.on('error', err => {
+    console.error('MongoDB runtime error:', err);
+  });
+
+  mongoose.connection.on('disconnected', () => {
+    console.log('MongoDB disconnected');
+  });
+
+  mongoose.connection.on('reconnected', () => {
+    console.log('MongoDB reconnected');
+  });
 }
 
 /**
@@ -273,17 +301,48 @@ function parseCSVData(data) {
  */
 app.get('/health', async (req, res) => {
   try {
-    const contactCount = await Contact.countDocuments();
+    // Check MongoDB connection state first
+    const mongoState = mongoose.connection.readyState;
+    const mongoStatus = mongoState === 1 ? 'connected' : 
+                       mongoState === 2 ? 'connecting' : 
+                       mongoState === 0 ? 'disconnected' : 'unknown';
+    
+    let contactCount = 'checking...';
+    
+    // Only attempt count if MongoDB is fully connected
+    if (mongoState === 1) {
+      try {
+        // Use timeout to prevent hanging
+        const countPromise = Contact.countDocuments();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Count timeout')), 5000)
+        );
+        
+        contactCount = await Promise.race([countPromise, timeoutPromise]);
+      } catch (countError) {
+        console.error('Count error:', countError.message);
+        contactCount = 'timeout';
+      }
+    }
+    
     res.json({
-      status: 'healthy',
+      status: mongoState === 1 ? 'healthy' : 'degraded',
       server: 'BeeTagged',
       contacts: contactCount,
       port: PORT,
       uptime: process.uptime(),
-      mongodb: process.env.MONGODB_URI ? 'connected' : 'not configured'
+      mongodb: mongoStatus,
+      mongoState: mongoState,
+      environment: process.env.NODE_ENV || 'development'
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.message,
+      server: 'BeeTagged',
+      port: PORT 
+    });
   }
 });
 
@@ -298,12 +357,40 @@ app.get('/health', async (req, res) => {
  */
 app.get('/api/contacts', async (req, res) => {
   try {
-    const contacts = await Contact.find().sort({ createdAt: -1 });
+    // Check MongoDB connection state
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        error: 'Database not ready', 
+        contacts: [],
+        mongoState: mongoose.connection.readyState 
+      });
+    }
+
+    // Add timeout protection for the query
+    const contactsPromise = Contact.find().sort({ createdAt: -1 });
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Query timeout')), 10000)
+    );
+    
+    const contacts = await Promise.race([contactsPromise, timeoutPromise]);
     console.log(`Returning ${contacts.length} contacts`);
     res.json(contacts);
   } catch (error) {
     console.error('Error fetching contacts:', error);
-    res.status(500).json({ error: 'Failed to fetch contacts' });
+    
+    if (error.message === 'Query timeout') {
+      res.status(504).json({ 
+        error: 'Database query timeout', 
+        contacts: [],
+        suggestion: 'Try again in a moment' 
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to fetch contacts', 
+        contacts: [],
+        details: error.message 
+      });
+    }
   }
 });
 
