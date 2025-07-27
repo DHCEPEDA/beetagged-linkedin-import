@@ -57,6 +57,7 @@ GET /api/search/natural?q=searchQuery
 // Custom hook for contact management
 const useContacts = () => {
   const [contacts, setContacts] = useState([]);
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
   
   const loadContacts = async () => {
     const response = await fetch(`${BACKEND_URL}/api/contacts`);
@@ -70,6 +71,7 @@ const useContacts = () => {
 // Search hook with debouncing
 const useContactSearch = () => {
   const [results, setResults] = useState([]);
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
   
   const search = async (query) => {
     const response = await fetch(
@@ -85,13 +87,18 @@ const useContactSearch = () => {
 
 ### Environment Configuration
 ```javascript
-// In your Lovable .env
-VITE_BACKEND_URL=https://your-replit-app.repl.co
+// In your Lovable .env - Production Ready
+VITE_BACKEND_URL=https://beetagged-app-53414697acd3.herokuapp.com
+
+// Alternative for development testing
+VITE_DEV_BACKEND_URL=https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev
 ```
 
 ### File Upload Component
 ```javascript
 const LinkedInImport = () => {
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
   const handleFileUpload = async (file) => {
     const formData = new FormData();
     formData.append('linkedinCsv', file);
