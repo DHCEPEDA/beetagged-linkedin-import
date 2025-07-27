@@ -1,0 +1,26 @@
+2025-07-27T01:58:12.000000+00:00 app[api]: Build succeeded
+2025-07-27T01:59:01.318271+00:00 heroku[web.1]: State changed from crashed to starting
+2025-07-27T01:59:09.907273+00:00 heroku[web.1]: Starting process with command `node index.js`
+2025-07-27T01:59:10.413981+00:00 app[web.1]: file:///app/index.js:16
+2025-07-27T01:59:10.414012+00:00 app[web.1]: const express = require('express');
+2025-07-27T01:59:10.414012+00:00 app[web.1]: ^
+2025-07-27T01:59:10.414015+00:00 app[web.1]:
+2025-07-27T01:59:10.414017+00:00 app[web.1]: ReferenceError: require is not defined in ES module scope, you can use import instead
+2025-07-27T01:59:10.414020+00:00 app[web.1]: This file is being treated as an ES module because it has a '.js' file extension and '/app/package.json' contains "type": "module". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.
+2025-07-27T01:59:10.414020+00:00 app[web.1]: at file:///app/index.js:16:17
+2025-07-27T01:59:10.414023+00:00 app[web.1]: at ModuleJob.run (node:internal/modules/esm/module_job:195:25)
+2025-07-27T01:59:10.414023+00:00 app[web.1]: at async ModuleLoader.import (node:internal/modules/esm/loader:337:24)
+2025-07-27T01:59:10.414026+00:00 app[web.1]: at async loadESM (node:internal/process/esm_loader:34:7)
+2025-07-27T01:59:10.414026+00:00 app[web.1]: at async handleMainPromise (node:internal/modules/run_main:106:12)
+2025-07-27T01:59:10.414026+00:00 app[web.1]:
+2025-07-27T01:59:10.414027+00:00 app[web.1]: Node.js v18.20.8
+2025-07-27T01:59:10.459699+00:00 heroku[web.1]: Process exited with status 1
+2025-07-27T01:59:10.486490+00:00 heroku[web.1]: State changed from starting to crashed
+2025-07-27T02:02:41.687729+00:00 heroku[router]: sock=client at=warning code=H27 desc="Client Request Interrupted" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=88b320cb-72bb-48cc-c57e-f3d3a9610e83 fwd="" dyno= connect=0ms service=0ms status=499 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:02:46.357068+00:00 heroku[router]: sock=client at=warning code=H27 desc="Client Request Interrupted" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=a7c9cb33-02dd-a0d4-147e-a851dd26c4a1 fwd="" dyno= connect=0ms service=0ms status=499 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:04:09.532273+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=f2e24d43-8505-4c62-19e1-5fc9b2dac1aa fwd="" dyno= connect=0ms service=0ms status=503 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:04:37.358452+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/health" host=beetagged-app-53414697acd3.herokuapp.com request_id=0c5c6d5c-0180-1921-075e-a48892f34be9 fwd="" dyno= connect=0ms service=0ms status=503 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:05:16.237797+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/api/contacts" host=beetagged-app-53414697acd3.herokuapp.com request_id=3dccf359-c823-6fb5-3dfa-1bf31322c1d1 fwd="" dyno= connect=0ms service=0ms status=503 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:09:05.632719+00:00 heroku[router]: sock=client at=warning code=H27 desc="Client Request Interrupted" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=90dba6e6-2d4e-ce43-9e60-e0bc61fa3c1c fwd="" dyno= connect=0ms service=0ms status=499 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:10:27.980997+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=d9960c61-548c-cfb7-751a-2a4a2e6d028f fwd="" dyno= connect=0ms service=0ms status=503 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-07-27T02:13:12.807297+00:00 heroku[router]: at=error code=H10 desc="App crashed" method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=2b84b4bd-690c-7032-744d-a6c03e040648 fwd="" dyno= connect=0ms service=0ms status=503 bytes=567 protocol=http1.1 tls=true tls_version=unknown
