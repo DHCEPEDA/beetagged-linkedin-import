@@ -20,6 +20,14 @@
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
+        .connection-warning {
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            color: #92400E;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -31,6 +39,11 @@
             <p class="text-gray-500 mt-2">Find exactly who you need in your network</p>
         </div>
 
+        <!-- Connection Warning -->
+        <div id="connectionWarning" class="connection-warning text-center hidden">
+            <p><strong>Backend Starting Up</strong> - The server may take 30-60 seconds to wake up. Please wait and try again.</p>
+        </div>
+
         <!-- File Upload Section -->
         <div class="max-w-2xl mx-auto mb-8">
             <div class="bg-white rounded-lg p-6 shadow-sm border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
@@ -40,6 +53,7 @@
                     </svg>
                     <h3 class="text-lg font-semibold mb-2">Import LinkedIn Contacts</h3>
                     <p class="text-gray-600 mb-4">Upload your LinkedIn connections CSV file to get started</p>
+                    <p class="text-sm text-gray-500 mb-4">Required columns: First Name, Last Name, Company, Position (or Title)</p>
                     
                     <input 
                         type="file" 
@@ -67,6 +81,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
                             <span id="uploadSuccessText">Contacts imported successfully!</span>
+                        </div>
+                    </div>
+
+                    <div id="uploadError" class="mt-4 hidden">
+                        <div class="text-red-600 text-sm">
+                            <p id="uploadErrorText">Upload failed. Please check your CSV format.</p>
                         </div>
                     </div>
                 </div>
@@ -121,8 +141,8 @@
                         <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                         </svg>
-                        <p class="text-lg mb-2">Search your professional network</p>
-                        <p>Try searching for companies, roles, or names</p>
+                        <p class="text-lg mb-2">Upload your LinkedIn CSV to get started</p>
+                        <p>Then search your professional network with natural language</p>
                     </div>
                 </div>
             </div>
@@ -136,13 +156,18 @@
     </div>
 
     <script>
-        // Configuration
-        const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+        // Configuration - Try multiple endpoints for reliability
+        const BACKEND_ENDPOINTS = [
+            'https://beetagged-app-53414697acd3.herokuapp.com',
+            'http://localhost:5000'  // Fallback for development
+        ];
+        let BACKEND_URL = BACKEND_ENDPOINTS[0];
         
         // State
         let contacts = [];
         let searchResults = [];
         let isLoading = false;
+        let backendConnected = false;
 
         // DOM Elements
         const searchInput = document.getElementById('searchInput');
@@ -154,7 +179,10 @@
         const uploadButton = document.getElementById('uploadButton');
         const uploadStatus = document.getElementById('uploadStatus');
         const uploadSuccess = document.getElementById('uploadSuccess');
+        const uploadError = document.getElementById('uploadError');
         const uploadSuccessText = document.getElementById('uploadSuccessText');
+        const uploadErrorText = document.getElementById('uploadErrorText');
+        const connectionWarning = document.getElementById('connectionWarning');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -176,31 +204,54 @@
             csvFileInput.addEventListener('change', handleFileUpload);
         });
 
-        // Backend health check
-        async function checkBackendHealth() {
+        // Try multiple backend endpoints
+        async function tryBackendRequest(endpoint, path, options = {}) {
             try {
-                const response = await fetch(`${BACKEND_URL}/health`, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
+                const response = await fetch(`${endpoint}${path}`, {
+                    timeout: 10000,
+                    ...options
                 });
-                if (response.ok) {
-                    const data = await response.json();
-                    updateStatus('connected', `Connected (${data.contacts || 0} contacts)`);
-                } else {
-                    updateStatus('error', 'Connection Error');
-                }
+                return response;
             } catch (error) {
-                updateStatus('error', 'Backend Offline');
-                console.error('Backend health check failed:', error);
+                console.error(`Failed to connect to ${endpoint}:`, error);
+                throw error;
+            }
+        }
+
+        // Backend health check with retries
+        async function checkBackendHealth() {
+            let connected = false;
+            
+            for (const endpoint of BACKEND_ENDPOINTS) {
+                try {
+                    const response = await tryBackendRequest(endpoint, '/health', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        BACKEND_URL = endpoint;
+                        backendConnected = true;
+                        updateStatus('connected', `Connected (${data.contacts || 0} contacts)`);
+                        connectionWarning.classList.add('hidden');
+                        connected = true;
+                        break;
+                    }
+                } catch (error) {
+                    console.error(`Health check failed for ${endpoint}:`, error);
+                }
+            }
+            
+            if (!connected) {
+                updateStatus('error', 'Backend Starting...');
+                connectionWarning.classList.remove('hidden');
                 
-                // Try fallback connection
+                // Retry after delay for Heroku wake-up
                 setTimeout(() => {
                     console.log('Retrying connection...');
                     checkBackendHealth();
-                }, 5000);
+                }, 10000);
             }
         }
 
@@ -223,14 +274,17 @@
 
         // Load all contacts
         async function loadContacts() {
+            if (!backendConnected) {
+                console.log('Backend not connected, skipping contact load');
+                return;
+            }
+            
             try {
-                const response = await fetch(`${BACKEND_URL}/api/contacts`, {
+                const response = await tryBackendRequest(BACKEND_URL, '/api/contacts', {
                     method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Accept': 'application/json' }
                 });
+                
                 if (response.ok) {
                     const data = await response.json();
                     contacts = Array.isArray(data) ? data : [];
@@ -239,14 +293,12 @@
                     displayResults();
                 } else {
                     console.error('Failed to load contacts - response not OK:', response.status);
-                    // Show empty state but don't error
                     contacts = [];
                     searchResults = [];
                     displayResults();
                 }
             } catch (error) {
                 console.error('Failed to load contacts:', error);
-                // Show empty state but don't error
                 contacts = [];
                 searchResults = [];
                 displayResults();
@@ -255,6 +307,11 @@
 
         // Handle search
         async function handleSearch(query) {
+            if (!backendConnected) {
+                alert('Backend is starting up. Please wait a moment and try again.');
+                return;
+            }
+            
             if (!query.trim()) {
                 searchResults = contacts;
                 displayResults();
@@ -263,7 +320,11 @@
 
             setLoading(true);
             try {
-                const response = await fetch(`${BACKEND_URL}/api/search/natural?q=${encodeURIComponent(query)}`);
+                const response = await tryBackendRequest(BACKEND_URL, `/api/search/natural?q=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
                 if (response.ok) {
                     const result = await response.json();
                     searchResults = result.results || [];
@@ -326,8 +387,8 @@
                             <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                             </svg>
-                            <p class="text-lg mb-2">No contacts yet</p>
-                            <p>Import your LinkedIn connections to get started</p>
+                            <p class="text-lg mb-2">Upload your LinkedIn CSV to get started</p>
+                            <p>Then search your professional network with natural language</p>
                         </div>
                     `;
                 }
@@ -338,12 +399,17 @@
                 <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow mb-4">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h4 class="text-lg font-semibold text-gray-900">${contact.name}</h4>
+                            <h4 class="text-lg font-semibold text-gray-900">${contact.name || 'Unknown'}</h4>
                             ${contact.position && contact.company ? 
-                                `<p class="text-gray-600">${contact.position} at ${contact.company}</p>` : ''
+                                `<p class="text-gray-600">${contact.position} at ${contact.company}</p>` : 
+                                contact.company ? `<p class="text-gray-600">${contact.company}</p>` :
+                                contact.position ? `<p class="text-gray-600">${contact.position}</p>` : ''
                             }
                             ${contact.location ? 
                                 `<p class="text-sm text-gray-500 mt-1">${contact.location}</p>` : ''
+                            }
+                            ${contact.email ? 
+                                `<p class="text-sm text-blue-600 mt-1">${contact.email}</p>` : ''
                             }
                             ${contact.tags && contact.tags.length > 0 ? 
                                 `<div class="flex flex-wrap gap-2 mt-2">
@@ -366,13 +432,23 @@
             if (!file) return;
 
             if (!file.name.toLowerCase().endsWith('.csv')) {
-                alert('Please select a CSV file');
+                uploadErrorText.textContent = 'Please select a CSV file.';
+                uploadError.classList.remove('hidden');
+                setTimeout(() => uploadError.classList.add('hidden'), 5000);
                 return;
             }
 
-            // Show uploading status
-            uploadStatus.classList.remove('hidden');
+            if (!backendConnected) {
+                uploadErrorText.textContent = 'Backend is starting up. Please wait and try again.';
+                uploadError.classList.remove('hidden');
+                setTimeout(() => uploadError.classList.add('hidden'), 5000);
+                return;
+            }
+
+            // Reset states
+            uploadError.classList.add('hidden');
             uploadSuccess.classList.add('hidden');
+            uploadStatus.classList.remove('hidden');
             uploadButton.disabled = true;
             uploadButton.textContent = 'Uploading...';
 
@@ -380,16 +456,15 @@
                 const formData = new FormData();
                 formData.append('linkedinCsv', file);
 
-                const response = await fetch(`${BACKEND_URL}/api/linkedin/import`, {
+                const response = await tryBackendRequest(BACKEND_URL, '/api/linkedin/import', {
                     method: 'POST',
                     body: formData
                 });
 
+                uploadStatus.classList.add('hidden');
+
                 if (response.ok) {
                     const result = await response.json();
-                    
-                    // Hide uploading status
-                    uploadStatus.classList.add('hidden');
                     
                     // Show success message
                     const count = result.count || result.imported || result.processed || 'Multiple';
@@ -399,6 +474,7 @@
                     // Reload contacts to show new data
                     setTimeout(() => {
                         loadContacts();
+                        checkBackendHealth(); // Update contact count in status
                     }, 1000);
                     
                     // Hide success message after 5 seconds
@@ -417,14 +493,16 @@
                 // Show detailed error message
                 let errorMessage = 'Upload failed. ';
                 if (error.message.includes('No valid contacts')) {
-                    errorMessage += 'Please check your CSV format. Make sure it includes columns like "First Name", "Last Name", "Company", "Position".';
+                    errorMessage = 'No valid contacts found. Please check your CSV format. Required columns: First Name, Last Name, Company, Position.';
                 } else if (error.message.includes('No file uploaded')) {
-                    errorMessage += 'Please select a valid CSV file.';
+                    errorMessage = 'Please select a valid CSV file.';
                 } else {
-                    errorMessage += 'Please try again or check your file format.';
+                    errorMessage = 'Upload failed. Please check your CSV format and try again.';
                 }
                 
-                alert(errorMessage);
+                uploadErrorText.textContent = errorMessage;
+                uploadError.classList.remove('hidden');
+                setTimeout(() => uploadError.classList.add('hidden'), 8000);
             }
 
             // Reset button
