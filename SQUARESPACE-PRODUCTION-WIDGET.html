@@ -189,6 +189,7 @@
         // Backend health check
         async function checkBackendHealth() {
             try {
+                console.log('Checking backend health...');
                 const response = await fetch(`${BACKEND_URL}/health`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
@@ -196,14 +197,25 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Health check response:', data);
                     backendConnected = true;
-                    updateStatus('connected', `Connected (${data.contacts || 0} contacts)`);
+                    
+                    // Handle different contact count formats
+                    let contactCount = 0;
+                    if (typeof data.contacts === 'number') {
+                        contactCount = data.contacts;
+                    } else if (data.contacts === 'checking...' || data.contacts === 'timeout') {
+                        contactCount = 'checking...';
+                    }
+                    
+                    updateStatus('connected', `Connected (${contactCount} contacts)`);
                 } else {
+                    console.error('Health check failed with status:', response.status);
                     updateStatus('error', 'Connection Error');
                 }
             } catch (error) {
-                updateStatus('error', 'Backend Offline');
                 console.error('Backend health check failed:', error);
+                updateStatus('error', 'Backend Offline');
             }
         }
 
@@ -227,19 +239,30 @@
         // Load all contacts
         async function loadContacts() {
             try {
+                console.log('Loading contacts from:', `${BACKEND_URL}/api/contacts`);
                 const response = await fetch(`${BACKEND_URL}/api/contacts`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
                 
+                console.log('Contacts response status:', response.status);
+                
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Raw contacts data:', data);
                     contacts = Array.isArray(data) ? data : [];
                     searchResults = contacts;
                     console.log('Loaded contacts:', contacts.length);
+                    console.log('Sample contact:', contacts[0]);
                     displayResults();
+                    
+                    // Update health status with actual contact count
+                    if (contacts.length > 0) {
+                        updateStatus('connected', `Connected (${contacts.length} contacts)`);
+                    }
                 } else {
-                    console.error('Failed to load contacts - response not OK:', response.status);
+                    const errorText = await response.text();
+                    console.error('Failed to load contacts - response not OK:', response.status, errorText);
                     contacts = [];
                     searchResults = [];
                     displayResults();
