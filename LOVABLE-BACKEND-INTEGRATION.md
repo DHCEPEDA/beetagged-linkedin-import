@@ -127,9 +127,16 @@ const LinkedInImport = () => {
 ✅ **CORS**: Configured for cross-origin requests  
 ✅ **Error Handling**: Comprehensive API error responses  
 
-## 🔧 Backend URL for Frontend
+## 🔧 Backend URLs for Frontend
+
+**Development (Replit):**
 ```
 https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev
+```
+
+**Production (Heroku):**
+```
+https://beetagged-app-53414697acd3.herokuapp.com
 ```
 
 ## 📋 Next Steps for Integration

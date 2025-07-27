@@ -60,9 +60,9 @@
 
 4. **Test Endpoints** after deployment:
    ```
-   https://your-app.herokuapp.com/health
-   https://your-app.herokuapp.com/api/contacts
-   https://your-app.herokuapp.com/api/search/natural?q=google
+   https://beetagged-app-53414697acd3.herokuapp.com/health
+   https://beetagged-app-53414697acd3.herokuapp.com/api/contacts
+   https://beetagged-app-53414697acd3.herokuapp.com/api/search/natural?q=google
    ```
 
 ## Current Backend Features Ready
