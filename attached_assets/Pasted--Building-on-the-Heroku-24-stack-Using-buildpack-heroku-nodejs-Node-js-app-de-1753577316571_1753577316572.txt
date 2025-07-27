@@ -1,0 +1,72 @@
+-----> Building on the Heroku-24 stack
+-----> Using buildpack: heroku/nodejs
+-----> Node.js app detected
+       
+-----> Creating runtime environment
+       
+       NPM_CONFIG_LOGLEVEL=error
+       NODE_VERBOSE=false
+       NODE_ENV=production
+       NODE_MODULES_CACHE=true
+       
+-----> Installing binaries
+       engines.node (package.json):   18.x
+       engines.npm (package.json):    >=8.0.0
+       
+       Resolving node version 18.x...
+       Downloading and installing node 18.20.8...
+       Bootstrapping npm >=8.0.0 (replacing 10.8.2)...
+       npm 10.9.3 installed
+       
+-----> Restoring cache
+       - npm cache
+       
+-----> Installing dependencies
+       Installing node modules
+       npm error code EUSAGE
+       npm error
+       npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+       npm error
+       npm error Invalid: lock file's axios@1.10.0 does not satisfy axios@1.11.0
+       npm error Missing: express-rate-limit@8.0.1 from lock file
+       npm error Missing: helmet@8.1.0 from lock file
+       npm error Missing: morgan@1.10.1 from lock file
+       npm error Missing: openai@5.10.2 from lock file
+       npm error Missing: ip-address@10.0.1 from lock file
+       npm error Missing: basic-auth@2.0.1 from lock file
+       npm error Missing: debug@2.6.9 from lock file
+       npm error Missing: on-finished@2.3.0 from lock file
+       npm error Missing: safe-buffer@5.1.2 from lock file
+       npm error Missing: ms@2.0.0 from lock file
+       npm error
+       npm error Clean install a project
+       npm error
+       npm error Usage:
+       npm error npm ci
+       npm error
+       npm error Options:
+       npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+       npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+       npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+       npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+       npm error [--no-bin-links] [--no-fund] [--dry-run]
+       npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+       npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+       npm error
+       npm error aliases: clean-install, ic, install-clean, isntall-clean
+       npm error
+       npm error Run "npm help ci" for more info
+       npm error A complete log of this run can be found in: /tmp/npmcache.NoIOq/_logs/2025-07-27T00_48_15_992Z-debug-0.log
+-----> Build failed
+       
+       We're sorry this build is failing! You can troubleshoot common issues here:
+       https://devcenter.heroku.com/articles/troubleshooting-node-deploys
+       
+       If you're stuck, please submit a ticket so we can help:
+       https://help.heroku.com/
+       
+       Love,
+       Heroku
+       
+ !     Push rejected, failed to compile Node.js app.
+ !     Push failed
