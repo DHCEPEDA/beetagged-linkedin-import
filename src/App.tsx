@@ -44,11 +44,15 @@ function App() {
 
   const loadContacts = async (): Promise<void> => {
     try {
+      console.log('Loading contacts from:', `${BACKEND_URL}/api/contacts`);
       const response = await fetch(`${BACKEND_URL}/api/contacts`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Loaded contacts:', data.length, 'items');
         setContacts(data);
         setSearchResults(data);
+      } else {
+        console.error('Failed to load contacts - response not OK:', response.status);
       }
     } catch (error) {
       console.error('Failed to load contacts:', error);
@@ -63,9 +67,11 @@ function App() {
 
     setLoading(true);
     try {
+      console.log('Searching for:', query);
       const response = await fetch(`${BACKEND_URL}/api/search/natural?q=${encodeURIComponent(query)}`);
       if (response.ok) {
         const result = await response.json();
+        console.log('Search results:', result.results?.length || 0, 'found');
         setSearchResults(result.results || []);
       } else {
         // Fallback to local search
