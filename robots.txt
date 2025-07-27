@@ -1,18 +1,14 @@
-# BeeTagged robots.txt
-# Allow Meta crawlers to access the site for Facebook integration
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: facebookcatalog
-Allow: /
-
-User-agent: meta-externalagent
-Allow: /
-
-User-agent: meta-externalfetcher
-Allow: /
-
-# Allow other search engines
 User-agent: *
 Allow: /
