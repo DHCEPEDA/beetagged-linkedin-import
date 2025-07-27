@@ -1,0 +1,53 @@
+-----> Building on the Heroku-24 stack
+-----> Using buildpack: heroku/nodejs
+-----> Node.js app detected
+       
+-----> Creating runtime environment
+       
+       NPM_CONFIG_LOGLEVEL=error
+       NODE_VERBOSE=false
+       NODE_ENV=production
+       NODE_MODULES_CACHE=true
+       
+-----> Installing binaries
+       engines.node (package.json):   unspecified
+       engines.npm (package.json):    unspecified (use default)
+       
+       Resolving node version 22.x...
+       Downloading and installing node 22.17.1...
+       Using default npm version: 10.9.2
+       
+-----> Restoring cache
+       Cached directories were not restored due to a change in version of node, npm, yarn or stack
+       Module installation may take longer for this build
+       
+-----> Installing dependencies
+       Installing node modules
+       npm error code E404
+       npm error 404 Not Found - GET https://registry.npmjs.org/@radix-ui%2freact-badge - Not found
+       npm error 404
+       npm error 404  '@radix-ui/react-badge@^1.0.1' is not in this registry.
+       npm error 404
+       npm error 404 Note that you can also install from a
+       npm error 404 tarball, folder, http url, or git url.
+       npm notice
+       npm notice New major version of npm available! 10.9.2 -> 11.5.1
+       npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.5.1
+       npm notice To update run: npm install -g npm@11.5.1
+       npm notice
+       npm error A complete log of this run can be found in: /tmp/npmcache.AgqUR/_logs/2025-07-27T01_23_49_113Z-debug-0.log
+-----> Build failed
+       
+       We're sorry this build is failing! You can troubleshoot common issues here:
+       https://devcenter.heroku.com/articles/troubleshooting-node-deploys
+       
+       Some possible problems:
+       
+       - Node version not specified in package.json
+         https://devcenter.heroku.com/articles/nodejs-support#specifying-a-node-js-version
+       
+       Love,
+       Heroku
+       
+ !     Push rejected, failed to compile Node.js app.
+ !     Push failed
