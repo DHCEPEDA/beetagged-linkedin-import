@@ -83,7 +83,6 @@ if (process.env.MONGODB_URI) {
  * with support for multi-source imports (LinkedIn, Facebook, manual entry)
  */
 const contactSchema = new mongoose.Schema({
-  id: { type: Number, unique: true }, // Auto-incrementing unique identifier
   name: String,                       // Full contact name (required)
   email: String,                      // Primary email address
   phone: String,                      // Primary phone number
@@ -92,7 +91,9 @@ const contactSchema = new mongoose.Schema({
   location: String,                   // Geographic location (city, state)
   tags: [String],                     // Smart categorization tags (auto-generated + manual)
   source: String,                     // Import source: 'linkedin', 'facebook', 'manual'
-  createdAt: { type: Date, default: Date.now } // Timestamp of contact creation
+  connectedOn: String,                // LinkedIn connection date
+  createdAt: { type: Date, default: Date.now }, // Timestamp of contact creation
+  updatedAt: { type: Date, default: Date.now }  // Last updated timestamp
 });
 
 const Contact = mongoose.model('Contact', contactSchema);
@@ -641,16 +642,17 @@ app.get('/api/search/natural', async (req, res) => {
   }
 });
 
-// Download CSV template endpoint
+// Download CSV template endpoint - LinkedIn format
 app.get('/api/csv-template', (req, res) => {
   const template = [
-    'name,company,job title,industry,email,phone,linkedin,how we met,notes,tags',
-    'John Smith,Tesla,Software Engineer,Automotive,john@tesla.com,555-0123,linkedin.com/in/johnsmith,Conference,Great engineer,engineering;tesla',
-    'Jane Doe,Google,Product Manager,Technology,jane@google.com,555-0456,linkedin.com/in/janedoe,Mutual friend,PM for Chrome,product;google;chrome'
+    'First Name,Last Name,Email Address,Company,Position,Connected On',
+    'John,Doe,john.doe@google.com,Google,Software Engineer,10/15/2023',
+    'Jane,Smith,,Microsoft,Product Manager,09/22/2023',
+    'Bob,Johnson,bob@startup.com,"Startup, Inc.",Founder & CEO,08/30/2023'
   ].join('\n');
   
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="beetagged-contacts-template.csv"');
+  res.setHeader('Content-Disposition', 'attachment; filename="linkedin-import-template.csv"');
   res.send(template);
 });
 
