@@ -41,10 +41,16 @@ app.use((req, res, next) => {
   }
 });
 
-// MongoDB connection
+// MongoDB connection with optimization
 if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB Atlas'))
+  mongoose.connect(process.env.MONGODB_URI, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    bufferCommands: false,
+    bufferMaxEntries: 0
+  })
+    .then(() => console.log('MongoDB connected'))
     .catch(err => console.error('MongoDB connection error:', err));
 }
 
