@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Upload, Users, Zap } from 'lucide-react';
 import './App.css';
 
-const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'https://beetagged-app-53414697acd3.herokuapp.com';
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:5000';
 
 interface Contact {
   _id: string;
@@ -200,21 +200,17 @@ function App() {
           </div>
           
           <div className="p-6">
-            {searchResults.length === 0 ? (
+            {searchResults.length === 0 && searchQuery ? (
               <div className="text-center py-8 text-gray-500">
-                {contacts.length === 0 ? (
-                  <div>
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg mb-2">No contacts yet</p>
-                    <p>Import your LinkedIn connections to get started</p>
-                  </div>
-                ) : (
-                  <div>
-                    <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg mb-2">No contacts found</p>
-                    <p>Try a different search query</p>
-                  </div>
-                )}
+                <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-lg mb-2">No contacts found</p>
+                <p>Try a different search query</p>
+              </div>
+            ) : contacts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-lg mb-2">No contacts yet</p>
+                <p>Import your LinkedIn connections to get started</p>
               </div>
             ) : (
               <div className="space-y-4">
