@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Upload, Users, Zap } from 'lucide-react';
 import './App.css';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://beetagged-app-53414697acd3.herokuapp.com';
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'https://beetagged-app-53414697acd3.herokuapp.com';
 
 interface Contact {
   _id: string;
@@ -20,6 +20,7 @@ function App() {
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
+  const [searchPressed, setSearchPressed] = useState(false);
 
   // Check backend connection on mount
   useEffect(() => {
@@ -90,6 +91,8 @@ function App() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      setSearchPressed(true);
+      setTimeout(() => setSearchPressed(false), 200);
       handleSearch(searchQuery);
     }
   };
@@ -141,7 +144,13 @@ function App() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask anything: 'engineers at Microsoft', 'contacts in Austin', 'who works at startups'..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-200 ${
+                  searchPressed 
+                    ? 'border-blue-500 ring-2 ring-blue-200 scale-[1.02]' 
+                    : loading 
+                    ? 'border-blue-400 bg-blue-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
               />
             </div>
             <button

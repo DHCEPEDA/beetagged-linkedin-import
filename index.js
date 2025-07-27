@@ -683,6 +683,18 @@ app.get('/', (req, res) => {
             border-radius: 10px;
             font-size: 16px;
             margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .search-bar:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            transform: scale(1.02);
+        }
+        .search-bar.search-pressed {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+            transform: scale(1.02);
+            background: #f0f7ff;
         }
         .hidden { display: none; }
         .loading {
@@ -1035,6 +1047,14 @@ app.get('/', (req, res) => {
         function handleKeyDown(event) {
             if (event.key === 'Enter') {
                 event.preventDefault(); // Prevent form submission
+                
+                // Add visual feedback
+                const searchInput = event.target;
+                searchInput.classList.add('search-pressed');
+                setTimeout(() => {
+                    searchInput.classList.remove('search-pressed');
+                }, 300);
+                
                 const query = event.target.value.trim();
                 performSearch(query);
             }
