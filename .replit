@@ -24,6 +24,14 @@ args = "UpdateHerokuBuild"
 task = "workflow.run"
 args = "ViteDev"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BuildSquarespaceBundle"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BuildDevelopment"
+
 [[workflows.workflow]]
 name = "BeeTaggedServer"
 author = "agent"
@@ -49,6 +57,22 @@ author = "agent"
 task = "shell.exec"
 args = "vite dev --host 0.0.0.0 --port 3000"
 waitForPort = 3000
+
+[[workflows.workflow]]
+name = "BuildSquarespaceBundle"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx webpack --config webpack.squarespace.config.js"
+
+[[workflows.workflow]]
+name = "BuildDevelopment"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "vite build --mode development"
 
 [deployment]
 run = ["sh", "-c", "node index.js"]
