@@ -21,12 +21,12 @@ app.use(helmet({
   contentSecurityPolicy: false, // Allow external scripts for frontend
 }));
 
-// CORS configuration for production
+// CORS configuration for production - Allow all origins for widget compatibility
 app.use(cors({
-  origin: ['https://beetagged-app-53414697acd3.herokuapp.com', 'https://www.squarespace.com', /\.squarespace\.com$/, /\.replit\.dev$/],
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+  credentials: false
 }));
 
 // Compression and parsing
