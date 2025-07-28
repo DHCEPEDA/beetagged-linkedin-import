@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged Bundle Test</title>
+    <link rel="stylesheet" href="src/beetagged-styles.css">
+</head>
+<body>
+    <h1>BeeTagged Bundle Test</h1>
+    
+    <!-- This is where React will mount -->
+    <div id="my-react-app-root"></div>
+    
+    <!-- Load React from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Load our bundled app -->
+    <script src="dist/beetagged-app-bundle.js"></script>
+    
+    <script>
+        console.log('React loaded:', typeof React !== 'undefined');
+        console.log('ReactDOM loaded:', typeof ReactDOM !== 'undefined');
+        console.log('BeeTagged app should mount automatically');
+    </script>
+</body>
+</html>
