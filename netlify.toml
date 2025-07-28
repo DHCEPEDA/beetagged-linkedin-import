@@ -1,0 +1,37 @@
+[build]
+  functions = "serverless-functions"
+
+[[redirects]]
+  from = "/api/import/linkedin"
+  to = "/.netlify/functions/import-linkedin"
+  status = 200
+
+[[redirects]]
+  from = "/api/search/natural"
+  to = "/.netlify/functions/search-contacts"
+  status = 200
+
+[[redirects]]
+  from = "/api/contacts"
+  to = "/.netlify/functions/get-contacts"
+  status = 200
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/health-check"
+  status = 200
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions.import-linkedin]
+  timeout = 30
+
+[functions.search-contacts]
+  timeout = 15
+
+[functions.get-contacts]
+  timeout = 15
+
+[functions.health-check]
+  timeout = 10
