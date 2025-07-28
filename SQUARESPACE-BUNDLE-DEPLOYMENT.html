@@ -1,0 +1,58 @@
+<!-- SQUARESPACE BUNDLE DEPLOYMENT -->
+<!-- Step 1: Upload beetagged-styles.css and beetagged-app-bundle.js to Squarespace -->
+<!-- Step 2: Replace URLs below with your actual Squarespace file URLs -->
+<!-- Step 3: Add this code block to your Squarespace page -->
+
+<div id="my-react-app-root"></div>
+
+<!-- Load React from CDN (required for the bundle to work) -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<!-- Load BeeTagged Styles (replace with your uploaded CSS URL) -->
+<link rel="stylesheet" href="URL_TO_YOUR_UPLOADED_BEETAGGED_STYLES.CSS_ON_SQUARESPACE">
+
+<!-- Load BeeTagged App Bundle (replace with your uploaded JS URL) -->
+<script src="URL_TO_YOUR_UPLOADED_BEETAGGED_APP_BUNDLE.JS_ON_SQUARESPACE"></script>
+
+<!-- 
+DEPLOYMENT INSTRUCTIONS:
+
+1. BUILD THE BUNDLE:
+   - Run: npm install @babel/core @babel/preset-env @babel/preset-react babel-loader webpack webpack-cli
+   - Run: npx webpack --config webpack.squarespace.config.js
+   - This creates: dist/beetagged-app-bundle.js
+
+2. UPLOAD TO SQUARESPACE:
+   - Upload dist/beetagged-app-bundle.js to Squarespace
+   - Upload src/beetagged-styles.css to Squarespace
+   - Get the public URLs for both files
+
+3. UPDATE THIS CODE:
+   - Replace "URL_TO_YOUR_UPLOADED_BEETAGGED_STYLES.CSS_ON_SQUARESPACE" with actual CSS URL
+   - Replace "URL_TO_YOUR_UPLOADED_BEETAGGED_APP_BUNDLE.JS_ON_SQUARESPACE" with actual JS URL
+
+4. ADD TO SQUARESPACE:
+   - Copy this entire code block
+   - Paste into a Squarespace Code Block on your page
+
+FEATURES:
+- Full React BeeTagged app
+- Professional contact search
+- LinkedIn CSV import
+- Connects to your Heroku backend
+- Responsive design
+- Production-ready styling
+-->
+
+<style>
+/* Optional: Additional Squarespace-specific overrides */
+.beetagged-container {
+  margin: 20px 0;
+}
+
+/* Ensure the app fits well in Squarespace layouts */
+.sqs-block-code .beetagged-container {
+  max-width: 100%;
+}
+</style>
