@@ -21,12 +21,42 @@ app.use(helmet({
   contentSecurityPolicy: false, // Allow external scripts for frontend
 }));
 
-// CORS configuration for production - Allow all origins for widget compatibility
+// CORS configuration for production - Secure allowlist approach
+const allowedOrigins = [
+  'https://www.squarespace.com',
+  'https://squarespace.com', 
+  /\.squarespace\.com$/,
+  'https://beetagged-app-53414697acd3.herokuapp.com',
+  /\.replit\.dev$/,
+  'http://localhost:3000', // For Lovable development
+  'http://localhost:5173'  // For Vite development
+];
+
 app.use(cors({
-  origin: '*',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      return callback(null, true);
+    } else {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
-  credentials: false
+  credentials: true
 }));
 
 // Compression and parsing
