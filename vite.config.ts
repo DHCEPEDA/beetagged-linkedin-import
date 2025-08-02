@@ -14,8 +14,7 @@ export default defineConfig({
     outDir: 'dist-vite',
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
-        app: path.resolve(__dirname, 'src/SquarespaceApp.jsx')
+        main: path.resolve(__dirname, 'index.html')
       }
     }
   },
