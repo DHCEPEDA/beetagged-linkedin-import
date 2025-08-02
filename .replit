@@ -28,6 +28,10 @@ args = "BuildSquarespaceBundle"
 task = "workflow.run"
 args = "BuildDevelopment"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "RebuildSquarespaceBundle"
+
 [[workflows.workflow]]
 name = "UpdateHerokuBuild"
 author = "agent"
@@ -60,6 +64,14 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "vite build --mode development"
+
+[[workflows.workflow]]
+name = "RebuildSquarespaceBundle"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx webpack --config webpack.squarespace.config.js"
 
 [deployment]
 run = ["sh", "-c", "node index.js"]
