@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dual File Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .form-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="file"] { margin-bottom: 10px; }
+        button { background: #0066cc; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>BeeTagged - Dual File LinkedIn Import Test</h1>
+    
+    <form id="uploadForm">
+        <div class="form-group">
+            <label for="linkedinCsv">LinkedIn Connections CSV:</label>
+            <input type="file" id="linkedinCsv" name="linkedinCsv" accept=".csv">
+            <small>Export from LinkedIn > Settings > Data Privacy > Connections</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="contactsCsv">LinkedIn Contacts CSV (Optional):</label>
+            <input type="file" id="contactsCsv" name="contactsCsv" accept=".csv">
+            <small>Export from LinkedIn > Settings > Data Privacy > Contacts</small>
+        </div>
+        
+        <button type="submit">Upload and Merge LinkedIn Files</button>
+    </form>
+    
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const linkedinFile = document.getElementById('linkedinCsv').files[0];
+            const contactsFile = document.getElementById('contactsCsv').files[0];
+            
+            if (!linkedinFile && !contactsFile) {
+                showResult('Please select at least one CSV file.', 'error');
+                return;
+            }
+            
+            if (linkedinFile) {
+                formData.append('linkedinCsv', linkedinFile);
+            }
+            if (contactsFile) {
+                formData.append('contactsCsv', contactsFile);
+            }
+            
+            showResult('Uploading and processing files...', 'info');
+            
+            try {
+                const response = await fetch('/api/import/linkedin', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(result.message, 'success');
+                } else {
+                    showResult(result.message, 'error');
+                }
+            } catch (error) {
+                showResult(`Upload failed: ${error.message}`, 'error');
+            }
+        });
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
