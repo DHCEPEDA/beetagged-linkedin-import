@@ -269,17 +269,17 @@ function parseCSVLine(line) {
   return result;
 }
 
-// LinkedIn header mappings
+// LinkedIn header mappings - expanded for better compatibility
 const LINKEDIN_HEADER_MAPPINGS = {
-  firstName: ['first name', 'firstname', 'given name'],
-  lastName: ['last name', 'lastname', 'surname', 'family name'],
-  name: ['first name', 'last name', 'name', 'full name', 'contact name'],
-  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email'],
-  company: ['company', 'current company', 'organization', 'employer', 'workplace'],
-  position: ['position', 'current position', 'title', 'job title', 'current title', 'role'],
-  location: ['location', 'current location', 'address', 'city', 'region'],
-  connectedOn: ['connected on', 'connection date', 'date connected', 'connected'],
-  url: ['url', 'profile url', 'linkedin url', 'profile link']
+  firstName: ['first name', 'firstname', 'given name', 'first', 'fname'],
+  lastName: ['last name', 'lastname', 'surname', 'family name', 'last', 'lname'],
+  name: ['name', 'full name', 'contact name', 'display name', 'person name'],
+  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email', 'contact email', 'mail'],
+  company: ['company', 'current company', 'organization', 'employer', 'workplace', 'work', 'corp', 'business'],
+  position: ['position', 'current position', 'title', 'job title', 'current title', 'role', 'job', 'occupation'],
+  location: ['location', 'current location', 'address', 'city', 'region', 'area', 'place', 'geographic area'],
+  connectedOn: ['connected on', 'connection date', 'date connected', 'connected', 'date', 'connection time'],
+  url: ['url', 'profile url', 'linkedin url', 'profile link', 'link', 'linkedin profile', 'profile']
 };
 
 function findHeaderIndex(headers, fieldMappings) {
@@ -377,19 +377,36 @@ app.get('/api/contacts', async (req, res) => {
 // LinkedIn CSV import with enhanced error handling
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
+    console.log('=== LinkedIn CSV Import Started ===');
+    console.log('File received:', !!req.file);
+    console.log('File size:', req.file?.size);
+    
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No file uploaded. Please select a CSV file from LinkedIn.' 
+      });
+    }
+
+    // Validate file type
+    if (!req.file.originalname?.toLowerCase().endsWith('.csv')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please upload a CSV file. LinkedIn exports are in CSV format.' 
+      });
     }
 
     const csvData = req.file.buffer.toString('utf8');
-    console.log('Processing LinkedIn CSV file...');
+    console.log('CSV file content length:', csvData.length);
+    console.log('First 200 characters:', csvData.substring(0, 200));
 
-    const lines = csvData.split('\n').filter(line => line.trim());
+    const lines = csvData.split(/\r?\n/).filter(line => line.trim());
+    console.log('Total lines found:', lines.length);
     
     if (lines.length < 2) {
       return res.status(400).json({ 
         success: false, 
-        message: 'CSV file must contain at least a header row and one data row' 
+        message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
       });
     }
 
@@ -398,7 +415,21 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     const headers = parseCSVLine(headerLine);
     console.log('CSV Headers found:', headers);
     
-    // Find column indices
+    // Enhanced header validation
+    const hasValidHeaders = headers.some(header => 
+      header.toLowerCase().includes('name') || 
+      header.toLowerCase().includes('company') ||
+      header.toLowerCase().includes('position')
+    );
+    
+    if (!hasValidHeaders) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Company", etc.' 
+      });
+    }
+    
+    // Find column indices with better mapping
     const indices = {
       firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
       lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
@@ -413,17 +444,26 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
 
     console.log('Field indices:', indices);
 
+    // Validate that we found at least name fields
+    if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.' 
+      });
+    }
+
     const contacts = [];
     let processed = 0;
     let skipped = 0;
+    const errors = [];
 
-    // Process data rows
+    // Process data rows with better error handling
     for (let i = 1; i < lines.length; i++) {
       try {
         const fields = parseCSVLine(lines[i]);
         processed++;
         
-        // Build name
+        // Build name with fallback strategies
         let name = '';
         if (indices.firstName >= 0 && indices.lastName >= 0) {
           const firstName = fields[indices.firstName]?.trim() || '';
@@ -433,9 +473,10 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
           name = fields[indices.name]?.trim() || '';
         }
 
-        // Skip rows without a name
-        if (!name) {
+        // Skip rows without a name but track them
+        if (!name || name.length < 2) {
           skipped++;
+          errors.push(`Row ${i + 1}: No valid name found`);
           continue;
         }
 
@@ -460,51 +501,72 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
         contacts.push(contact);
       } catch (error) {
         console.warn(`Error parsing CSV line ${i + 1}:`, error);
+        errors.push(`Row ${i + 1}: ${error.message}`);
         skipped++;
       }
     }
 
-    // Insert contacts one by one to handle duplicates gracefully
+    console.log(`Parsed ${contacts.length} valid contacts from ${processed} rows`);
+
+    // Batch insert with better duplicate handling
     let insertedCount = 0;
     let duplicateCount = 0;
     
     for (const contactData of contacts) {
       try {
-        // Check if contact already exists
+        // Enhanced duplicate detection
         const existingContact = await Contact.findOne({
-          name: contactData.name,
-          company: contactData.company
+          $or: [
+            { name: contactData.name, company: contactData.company },
+            { name: contactData.name, email: contactData.email },
+            { email: contactData.email, email: { $ne: '' } }
+          ]
         });
         
         if (existingContact) {
           duplicateCount++;
-          console.log(`Skipping duplicate: ${contactData.name} at ${contactData.company}`);
+          console.log(`Duplicate found: ${contactData.name}`);
           continue;
         }
         
         const savedContact = await contactData.save();
         insertedCount++;
-        console.log(`Inserted: ${contactData.name} at ${contactData.company}`);
+        console.log(`✅ Saved: ${contactData.name} at ${contactData.company}`);
       } catch (error) {
-        console.error(`Failed to insert ${contactData.name}:`, error.message);
+        console.error(`❌ Failed to save ${contactData.name}:`, error.message);
         duplicateCount++;
+        errors.push(`Failed to save ${contactData.name}: ${error.message}`);
       }
     }
     
-    console.log(`Import complete: ${insertedCount} new, ${duplicateCount} duplicates/errors`);
+    console.log(`=== Import Summary ===`);
+    console.log(`✅ Inserted: ${insertedCount}`);
+    console.log(`⚠️  Duplicates/Errors: ${duplicateCount}`);
+    console.log(`📊 Total processed: ${processed}`);
+    
+    // Always return success if we processed the file, even with errors
+    const isSuccess = insertedCount > 0 || contacts.length > 0;
+    
     res.json({
-      success: insertedCount > 0,
+      success: isSuccess,
       count: insertedCount,
       processed: processed,
       skipped: skipped + duplicateCount,
+      totalContacts: contacts.length,
+      errors: errors.slice(0, 5), // Only return first 5 errors
       message: insertedCount > 0 
-        ? `Successfully imported ${insertedCount} new contacts. ${duplicateCount} duplicates skipped.`
-        : `No new contacts imported. ${duplicateCount} duplicates or errors found.`
+        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `${duplicateCount} duplicates skipped.` : ''}`
+        : contacts.length > 0 
+          ? `⚠️ CSV processed but no new contacts added. ${duplicateCount} contacts were already in your database.`
+          : `❌ No valid contacts found in CSV file. Please check the format.`
     });
 
   } catch (error) {
-    console.error('Import error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('=== Import Error ===', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
   }
 });
 
