@@ -1,7 +1,7 @@
-// Backend URL configuration for different environments
+// Backend URL configuration - Always use Heroku for production
 export const BACKEND_URL = process.env.NODE_ENV === 'production' 
   ? 'https://beetagged-app-53414697acd3.herokuapp.com'
-  : 'http://localhost:5000';
+  : 'https://beetagged-app-53414697acd3.herokuapp.com'; // Use Heroku for all environments
 
 // API endpoints
 export const API_ENDPOINTS = {
