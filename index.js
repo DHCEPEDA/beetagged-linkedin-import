@@ -414,18 +414,20 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     const headerLine = lines[0];
     const headers = parseCSVLine(headerLine);
     console.log('CSV Headers found:', headers);
+    console.log('Raw header line:', headerLine);
     
-    // Enhanced header validation
+    // Enhanced header validation - accept minimal LinkedIn format
     const hasValidHeaders = headers.some(header => 
       header.toLowerCase().includes('name') || 
       header.toLowerCase().includes('company') ||
-      header.toLowerCase().includes('position')
+      header.toLowerCase().includes('position') ||
+      header.toLowerCase().includes('connected')
     );
     
     if (!hasValidHeaders) {
       return res.status(400).json({ 
         success: false, 
-        message: 'This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Company", etc.' 
+        message: 'This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Last Name", etc.' 
       });
     }
     
@@ -443,6 +445,7 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     };
 
     console.log('Field indices:', indices);
+    console.log('Available headers for mapping:', headers.map((h, i) => `${i}: "${h}"`));
 
     // Validate that we found at least name fields
     if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
@@ -450,6 +453,21 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
         success: false, 
         message: 'Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.' 
       });
+    }
+
+    // Check what data we can expect to extract
+    const availableFields = [];
+    if (indices.firstName >= 0 || indices.lastName >= 0) availableFields.push('Names');
+    if (indices.email >= 0) availableFields.push('Emails');
+    if (indices.company >= 0) availableFields.push('Companies');
+    if (indices.position >= 0) availableFields.push('Positions');
+    if (indices.location >= 0) availableFields.push('Locations');
+    
+    console.log('Will extract:', availableFields.join(', '));
+    
+    // Warn if only basic data is available
+    if (availableFields.length === 1 && availableFields[0] === 'Names') {
+      console.log('⚠️ LinkedIn export contains only names - no company/email data available');
     }
 
     const contacts = [];
@@ -489,6 +507,11 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
           connectedOn: indices.connectedOn >= 0 ? (fields[indices.connectedOn]?.trim() || '') : '',
           url: indices.url >= 0 ? (fields[indices.url]?.trim() || '') : ''
         };
+
+        // Log sample contact data for debugging
+        if (i <= 3) {
+          console.log(`Sample contact ${i}: ${JSON.stringify(contactData)}`);
+        }
 
         const contact = new Contact({
           ...contactData,
@@ -567,7 +590,7 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
       totalContacts: contacts.length,
       errors: errors.slice(0, 5), // Only return first 5 errors
       message: insertedCount > 0 
-        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `${duplicateCount} duplicates skipped.` : ''}`
+        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `${duplicateCount} duplicates skipped. ` : ''}${contactsWithCompany === 0 && contactsWithEmail === 0 ? 'Note: LinkedIn only provided names - you can manually add company/email details.' : `Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails` : ''}`}`
         : contacts.length > 0 
           ? `⚠️ CSV processed but no new contacts added. ${duplicateCount} contacts were already in your database.`
           : `❌ No valid contacts found in CSV file. Please check the format.`
