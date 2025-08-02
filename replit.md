@@ -25,6 +25,7 @@ The backend is built on **Node.js/Express**, chosen for its scalability and exte
 - **Data Flow**: The typical data flow involves user authentication via Facebook OAuth, contact import via LinkedIn CSV or Facebook connection, server-side data processing and validation, storage in MongoDB, and display of consolidated contacts via the React frontend. Users can then search and tag contacts.
 - **Deployment Strategy**: **Heroku-exclusive deployment** for all environments. No Replit server dependencies. Backend uses Node.js buildpack on Heroku. Frontend bundles connect directly to Heroku APIs. All production and pre-production builds target Heroku infrastructure exclusively.
 - **Production Status**: Backend deployed successfully to Heroku at https://beetagged-app-53414697acd3.herokuapp.com with MongoDB Atlas connected. Squarespace integration completed using Code Injection method for JavaScript and Custom CSS for styling.
+- **Latest Update**: Dual-file LinkedIn CSV merging system implemented with enhanced email extraction and smart contact matching. Updated backend code ready for deployment to fix Michael Higgins email extraction issue.
 
 ## External Dependencies
 
