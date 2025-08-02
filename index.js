@@ -446,6 +446,14 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     };
 
     console.log('Field indices:', indices);
+    console.log('Available headers for mapping:', headers.map((h, i) => `${i}: "${h}"`));
+    
+    // Debug email field specifically
+    if (indices.email >= 0) {
+      console.log(`✅ Email field found at index ${indices.email}: "${headers[indices.email]}"`);
+    } else {
+      console.log('❌ No email field found in headers');
+    }
 
     // Validate that we found at least name fields
     if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
@@ -483,15 +491,26 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
           continue;
         }
 
+        // Extract field data with better error handling
+        const emailRaw = indices.email >= 0 && fields[indices.email] ? fields[indices.email].trim() : '';
+        const companyRaw = indices.company >= 0 && fields[indices.company] ? fields[indices.company].trim() : '';
+        const positionRaw = indices.position >= 0 && fields[indices.position] ? fields[indices.position].trim() : '';
+        
         const contactData = {
           name,
-          email: indices.email >= 0 ? (fields[indices.email]?.trim().toLowerCase() || '') : '',
-          company: indices.company >= 0 ? (fields[indices.company]?.trim() || '') : '',
-          position: indices.position >= 0 ? (fields[indices.position]?.trim() || '') : '',
-          location: indices.location >= 0 ? (fields[indices.location]?.trim() || '') : '',
-          connectedOn: indices.connectedOn >= 0 ? (fields[indices.connectedOn]?.trim() || '') : '',
-          url: indices.url >= 0 ? (fields[indices.url]?.trim() || '') : ''
+          email: emailRaw.toLowerCase(),
+          company: companyRaw,
+          position: positionRaw,
+          location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : '',
+          connectedOn: indices.connectedOn >= 0 && fields[indices.connectedOn] ? fields[indices.connectedOn].trim() : '',
+          url: indices.url >= 0 && fields[indices.url] ? fields[indices.url].trim() : ''
         };
+
+        // Log sample contact data for debugging
+        if (i <= 3) {
+          console.log(`Sample contact ${i}: ${JSON.stringify(contactData)}`);
+          console.log(`Raw fields for row ${i}:`, fields);
+        }
 
         const contact = new Contact({
           ...contactData,
