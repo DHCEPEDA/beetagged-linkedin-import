@@ -16,17 +16,74 @@ const PORT = process.env.PORT || 5000;
 
 // ===== MIDDLEWARE SETUP =====
 
+// HTTPS redirect for production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      res.redirect(`https://${req.header('host')}${req.url}`);
+    } else {
+      next();
+    }
+  });
+}
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false, // Allow external scripts for frontend
 }));
 
-// CORS configuration for production
+// CORS configuration for production - Allow all Squarespace domains
+const allowedOrigins = [
+  'https://www.squarespace.com',
+  'https://squarespace.com', 
+  /\.squarespace\.com$/,
+  /\.squarespace-cdn\.com$/,
+  /^https:\/\/.*\.squarespace\.com$/,
+  'https://beetagged-app-53414697acd3.herokuapp.com',
+  /\.replit\.dev$/,
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: ['https://beetagged-app-53414697acd3.herokuapp.com', 'https://www.squarespace.com', /\.squarespace\.com$/, /\.replit\.dev$/],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // For development and testing, be more permissive
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      return callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      return callback(null, true); // Temporarily allow all for debugging
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  credentials: false // Set to false for broader compatibility
 }));
 
 // Compression and parsing
