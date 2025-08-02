@@ -544,6 +544,18 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     console.log(`⚠️  Duplicates/Errors: ${duplicateCount}`);
     console.log(`📊 Total processed: ${processed}`);
     
+    // Data completeness analysis
+    let contactsWithCompany = 0;
+    let contactsWithEmail = 0;
+    contacts.forEach(contact => {
+      if (contact.company && contact.company.trim()) contactsWithCompany++;
+      if (contact.email && contact.email.trim()) contactsWithEmail++;
+    });
+    
+    console.log(`📈 Data completeness:`);
+    console.log(`   Companies: ${contactsWithCompany}/${contacts.length} contacts`);
+    console.log(`   Emails: ${contactsWithEmail}/${contacts.length} contacts`);
+    
     // Always return success if we processed the file, even with errors
     const isSuccess = insertedCount > 0 || contacts.length > 0;
     
