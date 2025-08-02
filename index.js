@@ -1,80 +1,77 @@
-// Copy this updated index.js to your Heroku deployment
-// This contains the enhanced CSV upload handling
+// HEROKU DEPLOYMENT - COMPLETE FIXED BACKEND
+// This file contains the complete, working backend with all fixes applied
+// Ready for deployment to Heroku with MongoDB Atlas connection
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const multer = require('multer');
-const csvParser = require('csv-parser');
-const fs = require('fs');
-const path = require('path');
-const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const morgan = require('morgan');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Heroku requires binding to process.env.PORT
-console.log('Starting BeeTagged server...');
-console.log('Environment:', process.env.NODE_ENV || 'development');
-console.log('Port:', PORT);
+// ===== MIDDLEWARE SETUP =====
 
-// Trust proxy for Heroku
-app.set('trust proxy', 1);
+// HTTPS redirect for production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      res.redirect(`https://${req.header('host')}${req.url}`);
+    } else {
+      next();
+    }
+  });
+}
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Security middleware
 app.use(helmet({
-  crossOriginEmbedderPolicy: false, // Allow embedding in other sites
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
-      fontSrc: ["'self'", "https:", "http:", "data:"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'", "https:", "http:"],
-      frameSrc: ["'self'", "https:", "http:"],
-    },
-  }
+  contentSecurityPolicy: false, // Allow external scripts for frontend
 }));
 
-// Enhanced CORS configuration for production
+// CORS configuration for production - Allow all Squarespace domains
+const allowedOrigins = [
+  'https://www.squarespace.com',
+  'https://squarespace.com', 
+  /\.squarespace\.com$/,
+  /\.squarespace-cdn\.com$/,
+  /^https:\/\/.*\.squarespace\.com$/,
+  'https://beetagged-app-53414697acd3.herokuapp.com',
+  /\.replit\.dev$/,
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
-    console.log('CORS check for origin:', origin);
+    // For development and testing, be more permissive
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
     
-    // Define allowed origins with enhanced pattern matching
-    const allowedOrigins = [
-      // Heroku domains
-      /^https:\/\/.*\.herokuapp\.com$/,
-      /^https:\/\/.*\.herokuapp\.com$/,
-      
-      // Squarespace domains
-      /^https:\/\/.*\.squarespace\.com$/,
-      /^https:\/\/.*\.sqsp\.com$/,
-      
-      // Custom domains
-      /^https:\/\/.*\.replit\.dev$/,
-      /^https:\/\/.*\.repl\.co$/,
-      
-      // Local development
-      /^http:\/\/localhost:\d+$/,
-      /^http:\/\/127\.0\.0\.1:\d+$/,
-      /^http:\/\/0\.0\.0\.0:\d+$/
-    ];
-    
-    const isAllowed = allowedOrigins.some(pattern => {
-      if (pattern instanceof RegExp) {
-        return pattern.test(origin);
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
       }
-      return pattern === origin;
+      return false;
     });
     
     if (isAllowed) {
@@ -366,7 +363,7 @@ app.get('/api/contacts', async (req, res) => {
     
     const contacts = await Promise.race([contactsPromise, timeoutPromise]);
     console.log(`Returning ${contacts.length} contacts`);
-    res.json({ contacts });
+    res.json(contacts);
   } catch (error) {
     console.error('Error fetching contacts:', error);
     if (error.message === 'Database timeout') {
@@ -377,59 +374,265 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
-// LinkedIn CSV import with enhanced error handling
-app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
+// LinkedIn CSV import with dual-file merge support
+app.post('/api/import/linkedin', upload.fields([
+  { name: 'linkedinCsv', maxCount: 1 },
+  { name: 'contactsCsv', maxCount: 1 }
+]), async (req, res) => {
   try {
     console.log('=== LinkedIn CSV Import Started ===');
-    console.log('File received:', !!req.file);
-    console.log('File size:', req.file?.size);
+    console.log('Files received:', req.files);
     
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No file uploaded. Please select a CSV file from LinkedIn.' 
-      });
-    }
-
-    // Validate file type
-    if (!req.file.originalname?.toLowerCase().endsWith('.csv')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please upload a CSV file. LinkedIn exports are in CSV format.' 
-      });
-    }
-
-    const csvData = req.file.buffer.toString('utf8');
-    console.log('CSV file content length:', csvData.length);
-    console.log('First 200 characters:', csvData.substring(0, 200));
-
-    const lines = csvData.split(/\r?\n/).filter(line => line.trim());
-    console.log('Total lines found:', lines.length);
+    const linkedinFile = req.files?.linkedinCsv?.[0];
+    const contactsFile = req.files?.contactsCsv?.[0];
     
-    if (lines.length < 2) {
+    if (!linkedinFile && !contactsFile) {
       return res.status(400).json({ 
         success: false, 
-        message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
+        message: 'No files uploaded. Please select at least one CSV file from LinkedIn (Connections or Contacts).' 
+      });
+    }
+    
+    console.log('LinkedIn Connections file:', !!linkedinFile);
+    console.log('LinkedIn Contacts file:', !!contactsFile);
+
+    // Validate file types
+    const files = [linkedinFile, contactsFile].filter(Boolean);
+    for (const file of files) {
+      if (!file.originalname?.toLowerCase().endsWith('.csv')) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `${file.originalname} is not a CSV file. LinkedIn exports are in CSV format.` 
+        });
+      }
+    }
+
+    // Parse both CSV files
+    const csvDataSets = {};
+    if (linkedinFile) {
+      csvDataSets.connections = linkedinFile.buffer.toString('utf8');
+      console.log('Connections CSV length:', csvDataSets.connections.length);
+    }
+    if (contactsFile) {
+      csvDataSets.contacts = contactsFile.buffer.toString('utf8');
+      console.log('Contacts CSV length:', csvDataSets.contacts.length);
+    }
+
+    // Merge data from both CSV files
+    let mergedContacts = [];
+    
+    if (Object.keys(csvDataSets).length === 2) {
+      // Both files provided - merge them
+      console.log('🔄 Merging Connections + Contacts CSV files...');
+      mergedContacts = mergeLinkedInData(csvDataSets.connections, csvDataSets.contacts);
+      console.log(`✅ Merged ${mergedContacts.length} contacts from both files`);
+    } else {
+      // Single file - process normally
+      const csvData = csvDataSets.connections || csvDataSets.contacts;
+      const lines = csvData.split(/\r?\n/).filter(line => line.trim());
+      console.log('Total lines found:', lines.length);
+      
+      if (lines.length < 2) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
+        });
+      }
+      
+      // Process single file (existing logic)
+      mergedContacts = processSingleCSV(lines);
+    }
+    
+    if (mergedContacts.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No valid contacts found in the uploaded files.' 
       });
     }
 
-    // Parse headers
+    // Save merged contacts to database
+    let insertedCount = 0;
+    let duplicateCount = 0;
+    let contactsWithCompany = 0;
+    let contactsWithEmail = 0;
+    
+    for (const contactData of mergedContacts) {
+      if (contactData.company) contactsWithCompany++;
+      if (contactData.email) contactsWithEmail++;
+      
+      try {
+        const existingContact = await Contact.findOne({ 
+          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        });
+        
+        if (!existingContact) {
+          await Contact.create(contactData);
+          insertedCount++;
+        } else {
+          // Update existing contact with additional data
+          const updates = {};
+          if (contactData.email && !existingContact.email) updates.email = contactData.email;
+          if (contactData.company && !existingContact.company) updates.company = contactData.company;
+          if (contactData.position && !existingContact.position) updates.position = contactData.position;
+          if (contactData.url && !existingContact.url) updates.url = contactData.url;
+          if (contactData.phone && !existingContact.phone) updates.phone = contactData.phone;
+          
+          if (Object.keys(updates).length > 0) {
+            await Contact.findByIdAndUpdate(existingContact._id, updates);
+            console.log(`Enhanced existing contact: ${contactData.name}`);
+          }
+          duplicateCount++;
+        }
+      } catch (error) {
+        console.error(`Error saving contact ${contactData.name}:`, error);
+      }
+    }
+
+    const totalContacts = await Contact.countDocuments();
+    console.log(`=== Import Complete ===`);
+    console.log(`Processed: ${mergedContacts.length}`);
+    console.log(`Inserted: ${insertedCount}`);
+    console.log(`Enhanced/Skipped: ${duplicateCount}`);
+    console.log(`Total contacts in DB: ${totalContacts}`);
+
+    res.json({
+      success: true,
+      count: insertedCount,
+      processed: mergedContacts.length,
+      enhanced: duplicateCount,
+      totalContacts: totalContacts,
+      message: insertedCount > 0 
+        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}profile links, and connection dates.`
+        : duplicateCount > 0
+          ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with additional data from your files.`
+          : `❌ No valid contacts found in the uploaded files.`
+    });
+
+  } catch (error) {
+    console.error('=== Import Error ===', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
+  }
+});
+
+// Add merge function at the top of the file
+function mergeLinkedInData(connectionsData, contactsData) {
+  const mergedContacts = new Map();
+  
+  // Process Connections CSV (usually: First Name, Last Name, Connected On)
+  if (connectionsData) {
+    const connectionsLines = connectionsData.split(/\r?\n/).filter(line => line.trim());
+    if (connectionsLines.length > 1) {
+      const connectionsHeaders = parseCSVLine(connectionsLines[0]);
+      console.log('Connections headers:', connectionsHeaders);
+      
+      for (let i = 1; i < connectionsLines.length; i++) {
+        const fields = parseCSVLine(connectionsLines[i]);
+        const firstName = fields[0]?.trim() || '';
+        const lastName = fields[1]?.trim() || '';
+        const connectedOn = fields[2]?.trim() || '';
+        
+        if (firstName || lastName) {
+          const fullName = `${firstName} ${lastName}`.trim();
+          const key = fullName.toLowerCase();
+          
+          mergedContacts.set(key, {
+            name: fullName,
+            firstName,
+            lastName,
+            connectedOn,
+            email: '',
+            company: '',
+            position: '',
+            location: '',
+            url: '',
+            phone: '',
+            source: 'connections'
+          });
+        }
+      }
+    }
+  }
+  
+  // Process Contacts CSV (usually: Name, URL, Email, Company, Position, etc.)
+  if (contactsData) {
+    const contactsLines = contactsData.split(/\r?\n/).filter(line => line.trim());
+    if (contactsLines.length > 1) {
+      const contactsHeaders = parseCSVLine(contactsLines[0]);
+      console.log('Contacts headers:', contactsHeaders);
+      
+      // Find column indices in contacts CSV
+      const contactsIndices = {
+        name: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.name),
+        firstName: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.firstName),
+        lastName: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.lastName),
+        email: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.email),
+        company: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.company),
+        position: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.position),
+        url: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.url),
+        phone: findHeaderIndex(contactsHeaders, ['phone', 'phone number', 'mobile']),
+        location: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.location)
+      };
+      
+      for (let i = 1; i < contactsLines.length; i++) {
+        const fields = parseCSVLine(contactsLines[i]);
+        
+        let fullName = '';
+        if (contactsIndices.name >= 0) {
+          fullName = fields[contactsIndices.name]?.trim() || '';
+        } else if (contactsIndices.firstName >= 0 || contactsIndices.lastName >= 0) {
+          const firstName = fields[contactsIndices.firstName]?.trim() || '';
+          const lastName = fields[contactsIndices.lastName]?.trim() || '';
+          fullName = `${firstName} ${lastName}`.trim();
+        }
+        
+        if (fullName) {
+          const key = fullName.toLowerCase();
+          const existing = mergedContacts.get(key) || {};
+          
+          // Merge data from contacts CSV
+          mergedContacts.set(key, {
+            ...existing,
+            name: fullName,
+            email: (fields[contactsIndices.email]?.trim() || existing.email || '').toLowerCase(),
+            company: fields[contactsIndices.company]?.trim() || existing.company || '',
+            position: fields[contactsIndices.position]?.trim() || existing.position || '',
+            url: fields[contactsIndices.url]?.trim() || existing.url || '',
+            phone: fields[contactsIndices.phone]?.trim() || existing.phone || '',
+            location: fields[contactsIndices.location]?.trim() || existing.location || '',
+            source: existing.source ? `${existing.source}+contacts` : 'contacts'
+          });
+        }
+      }
+    }
+  }
+  
+  return Array.from(mergedContacts.values());
+}
+
+// Single CSV processing function
+function processSingleCSV(lines) {
+  const contacts = [];
+  const errors = [];
+  
+  // Parse headers
     const headerLine = lines[0];
     const headers = parseCSVLine(headerLine);
     console.log('CSV Headers found:', headers);
+    console.log('Raw header line:', headerLine);
     
-    // Enhanced header validation
+    // Enhanced header validation - accept minimal LinkedIn format
     const hasValidHeaders = headers.some(header => 
       header.toLowerCase().includes('name') || 
       header.toLowerCase().includes('company') ||
-      header.toLowerCase().includes('position')
+      header.toLowerCase().includes('position') ||
+      header.toLowerCase().includes('connected')
     );
     
     if (!hasValidHeaders) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Company", etc.' 
-      });
+      throw new Error('This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Last Name", etc.');
     }
     
     // Find column indices with better mapping
@@ -457,36 +660,50 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
 
     // Validate that we found at least name fields
     if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.' 
-      });
+      throw new Error('Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.');
     }
 
-    const contacts = [];
+    // Check what data we can expect to extract
+    const availableFields = [];
+    if (indices.firstName >= 0 || indices.lastName >= 0) availableFields.push('Names');
+    if (indices.email >= 0) availableFields.push('Emails');
+    if (indices.company >= 0) availableFields.push('Companies');
+    if (indices.position >= 0) availableFields.push('Positions');
+    if (indices.location >= 0) availableFields.push('Locations');
+    
+    console.log('Will extract:', availableFields.join(', '));
+    
+    // Warn if only basic data is available
+    if (availableFields.length === 1 && availableFields[0] === 'Names') {
+      console.log('⚠️ LinkedIn export contains only names - no company/email data available');
+    }
+
     let processed = 0;
     let skipped = 0;
-    const errors = [];
 
-    // Process data rows with better error handling
+    // Process data rows (skip header)
     for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) {
+        skipped++;
+        continue;
+      }
+
       try {
-        const fields = parseCSVLine(lines[i]);
+        const fields = parseCSVLine(line);
         processed++;
-        
-        // Build name with fallback strategies
+
+        // Extract name with priority: explicit name field > firstName + lastName
         let name = '';
-        if (indices.firstName >= 0 && indices.lastName >= 0) {
-          const firstName = fields[indices.firstName]?.trim() || '';
-          const lastName = fields[indices.lastName]?.trim() || '';
+        if (indices.name >= 0 && fields[indices.name]?.trim()) {
+          name = fields[indices.name].trim();
+        } else {
+          const firstName = indices.firstName >= 0 ? (fields[indices.firstName]?.trim() || '') : '';
+          const lastName = indices.lastName >= 0 ? (fields[indices.lastName]?.trim() || '') : '';
           name = `${firstName} ${lastName}`.trim();
-        } else if (indices.name >= 0) {
-          name = fields[indices.name]?.trim() || '';
         }
 
-        // Skip rows without a name but track them
-        if (!name || name.length < 2) {
-          skipped++;
+        if (!name) {
           errors.push(`Row ${i + 1}: No valid name found`);
           continue;
         }
@@ -512,85 +729,19 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
           console.log(`Raw fields for row ${i}:`, fields);
         }
 
-        const contact = new Contact({
-          ...contactData,
-          tags: generateTags(contactData),
-          source: 'linkedin',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
+        contacts.push(contactData);
 
-        contacts.push(contact);
       } catch (error) {
-        console.warn(`Error parsing CSV line ${i + 1}:`, error);
+        console.error(`Error processing row ${i + 1}:`, error);
         errors.push(`Row ${i + 1}: ${error.message}`);
         skipped++;
       }
     }
 
-    console.log(`Parsed ${contacts.length} valid contacts from ${processed} rows`);
-
-    // Batch insert with better duplicate handling
-    let insertedCount = 0;
-    let duplicateCount = 0;
+    console.log(`Processed ${processed} rows, ${contacts.length} valid contacts, ${skipped} skipped, ${errors.length} errors`);
     
-    for (const contactData of contacts) {
-      try {
-        // Enhanced duplicate detection
-        const existingContact = await Contact.findOne({
-          $or: [
-            { name: contactData.name, company: contactData.company },
-            { name: contactData.name, email: contactData.email },
-            { email: contactData.email, email: { $ne: '' } }
-          ]
-        });
-        
-        if (existingContact) {
-          duplicateCount++;
-          console.log(`Duplicate found: ${contactData.name}`);
-          continue;
-        }
-        
-        const savedContact = await contactData.save();
-        insertedCount++;
-        console.log(`✅ Saved: ${contactData.name} at ${contactData.company}`);
-      } catch (error) {
-        console.error(`❌ Failed to save ${contactData.name}:`, error.message);
-        duplicateCount++;
-        errors.push(`Failed to save ${contactData.name}: ${error.message}`);
-      }
-    }
-    
-    console.log(`=== Import Summary ===`);
-    console.log(`✅ Inserted: ${insertedCount}`);
-    console.log(`⚠️  Duplicates/Errors: ${duplicateCount}`);
-    console.log(`📊 Total processed: ${processed}`);
-    
-    // Always return success if we processed the file, even with errors
-    const isSuccess = insertedCount > 0 || contacts.length > 0;
-    
-    res.json({
-      success: isSuccess,
-      count: insertedCount,
-      processed: processed,
-      skipped: skipped + duplicateCount,
-      totalContacts: contacts.length,
-      errors: errors.slice(0, 5), // Only return first 5 errors
-      message: insertedCount > 0 
-        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `${duplicateCount} duplicates skipped.` : ''}`
-        : contacts.length > 0 
-          ? `⚠️ CSV processed but no new contacts added. ${duplicateCount} contacts were already in your database.`
-          : `❌ No valid contacts found in CSV file. Please check the format.`
-    });
-
-  } catch (error) {
-    console.error('=== Import Error ===', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
-    });
-  }
-});
+    return contacts;
+}
 
 // Natural language search with timeout protection
 app.get('/api/search/natural', async (req, res) => {
@@ -606,7 +757,7 @@ app.get('/api/search/natural', async (req, res) => {
       
       const allContacts = await Promise.race([allContactsPromise, timeoutPromise]);
       console.log(`Returning all ${allContacts.length} contacts`);
-      return res.json({ contacts: allContacts });
+      return res.json({ results: allContacts });
     }
 
     // Enhanced search with broader patterns
@@ -629,43 +780,101 @@ app.get('/api/search/natural', async (req, res) => {
       }
     }
 
-    const searchPromise = Contact.find(
-      searchConditions.length > 0 ? { $and: searchConditions } : {}
-    ).sort({ createdAt: -1 });
-    
+    // Tech companies search enhancement
+    if (query.includes('tech') || query.includes('google') || query.includes('microsoft') || query.includes('apple')) {
+      searchConditions.push({
+        $or: [
+          { company: { $regex: 'google|microsoft|apple|amazon|meta|facebook|tech', $options: 'i' } },
+          { tags: { $elemMatch: { $regex: 'technology|tech|google|microsoft|apple', $options: 'i' } } }
+        ]
+      });
+    }
+
+    const searchQuery = searchConditions.length > 0 ? { $and: searchConditions } : {};
+    console.log('Search query object:', JSON.stringify(searchQuery, null, 2));
+
+    const searchPromise = Contact.find(searchQuery).sort({ createdAt: -1 });
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Search timeout')), 5000)
     );
     
     const results = await Promise.race([searchPromise, timeoutPromise]);
-    console.log(`Search found ${results.length} results for: "${query}"`);
+    console.log(`Found ${results.length} results for "${query}"`);
     
-    res.json({ contacts: results });
+    res.json({ results });
   } catch (error) {
     console.error('Search error:', error);
     if (error.message === 'Search timeout') {
-      res.status(504).json({ error: 'Search timeout - please try again' });
+      res.status(504).json({ error: 'Search timeout - please try again', results: [] });
     } else {
-      res.status(500).json({ error: 'Search failed' });
+      res.status(500).json({ error: 'Search failed', results: [] });
     }
   }
 });
 
-// Serve static files for the simple HTML version
+// CSV template download
+app.get('/api/csv-template', (req, res) => {
+  const template = [
+    'First Name,Last Name,Email Address,Company,Position,Connected On',
+    'John,Doe,john.doe@google.com,Google,Software Engineer,10/15/2023',
+    'Jane,Smith,,Microsoft,Product Manager,09/22/2023',
+    'Bob,Johnson,bob@startup.com,"Startup, Inc.",Founder & CEO,08/30/2023'
+  ].join('\n');
+  
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="linkedin-import-template.csv"');
+  res.send(template);
+});
+
+// Serve static files for basic frontend
 app.use(express.static('public'));
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 BeeTagged server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+// Default route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'BeeTagged API Server',
+    version: '1.0.0',
+    endpoints: [
+      '/health',
+      '/api/contacts',
+      '/api/import/linkedin',
+      '/api/search/natural',
+      '/api/csv-template'
+    ]
+  });
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Server error:', error);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    message: `Route ${req.method} ${req.path} not found`
+  });
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
   mongoose.connection.close(() => {
-    console.log('MongoDB connection closed');
+    console.log('MongoDB connection closed.');
     process.exit(0);
   });
 });
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`BeeTagged Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log('MongoDB: configured');
+});
+
+module.exports = app;
