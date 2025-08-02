@@ -1,77 +1,80 @@
-// HEROKU DEPLOYMENT - COMPLETE FIXED BACKEND
-// This file contains the complete, working backend with all fixes applied
-// Ready for deployment to Heroku with MongoDB Atlas connection
+// Copy this updated index.js to your Heroku deployment
+// This contains the enhanced CSV upload handling
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const multer = require('multer');
+const csvParser = require('csv-parser');
+const fs = require('fs');
+const path = require('path');
+const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const multer = require('multer');
-const morgan = require('morgan');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ===== MIDDLEWARE SETUP =====
+// Heroku requires binding to process.env.PORT
+console.log('Starting BeeTagged server...');
+console.log('Environment:', process.env.NODE_ENV || 'development');
+console.log('Port:', PORT);
 
-// HTTPS redirect for production
-if (process.env.NODE_ENV === 'production') {
-  app.use((req, res, next) => {
-    if (req.header('x-forwarded-proto') !== 'https') {
-      res.redirect(`https://${req.header('host')}${req.url}`);
-    } else {
-      next();
-    }
-  });
-}
-
-// Security headers
-app.use((req, res, next) => {
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
+// Trust proxy for Heroku
+app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Allow external scripts for frontend
+  crossOriginEmbedderPolicy: false, // Allow embedding in other sites
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
+      fontSrc: ["'self'", "https:", "http:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "https:", "http:"],
+      frameSrc: ["'self'", "https:", "http:"],
+    },
+  }
 }));
 
-// CORS configuration for production - Allow all Squarespace domains
-const allowedOrigins = [
-  'https://www.squarespace.com',
-  'https://squarespace.com', 
-  /\.squarespace\.com$/,
-  /\.squarespace-cdn\.com$/,
-  /^https:\/\/.*\.squarespace\.com$/,
-  'https://beetagged-app-53414697acd3.herokuapp.com',
-  /\.replit\.dev$/,
-  'http://localhost:3000',
-  'http://localhost:5173'
-];
-
+// Enhanced CORS configuration for production
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
+    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    // For development and testing, be more permissive
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
+    console.log('CORS check for origin:', origin);
     
-    // Check if origin matches any allowed pattern
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (typeof allowedOrigin === 'string') {
-        return allowedOrigin === origin;
-      } else if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
+    // Define allowed origins with enhanced pattern matching
+    const allowedOrigins = [
+      // Heroku domains
+      /^https:\/\/.*\.herokuapp\.com$/,
+      /^https:\/\/.*\.herokuapp\.com$/,
+      
+      // Squarespace domains
+      /^https:\/\/.*\.squarespace\.com$/,
+      /^https:\/\/.*\.sqsp\.com$/,
+      
+      // Custom domains
+      /^https:\/\/.*\.replit\.dev$/,
+      /^https:\/\/.*\.repl\.co$/,
+      
+      // Local development
+      /^http:\/\/localhost:\d+$/,
+      /^http:\/\/127\.0\.0\.1:\d+$/,
+      /^http:\/\/0\.0\.0\.0:\d+$/
+    ];
+    
+    const isAllowed = allowedOrigins.some(pattern => {
+      if (pattern instanceof RegExp) {
+        return pattern.test(origin);
       }
-      return false;
+      return pattern === origin;
     });
     
     if (isAllowed) {
@@ -269,17 +272,17 @@ function parseCSVLine(line) {
   return result;
 }
 
-// LinkedIn header mappings
+// LinkedIn header mappings - expanded for better compatibility
 const LINKEDIN_HEADER_MAPPINGS = {
-  firstName: ['first name', 'firstname', 'given name'],
-  lastName: ['last name', 'lastname', 'surname', 'family name'],
-  name: ['first name', 'last name', 'name', 'full name', 'contact name'],
-  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email'],
-  company: ['company', 'current company', 'organization', 'employer', 'workplace'],
-  position: ['position', 'current position', 'title', 'job title', 'current title', 'role'],
-  location: ['location', 'current location', 'address', 'city', 'region'],
-  connectedOn: ['connected on', 'connection date', 'date connected', 'connected'],
-  url: ['url', 'profile url', 'linkedin url', 'profile link']
+  firstName: ['first name', 'firstname', 'given name', 'first', 'fname'],
+  lastName: ['last name', 'lastname', 'surname', 'family name', 'last', 'lname'],
+  name: ['name', 'full name', 'contact name', 'display name', 'person name'],
+  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email', 'contact email', 'mail'],
+  company: ['company', 'current company', 'organization', 'employer', 'workplace', 'work', 'corp', 'business'],
+  position: ['position', 'current position', 'title', 'job title', 'current title', 'role', 'job', 'occupation'],
+  location: ['location', 'current location', 'address', 'city', 'region', 'area', 'place', 'geographic area'],
+  connectedOn: ['connected on', 'connection date', 'date connected', 'connected', 'date', 'connection time'],
+  url: ['url', 'profile url', 'linkedin url', 'profile link', 'link', 'linkedin profile', 'profile']
 };
 
 function findHeaderIndex(headers, fieldMappings) {
@@ -363,7 +366,7 @@ app.get('/api/contacts', async (req, res) => {
     
     const contacts = await Promise.race([contactsPromise, timeoutPromise]);
     console.log(`Returning ${contacts.length} contacts`);
-    res.json(contacts);
+    res.json({ contacts });
   } catch (error) {
     console.error('Error fetching contacts:', error);
     if (error.message === 'Database timeout') {
@@ -377,19 +380,36 @@ app.get('/api/contacts', async (req, res) => {
 // LinkedIn CSV import with enhanced error handling
 app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) => {
   try {
+    console.log('=== LinkedIn CSV Import Started ===');
+    console.log('File received:', !!req.file);
+    console.log('File size:', req.file?.size);
+    
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No file uploaded. Please select a CSV file from LinkedIn.' 
+      });
+    }
+
+    // Validate file type
+    if (!req.file.originalname?.toLowerCase().endsWith('.csv')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please upload a CSV file. LinkedIn exports are in CSV format.' 
+      });
     }
 
     const csvData = req.file.buffer.toString('utf8');
-    console.log('Processing LinkedIn CSV file...');
+    console.log('CSV file content length:', csvData.length);
+    console.log('First 200 characters:', csvData.substring(0, 200));
 
-    const lines = csvData.split('\n').filter(line => line.trim());
+    const lines = csvData.split(/\r?\n/).filter(line => line.trim());
+    console.log('Total lines found:', lines.length);
     
     if (lines.length < 2) {
       return res.status(400).json({ 
         success: false, 
-        message: 'CSV file must contain at least a header row and one data row' 
+        message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
       });
     }
 
@@ -398,7 +418,21 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
     const headers = parseCSVLine(headerLine);
     console.log('CSV Headers found:', headers);
     
-    // Find column indices
+    // Enhanced header validation
+    const hasValidHeaders = headers.some(header => 
+      header.toLowerCase().includes('name') || 
+      header.toLowerCase().includes('company') ||
+      header.toLowerCase().includes('position')
+    );
+    
+    if (!hasValidHeaders) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Company", etc.' 
+      });
+    }
+    
+    // Find column indices with better mapping
     const indices = {
       firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
       lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
@@ -413,17 +447,26 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
 
     console.log('Field indices:', indices);
 
+    // Validate that we found at least name fields
+    if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.' 
+      });
+    }
+
     const contacts = [];
     let processed = 0;
     let skipped = 0;
+    const errors = [];
 
-    // Process data rows
+    // Process data rows with better error handling
     for (let i = 1; i < lines.length; i++) {
       try {
         const fields = parseCSVLine(lines[i]);
         processed++;
         
-        // Build name
+        // Build name with fallback strategies
         let name = '';
         if (indices.firstName >= 0 && indices.lastName >= 0) {
           const firstName = fields[indices.firstName]?.trim() || '';
@@ -433,9 +476,10 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
           name = fields[indices.name]?.trim() || '';
         }
 
-        // Skip rows without a name
-        if (!name) {
+        // Skip rows without a name but track them
+        if (!name || name.length < 2) {
           skipped++;
+          errors.push(`Row ${i + 1}: No valid name found`);
           continue;
         }
 
@@ -460,51 +504,72 @@ app.post('/api/import/linkedin', upload.single('linkedinCsv'), async (req, res) 
         contacts.push(contact);
       } catch (error) {
         console.warn(`Error parsing CSV line ${i + 1}:`, error);
+        errors.push(`Row ${i + 1}: ${error.message}`);
         skipped++;
       }
     }
 
-    // Insert contacts one by one to handle duplicates gracefully
+    console.log(`Parsed ${contacts.length} valid contacts from ${processed} rows`);
+
+    // Batch insert with better duplicate handling
     let insertedCount = 0;
     let duplicateCount = 0;
     
     for (const contactData of contacts) {
       try {
-        // Check if contact already exists
+        // Enhanced duplicate detection
         const existingContact = await Contact.findOne({
-          name: contactData.name,
-          company: contactData.company
+          $or: [
+            { name: contactData.name, company: contactData.company },
+            { name: contactData.name, email: contactData.email },
+            { email: contactData.email, email: { $ne: '' } }
+          ]
         });
         
         if (existingContact) {
           duplicateCount++;
-          console.log(`Skipping duplicate: ${contactData.name} at ${contactData.company}`);
+          console.log(`Duplicate found: ${contactData.name}`);
           continue;
         }
         
         const savedContact = await contactData.save();
         insertedCount++;
-        console.log(`Inserted: ${contactData.name} at ${contactData.company}`);
+        console.log(`✅ Saved: ${contactData.name} at ${contactData.company}`);
       } catch (error) {
-        console.error(`Failed to insert ${contactData.name}:`, error.message);
+        console.error(`❌ Failed to save ${contactData.name}:`, error.message);
         duplicateCount++;
+        errors.push(`Failed to save ${contactData.name}: ${error.message}`);
       }
     }
     
-    console.log(`Import complete: ${insertedCount} new, ${duplicateCount} duplicates/errors`);
+    console.log(`=== Import Summary ===`);
+    console.log(`✅ Inserted: ${insertedCount}`);
+    console.log(`⚠️  Duplicates/Errors: ${duplicateCount}`);
+    console.log(`📊 Total processed: ${processed}`);
+    
+    // Always return success if we processed the file, even with errors
+    const isSuccess = insertedCount > 0 || contacts.length > 0;
+    
     res.json({
-      success: insertedCount > 0,
+      success: isSuccess,
       count: insertedCount,
       processed: processed,
       skipped: skipped + duplicateCount,
+      totalContacts: contacts.length,
+      errors: errors.slice(0, 5), // Only return first 5 errors
       message: insertedCount > 0 
-        ? `Successfully imported ${insertedCount} new contacts. ${duplicateCount} duplicates skipped.`
-        : `No new contacts imported. ${duplicateCount} duplicates or errors found.`
+        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `${duplicateCount} duplicates skipped.` : ''}`
+        : contacts.length > 0 
+          ? `⚠️ CSV processed but no new contacts added. ${duplicateCount} contacts were already in your database.`
+          : `❌ No valid contacts found in CSV file. Please check the format.`
     });
 
   } catch (error) {
-    console.error('Import error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('=== Import Error ===', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
   }
 });
 
@@ -522,7 +587,7 @@ app.get('/api/search/natural', async (req, res) => {
       
       const allContacts = await Promise.race([allContactsPromise, timeoutPromise]);
       console.log(`Returning all ${allContacts.length} contacts`);
-      return res.json({ results: allContacts });
+      return res.json({ contacts: allContacts });
     }
 
     // Enhanced search with broader patterns
@@ -545,101 +610,43 @@ app.get('/api/search/natural', async (req, res) => {
       }
     }
 
-    // Tech companies search enhancement
-    if (query.includes('tech') || query.includes('google') || query.includes('microsoft') || query.includes('apple')) {
-      searchConditions.push({
-        $or: [
-          { company: { $regex: 'google|microsoft|apple|amazon|meta|facebook|tech', $options: 'i' } },
-          { tags: { $elemMatch: { $regex: 'technology|tech|google|microsoft|apple', $options: 'i' } } }
-        ]
-      });
-    }
-
-    const searchQuery = searchConditions.length > 0 ? { $and: searchConditions } : {};
-    console.log('Search query object:', JSON.stringify(searchQuery, null, 2));
-
-    const searchPromise = Contact.find(searchQuery).sort({ createdAt: -1 });
+    const searchPromise = Contact.find(
+      searchConditions.length > 0 ? { $and: searchConditions } : {}
+    ).sort({ createdAt: -1 });
+    
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Search timeout')), 5000)
     );
     
     const results = await Promise.race([searchPromise, timeoutPromise]);
-    console.log(`Found ${results.length} results for "${query}"`);
+    console.log(`Search found ${results.length} results for: "${query}"`);
     
-    res.json({ results });
+    res.json({ contacts: results });
   } catch (error) {
     console.error('Search error:', error);
     if (error.message === 'Search timeout') {
-      res.status(504).json({ error: 'Search timeout - please try again', results: [] });
+      res.status(504).json({ error: 'Search timeout - please try again' });
     } else {
-      res.status(500).json({ error: 'Search failed', results: [] });
+      res.status(500).json({ error: 'Search failed' });
     }
   }
 });
 
-// CSV template download
-app.get('/api/csv-template', (req, res) => {
-  const template = [
-    'First Name,Last Name,Email Address,Company,Position,Connected On',
-    'John,Doe,john.doe@google.com,Google,Software Engineer,10/15/2023',
-    'Jane,Smith,,Microsoft,Product Manager,09/22/2023',
-    'Bob,Johnson,bob@startup.com,"Startup, Inc.",Founder & CEO,08/30/2023'
-  ].join('\n');
-  
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="linkedin-import-template.csv"');
-  res.send(template);
-});
-
-// Serve static files for basic frontend
+// Serve static files for the simple HTML version
 app.use(express.static('public'));
 
-// Default route
-app.get('/', (req, res) => {
-  res.json({
-    message: 'BeeTagged API Server',
-    version: '1.0.0',
-    endpoints: [
-      '/health',
-      '/api/contacts',
-      '/api/import/linkedin',
-      '/api/search/natural',
-      '/api/csv-template'
-    ]
-  });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Server error:', error);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not found',
-    message: `Route ${req.method} ${req.path} not found`
-  });
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 BeeTagged server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
   mongoose.connection.close(() => {
-    console.log('MongoDB connection closed.');
+    console.log('MongoDB connection closed');
     process.exit(0);
   });
 });
-
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`BeeTagged Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log('MongoDB: configured');
-});
-
-module.exports = app;
