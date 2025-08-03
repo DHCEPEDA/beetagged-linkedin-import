@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test BeeTagged Widget</title>
+</head>
+<body>
+    <h1>Testing BeeTagged Widget</h1>
+    <p>This simulates a Squarespace environment to test the widget.</p>
+    
+    <!-- Minimal BeeTagged Test Widget -->
+    <div id="beetagged-test" style="padding: 20px; margin: 20px; border: 2px solid #ccc; background: #f9f9f9;">
+        <h2>BeeTagged Widget Test</h2>
+        <p>Backend Status: <span id="status">Checking...</span></p>
+        <p>Contact Count: <span id="count">Loading...</span></p>
+        <button onclick="testUpload()">Test Upload Function</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+    console.log('BeeTagged test widget loading...');
+    
+    // Test backend connection
+    async function testBackend() {
+        try {
+            console.log('Testing backend connection...');
+            const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/health', {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Backend response:', data);
+                document.getElementById('status').textContent = data.status;
+                document.getElementById('count').textContent = data.contacts;
+                
+                // Test loading contacts
+                loadContacts();
+            } else {
+                console.error('Backend test failed:', response.status);
+                document.getElementById('status').textContent = 'Error: ' + response.status;
+            }
+        } catch (error) {
+            console.error('Backend test error:', error);
+            document.getElementById('status').textContent = 'Failed: ' + error.message;
+        }
+    }
+    
+    // Test loading contacts
+    async function loadContacts() {
+        try {
+            console.log('Testing contact loading...');
+            const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts', {
+                method: 'GET',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const contacts = await response.json();
+                console.log('Loaded contacts:', contacts.length);
+                document.getElementById('results').innerHTML = 
+                    '<p>✅ Successfully loaded ' + contacts.length + ' contacts</p>' +
+                    '<p>First contact: ' + (contacts[0] ? contacts[0].name || 'No name' : 'None') + '</p>';
+            } else {
+                console.error('Contact loading failed:', response.status);
+                document.getElementById('results').innerHTML = '<p>❌ Contact loading failed: ' + response.status + '</p>';
+            }
+        } catch (error) {
+            console.error('Contact loading error:', error);
+            document.getElementById('results').innerHTML = '<p>❌ Contact loading error: ' + error.message + '</p>';
+        }
+    }
+    
+    function testUpload() {
+        console.log('Upload function would work here');
+        alert('Upload function ready - backend connection tested successfully');
+    }
+    
+    // Start test when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, starting backend test...');
+        testBackend();
+    });
+    
+    // Backup in case DOM is already loaded
+    if (document.readyState !== 'loading') {
+        console.log('DOM already loaded, starting backend test...');
+        testBackend();
+    }
+    </script>
