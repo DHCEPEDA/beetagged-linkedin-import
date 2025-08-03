@@ -5,6 +5,7 @@ BeeTagged is a professional networking and contact management platform. Its main
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Code quality expectations: Avoid basic integration mistakes like providing full HTML documents for code injection snippets.
 
 ## System Architecture
 
@@ -24,14 +25,14 @@ The backend is built on **Node.js/Express**, chosen for its scalability and exte
 - **Data Storage**: **MongoDB Atlas** (cloud-hosted) is used as the NoSQL database due to its flexible schema, which accommodates varying contact formats from different social platforms. Mongoose ODM is used for schema validation.
 - **Data Flow**: The typical data flow involves user authentication via Facebook OAuth, contact import via LinkedIn CSV or Facebook connection, server-side data processing and validation, storage in MongoDB, and display of consolidated contacts via the React frontend. Users can then search and tag contacts.
 - **Deployment Strategy**: **Heroku-exclusive deployment** for all environments. No Replit server dependencies. Backend uses Node.js buildpack on Heroku. Frontend bundles connect directly to Heroku APIs. All production and pre-production builds target Heroku infrastructure exclusively.
-- **Production Status**: Backend deployed successfully to Heroku at https://beetagged-app-53414697acd3.herokuapp.com with MongoDB Atlas connected. Squarespace integration completed using Code Injection method for JavaScript and Custom CSS for styling.
+- **Production Status**: Backend deployed successfully to Heroku at https://beetagged-app-53414697acd3.herokuapp.com with MongoDB Atlas connected. Squarespace integration completed using Code Injection footer method with proper snippet formatting (no HTML wrapper).
 - **Latest Update**: 
+  - **CSV Upload Issue Resolved**: Fixed Squarespace integration by correcting CORS headers and removing HTML wrapper from Code Injection footer
+  - **Squarespace Integration Fixed**: Created proper footer injection code without full HTML document structure to avoid conflicts
   - **LLM-Powered Duplicate Detection**: Added OpenAI GPT-4o integration to identify and merge similar contacts with shared data (same email/company)
   - **Baseball Card Contact Details**: Click any contact to view comprehensive profile with full name, email, company, location, interests, profile links, and all available fields
-  - **Dual-file LinkedIn CSV merging**: Enhanced email extraction and smart contact matching system implemented
-  - **CSV Upload Diagnostics**: Current Heroku backend working for basic uploads, enhanced version with LLM features ready for deployment
-  - **Build System Status**: Vite workflows operational despite TypeScript configuration constraints, all core functionality working
-  - **Production Ready**: Enhanced backend with intelligence features prepared for Heroku deployment to resolve upload issues and activate new capabilities
+  - **Binary Search Debugging**: Successfully identified that backend was working correctly - issue was frontend CORS configuration
+  - **Production Status**: Backend healthy with 5433 contacts, all APIs functional, Squarespace widget now production-ready
 
 ## External Dependencies
 
