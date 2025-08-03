@@ -415,24 +415,41 @@
 
                 const response = await fetch(`${BACKEND_URL}/api/import/linkedin`, {
                     method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
                     body: formData
                 });
 
-                const result = await response.json();
-
                 uploadStatus.classList.add('hidden');
 
-                if (response.ok && result.success) {
-                    uploadSuccessText.textContent = result.message || `Successfully imported ${result.count} contacts!`;
-                    uploadSuccess.classList.remove('hidden');
-                    
-                    // Reload contacts
-                    setTimeout(() => {
-                        loadContacts();
-                        checkBackendHealth();
-                    }, 1000);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        uploadSuccessText.textContent = result.message || `Successfully imported ${result.count} contacts!`;
+                        uploadSuccess.classList.remove('hidden');
+                        
+                        // Reload contacts
+                        setTimeout(() => {
+                            loadContacts();
+                            checkBackendHealth();
+                        }, 1000);
+                    } else {
+                        uploadErrorText.textContent = result.message || 'Upload failed. Please check your CSV format.';
+                        uploadError.classList.remove('hidden');
+                    }
                 } else {
-                    uploadErrorText.textContent = result.message || 'Upload failed. Please check your CSV format.';
+                    // Handle HTTP error responses
+                    let errorMessage = 'Upload failed. Please check your CSV format.';
+                    try {
+                        const errorResult = await response.json();
+                        errorMessage = errorResult.message || errorMessage;
+                    } catch (e) {
+                        // If response is not JSON, use default message
+                        console.error('Non-JSON error response:', e);
+                    }
+                    uploadErrorText.textContent = errorMessage;
                     uploadError.classList.remove('hidden');
                 }
             } catch (error) {
