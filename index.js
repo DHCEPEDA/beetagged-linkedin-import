@@ -743,6 +743,221 @@ function processSingleCSV(lines) {
     return contacts;
 }
 
+// LLM-powered duplicate detection endpoint
+app.post('/api/contacts/find-duplicates', async (req, res) => {
+  try {
+    const contacts = await Contact.find({});
+    
+    if (contacts.length < 2) {
+      return res.json({ duplicates: [], message: "Not enough contacts for duplicate detection" });
+    }
+
+    console.log(`🔍 Analyzing ${contacts.length} contacts for potential duplicates...`);
+
+    // Group contacts for LLM analysis
+    const contactSummaries = contacts.map(contact => ({
+      id: contact._id,
+      name: contact.name,
+      email: contact.email,
+      company: contact.company,
+      position: contact.position,
+      location: contact.location
+    }));
+
+    // Use OpenAI to identify potential duplicates
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    
+    const prompt = `Analyze these contacts and identify potential duplicates. Look for:
+1. Similar names (nicknames, full names, variations)
+2. Same email addresses
+3. Same company with similar names
+4. Same person with different data completeness
+
+Return JSON with this structure:
+{
+  "duplicate_groups": [
+    {
+      "contacts": [contact_id1, contact_id2],
+      "reason": "Same person - John Smith vs J. Smith, both at Google",
+      "confidence": 0.9,
+      "suggested_merge": {
+        "name": "preferred name",
+        "email": "best email",
+        "company": "best company"
+      }
+    }
+  ]
+}
+
+Contacts to analyze:
+${JSON.stringify(contactSummaries, null, 2)}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 2000
+    });
+
+    const duplicateAnalysis = JSON.parse(response.choices[0].message.content);
+    
+    // Add contact details to the response
+    const enhancedDuplicates = duplicateAnalysis.duplicate_groups.map(group => ({
+      ...group,
+      contacts: group.contacts.map(id => contacts.find(c => c._id.toString() === id)).filter(Boolean)
+    }));
+
+    console.log(`✅ Found ${enhancedDuplicates.length} potential duplicate groups`);
+
+    res.json({
+      success: true,
+      duplicates: enhancedDuplicates,
+      total_groups: enhancedDuplicates.length,
+      message: enhancedDuplicates.length > 0 
+        ? `Found ${enhancedDuplicates.length} potential duplicate groups`
+        : "No duplicates detected"
+    });
+
+  } catch (error) {
+    console.error('❌ Duplicate detection error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Duplicate detection failed: ${error.message}`
+    });
+  }
+});
+
+// Merge duplicate contacts endpoint
+app.post('/api/contacts/merge', async (req, res) => {
+  try {
+    const { contactIds, mergedData } = req.body;
+
+    if (!contactIds || contactIds.length < 2) {
+      return res.status(400).json({ success: false, message: "Need at least 2 contacts to merge" });
+    }
+
+    console.log(`🔄 Merging ${contactIds.length} contacts...`);
+
+    // Get all contacts to merge
+    const contactsToMerge = await Contact.find({ _id: { $in: contactIds } });
+    
+    if (contactsToMerge.length !== contactIds.length) {
+      return res.status(400).json({ success: false, message: "Some contacts not found" });
+    }
+
+    // Create merged contact with best data from all sources
+    const mergedContact = {
+      name: mergedData.name || contactsToMerge.find(c => c.name)?.name,
+      email: mergedData.email || contactsToMerge.find(c => c.email)?.email,
+      company: mergedData.company || contactsToMerge.find(c => c.company)?.company,
+      position: mergedData.position || contactsToMerge.find(c => c.position)?.position,
+      location: mergedData.location || contactsToMerge.find(c => c.location)?.location,
+      phone: mergedData.phone || contactsToMerge.find(c => c.phone)?.phone,
+      profileUrl: mergedData.profileUrl || contactsToMerge.find(c => c.profileUrl)?.profileUrl,
+      connectedDate: contactsToMerge.find(c => c.connectedDate)?.connectedDate,
+      // Combine interests, skills, etc.
+      interests: [...new Set(contactsToMerge.flatMap(c => c.interests || []))],
+      skills: [...new Set(contactsToMerge.flatMap(c => c.skills || []))],
+      notes: contactsToMerge.map(c => c.notes).filter(Boolean).join('; '),
+      tags: [...new Set(contactsToMerge.flatMap(c => c.tags || []))],
+      importSource: contactsToMerge.map(c => c.importSource).filter(Boolean).join(', '),
+      lastUpdated: new Date()
+    };
+
+    // Save the merged contact
+    const newContact = new Contact(mergedContact);
+    await newContact.save();
+
+    // Delete the original contacts
+    await Contact.deleteMany({ _id: { $in: contactIds } });
+
+    console.log(`✅ Successfully merged ${contactIds.length} contacts into ${newContact._id}`);
+
+    res.json({
+      success: true,
+      mergedContact: newContact,
+      message: `Successfully merged ${contactIds.length} contacts`
+    });
+
+  } catch (error) {
+    console.error('❌ Contact merge error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Contact merge failed: ${error.message}`
+    });
+  }
+});
+
+// Get detailed contact "baseball card" view
+app.get('/api/contacts/:id/details', async (req, res) => {
+  try {
+    const contact = await Contact.findById(req.params.id);
+    
+    if (!contact) {
+      return res.status(404).json({ success: false, message: "Contact not found" });
+    }
+
+    // Format contact data for "baseball card" view
+    const contactCard = {
+      id: contact._id,
+      basicInfo: {
+        fullName: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        nickname: contact.nickname || contact.name?.split(' ')[0]
+      },
+      professional: {
+        company: contact.company,
+        position: contact.position,
+        industry: contact.industry,
+        profileUrl: contact.profileUrl
+      },
+      personal: {
+        location: contact.location,
+        interests: contact.interests || [],
+        skills: contact.skills || [],
+        bio: contact.bio
+      },
+      networking: {
+        connectedDate: contact.connectedDate,
+        connectionType: contact.connectionType,
+        lastContact: contact.lastContact,
+        meetingHistory: contact.meetingHistory || [],
+        mutualConnections: contact.mutualConnections || []
+      },
+      metadata: {
+        tags: contact.tags || [],
+        notes: contact.notes,
+        importSource: contact.importSource,
+        lastUpdated: contact.lastUpdated,
+        dateAdded: contact.dateAdded
+      },
+      searchableFields: [
+        contact.name,
+        contact.email,
+        contact.company,
+        contact.position,
+        contact.location,
+        ...(contact.interests || []),
+        ...(contact.skills || []),
+        ...(contact.tags || [])
+      ].filter(Boolean)
+    };
+
+    res.json({
+      success: true,
+      contact: contactCard
+    });
+
+  } catch (error) {
+    console.error('❌ Contact details error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Failed to get contact details: ${error.message}`
+    });
+  }
+});
+
 // Natural language search with timeout protection
 app.get('/api/search/natural', async (req, res) => {
   try {
