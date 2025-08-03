@@ -15,7 +15,7 @@ The application combines a React-based Single Page Application (SPA) for the mai
 The backend is built on **Node.js/Express**, chosen for its scalability and extensive middleware ecosystem, handling file uploads, social media integrations, and database operations. The frontend leverages **React** for rich interactive features, bundled with Webpack, and supports TypeScript for development.
 
 ### Feature Specifications
-- **Contact Management System**: Features a flexible MongoDB schema to support diverse contact data sources, CSV import capabilities (specifically for LinkedIn), data consolidation logic to merge contacts from multiple sources, and robust search and filtering with tagging.
+- **Contact Management System**: Features a flexible MongoDB schema to support diverse contact data sources, CSV import capabilities (specifically for LinkedIn), LLM-powered duplicate detection and merging, "baseball card" style detailed contact views, data consolidation logic to merge contacts from multiple sources, and robust search and filtering with tagging.
 - **Social Media Integration**: Includes Facebook OAuth integration using the JavaScript SDK, and CSV-based LinkedIn contact import. The system is designed for multi-source contact consolidation.
 - **Authentication System**: Utilizes Facebook Login for client-side OAuth and basic session management. User profile data is stored from social platforms.
 - **File Processing**: Handles CSV parsing for LinkedIn connection exports, manages file uploads for contact data, and includes data validation and cleaning for imported information.
@@ -25,7 +25,11 @@ The backend is built on **Node.js/Express**, chosen for its scalability and exte
 - **Data Flow**: The typical data flow involves user authentication via Facebook OAuth, contact import via LinkedIn CSV or Facebook connection, server-side data processing and validation, storage in MongoDB, and display of consolidated contacts via the React frontend. Users can then search and tag contacts.
 - **Deployment Strategy**: **Heroku-exclusive deployment** for all environments. No Replit server dependencies. Backend uses Node.js buildpack on Heroku. Frontend bundles connect directly to Heroku APIs. All production and pre-production builds target Heroku infrastructure exclusively.
 - **Production Status**: Backend deployed successfully to Heroku at https://beetagged-app-53414697acd3.herokuapp.com with MongoDB Atlas connected. Squarespace integration completed using Code Injection method for JavaScript and Custom CSS for styling.
-- **Latest Update**: Dual-file LinkedIn CSV merging system implemented with enhanced email extraction and smart contact matching. Updated backend code ready for deployment to fix Michael Higgins email extraction issue.
+- **Latest Update**: 
+  - **LLM-Powered Duplicate Detection**: Added OpenAI GPT-4o integration to identify and merge similar contacts with shared data (same email/company)
+  - **Baseball Card Contact Details**: Click any contact to view comprehensive profile with full name, email, company, location, interests, profile links, and all available fields
+  - **Dual-file LinkedIn CSV merging**: Enhanced email extraction and smart contact matching system implemented
+  - **Ready for Deployment**: Updated backend code with all new features prepared for Heroku deployment
 
 ## External Dependencies
 
