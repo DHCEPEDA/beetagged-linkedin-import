@@ -1,0 +1,714 @@
+<!-- BeeTagged Widget - Squarespace Footer Code -->
+<style>
+    .beetagged-widget {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: #f9fafb;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    .beetagged-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .beetagged-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #111827;
+        margin-bottom: 0.5rem;
+    }
+    .beetagged-subtitle {
+        font-size: 1.25rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+    }
+    .beetagged-description {
+        color: #9ca3af;
+    }
+    .beetagged-upload {
+        max-width: 42rem;
+        margin: 0 auto 2rem;
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 2px dashed #d1d5db;
+        transition: border-color 0.2s;
+    }
+    .beetagged-upload:hover {
+        border-color: #60a5fa;
+    }
+    .beetagged-upload-content {
+        text-align: center;
+    }
+    .beetagged-upload-icon {
+        width: 3rem;
+        height: 3rem;
+        color: #9ca3af;
+        margin: 0 auto 1rem;
+    }
+    .beetagged-upload-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .beetagged-upload-desc {
+        color: #6b7280;
+        margin-bottom: 1rem;
+    }
+    .beetagged-upload-req {
+        font-size: 0.875rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+    .beetagged-btn {
+        padding: 0.5rem 1.5rem;
+        background: #059669;
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        font-weight: 500;
+    }
+    .beetagged-btn:hover {
+        background: #047857;
+    }
+    .beetagged-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .beetagged-search {
+        max-width: 42rem;
+        margin: 0 auto 2rem;
+        position: relative;
+    }
+    .beetagged-search-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1.125rem;
+        transition: all 0.2s;
+    }
+    .beetagged-search-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    .beetagged-search-input:hover {
+        border-color: #9ca3af;
+    }
+    .beetagged-search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1.25rem;
+        height: 1.25rem;
+        color: #9ca3af;
+    }
+    .beetagged-search-btn {
+        margin-top: 0.75rem;
+        padding: 0.5rem 1.5rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .beetagged-search-btn:hover {
+        background: #2563eb;
+    }
+    .beetagged-status {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    .beetagged-status-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+    }
+    .beetagged-status-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+    .beetagged-results {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .beetagged-results-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .beetagged-results-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111827;
+    }
+    .beetagged-results-content {
+        padding: 1.5rem;
+    }
+    .beetagged-contact {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        transition: background-color 0.2s;
+    }
+    .beetagged-contact:hover {
+        background-color: #f9fafb;
+    }
+    .beetagged-contact:last-child {
+        margin-bottom: 0;
+    }
+    .beetagged-avatar {
+        width: 3rem;
+        height: 3rem;
+        background: #3b82f6;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    .beetagged-contact-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .beetagged-contact-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .beetagged-contact-position {
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .beetagged-contact-company {
+        color: #9ca3af;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .beetagged-contact-email {
+        font-size: 0.875rem;
+        color: #3b82f6;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .beetagged-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+    .beetagged-tag {
+        padding: 0.125rem 0.5rem;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 0.75rem;
+        border-radius: 9999px;
+    }
+    .beetagged-empty {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+    }
+    .beetagged-empty-icon {
+        width: 3rem;
+        height: 3rem;
+        color: #d1d5db;
+        margin: 0 auto 1rem;
+    }
+    .beetagged-empty-title {
+        font-size: 1.125rem;
+        margin-bottom: 0.5rem;
+    }
+    .beetagged-message {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        text-align: center;
+    }
+    .beetagged-message.hidden {
+        display: none;
+    }
+    .beetagged-message.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    .beetagged-message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+    .beetagged-message.loading {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+    }
+    .beetagged-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid #e5e7eb;
+        border-top: 2px solid #3b82f6;
+        border-radius: 50%;
+        animation: beetagged-spin 1s linear infinite;
+        margin-right: 0.5rem;
+    }
+    @keyframes beetagged-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .beetagged-footer {
+        text-align: center;
+        margin-top: 2rem;
+        color: #9ca3af;
+    }
+    .beetagged-footer p {
+        margin: 0.25rem 0;
+    }
+    .beetagged-footer .small {
+        font-size: 0.875rem;
+    }
+</style>
+
+<div class="beetagged-widget" id="beetaggedWidget">
+    <!-- Header -->
+    <div class="beetagged-header">
+        <h1 class="beetagged-title">BeeTagged</h1>
+        <p class="beetagged-subtitle">AI-Powered Professional Contact Search</p>
+        <p class="beetagged-description">Find exactly who you need in your network</p>
+    </div>
+
+    <!-- File Upload Section -->
+    <div class="beetagged-upload">
+        <div class="beetagged-upload-content">
+            <svg class="beetagged-upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <h3 class="beetagged-upload-title">Import LinkedIn Contacts</h3>
+            <p class="beetagged-upload-desc">Upload your LinkedIn connections CSV file to get started</p>
+            <p class="beetagged-upload-req">Required columns: First Name, Last Name, Company, Position</p>
+            
+            <input type="file" id="beetaggedCsvInput" accept=".csv" style="display: none;" />
+            <button id="beetaggedUploadBtn" class="beetagged-btn">Choose CSV File</button>
+            
+            <div id="beetaggedUploadStatus" class="beetagged-message loading hidden">
+                <span class="beetagged-spinner"></span>
+                Uploading contacts...
+            </div>
+            
+            <div id="beetaggedUploadSuccess" class="beetagged-message success hidden">
+                <span id="beetaggedUploadSuccessText">Contacts imported successfully!</span>
+            </div>
+
+            <div id="beetaggedUploadError" class="beetagged-message error hidden">
+                <span id="beetaggedUploadErrorText">Upload failed. Please check your CSV format.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="beetagged-search">
+        <div style="position: relative;">
+            <svg class="beetagged-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input
+                type="text"
+                id="beetaggedSearchInput"
+                placeholder="Ask anything: 'engineers at Microsoft', 'contacts in Austin', 'who works at startups'..."
+                class="beetagged-search-input"
+            />
+        </div>
+        <button id="beetaggedSearchBtn" class="beetagged-search-btn">Search</button>
+    </div>
+
+    <!-- Status Indicator -->
+    <div class="beetagged-status">
+        <div id="beetaggedBackendStatus" class="beetagged-status-indicator">
+            <div class="beetagged-status-dot"></div>
+            <span>Connecting...</span>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="beetagged-results">
+        <div class="beetagged-results-header">
+            <h3 id="beetaggedResultsHeader" class="beetagged-results-title">Professional Contacts</h3>
+            <svg style="width: 1.25rem; height: 1.25rem; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+            </svg>
+        </div>
+        
+        <div class="beetagged-results-content">
+            <div id="beetaggedResultsContainer">
+                <div class="beetagged-empty">
+                    <svg class="beetagged-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                    </svg>
+                    <p class="beetagged-empty-title">Loading your contacts...</p>
+                    <p>Search will be available once contacts are loaded</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="beetagged-footer">
+        <p>Powered by BeeTagged AI • Professional Network Intelligence</p>
+        <p class="small">$0.99/month • Advanced contact search and insights</p>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Configuration - Heroku production backend with MongoDB Atlas
+    const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+    
+    // State
+    let contacts = [];
+    let searchResults = [];
+    let isLoading = false;
+    let backendConnected = false;
+
+    // DOM Elements
+    const searchInput = document.getElementById('beetaggedSearchInput');
+    const searchButton = document.getElementById('beetaggedSearchBtn');
+    const resultsContainer = document.getElementById('beetaggedResultsContainer');
+    const resultsHeader = document.getElementById('beetaggedResultsHeader');
+    const backendStatus = document.getElementById('beetaggedBackendStatus');
+    const csvFileInput = document.getElementById('beetaggedCsvInput');
+    const uploadButton = document.getElementById('beetaggedUploadBtn');
+    const uploadStatus = document.getElementById('beetaggedUploadStatus');
+    const uploadSuccess = document.getElementById('beetaggedUploadSuccess');
+    const uploadError = document.getElementById('beetaggedUploadError');
+    const uploadSuccessText = document.getElementById('beetaggedUploadSuccessText');
+    const uploadErrorText = document.getElementById('beetaggedUploadErrorText');
+
+    // Initialize when DOM is ready
+    function initBeetagged() {
+        checkBackendHealth();
+        loadContacts();
+        
+        // Event listeners
+        if (searchButton) {
+            searchButton.addEventListener('click', () => handleSearch(searchInput.value));
+        }
+        if (searchInput) {
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleSearch(searchInput.value);
+                }
+            });
+        }
+        
+        // File upload listeners
+        if (uploadButton) {
+            uploadButton.addEventListener('click', () => csvFileInput.click());
+        }
+        if (csvFileInput) {
+            csvFileInput.addEventListener('change', handleFileUpload);
+        }
+    }
+
+    // Backend health check
+    async function checkBackendHealth() {
+        try {
+            console.log('Checking backend health at:', BACKEND_URL + '/health');
+            const response = await fetch(BACKEND_URL + '/health', {
+                method: 'GET',
+                mode: 'cors',
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Health check response:', data);
+                backendConnected = true;
+                
+                // Handle different contact count formats
+                let contactCount = 0;
+                if (typeof data.contacts === 'number') {
+                    contactCount = data.contacts;
+                } else if (data.contacts === 'checking...' || data.contacts === 'timeout') {
+                    contactCount = 'checking...';
+                }
+                
+                updateStatus('connected', 'Connected (' + contactCount + ' contacts)');
+            } else {
+                console.error('Health check failed with status:', response.status);
+                updateStatus('error', 'Connection Error');
+            }
+        } catch (error) {
+            console.error('Backend health check failed:', error);
+            updateStatus('error', 'Backend Offline');
+        }
+    }
+
+    // Update status indicator
+    function updateStatus(status, message) {
+        if (!backendStatus) return;
+        
+        const dot = backendStatus.querySelector('.beetagged-status-dot');
+        const text = backendStatus.querySelector('span');
+        
+        if (dot && text) {
+            if (status === 'connected') {
+                dot.style.backgroundColor = '#10b981';
+                backendStatus.style.backgroundColor = '#d1fae5';
+                backendStatus.style.color = '#065f46';
+            } else if (status === 'error') {
+                dot.style.backgroundColor = '#ef4444';
+                backendStatus.style.backgroundColor = '#fee2e2';
+                backendStatus.style.color = '#991b1b';
+            } else {
+                dot.style.backgroundColor = '#f59e0b';
+                backendStatus.style.backgroundColor = '#fef3c7';
+                backendStatus.style.color = '#92400e';
+            }
+            text.textContent = message;
+        }
+    }
+
+    // Load contacts from backend
+    async function loadContacts() {
+        try {
+            console.log('Loading contacts from:', BACKEND_URL + '/api/contacts');
+            const response = await fetch(BACKEND_URL + '/api/contacts', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Loaded', data.length, 'contacts');
+                contacts = data || [];
+                searchResults = contacts;
+                displayResults();
+            } else {
+                console.error('Failed to load contacts:', response.status);
+                contacts = [];
+                searchResults = [];
+                displayResults();
+            }
+        } catch (error) {
+            console.error('Failed to load contacts:', error);
+            contacts = [];
+            searchResults = [];
+            displayResults();
+        }
+    }
+
+    // Handle search
+    async function handleSearch(query) {
+        if (!query.trim()) {
+            searchResults = contacts;
+            displayResults();
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(BACKEND_URL + '/api/search/natural?q=' + encodeURIComponent(query), {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                searchResults = result.results || [];
+            } else {
+                // Fallback to local search
+                searchResults = contacts.filter(contact =>
+                    (contact.name && contact.name.toLowerCase().includes(query.toLowerCase())) ||
+                    (contact.company && contact.company.toLowerCase().includes(query.toLowerCase())) ||
+                    (contact.position && contact.position.toLowerCase().includes(query.toLowerCase()))
+                );
+            }
+            displayResults();
+        } catch (error) {
+            console.error('Search failed:', error);
+            // Fallback to local search
+            searchResults = contacts.filter(contact =>
+                (contact.name && contact.name.toLowerCase().includes(query.toLowerCase())) ||
+                (contact.company && contact.company.toLowerCase().includes(query.toLowerCase())) ||
+                (contact.position && contact.position.toLowerCase().includes(query.toLowerCase()))
+            );
+            displayResults();
+        }
+        setLoading(false);
+    }
+
+    // Set loading state
+    function setLoading(loading) {
+        isLoading = loading;
+        if (searchButton) {
+            searchButton.disabled = loading;
+            searchButton.textContent = loading ? 'Searching...' : 'Search';
+        }
+    }
+
+    // Display search results
+    function displayResults() {
+        const query = searchInput ? searchInput.value.trim() : '';
+        if (resultsHeader) {
+            resultsHeader.textContent = query 
+                ? 'Search Results (' + searchResults.length + ')' 
+                : 'All Contacts (' + contacts.length + ')';
+        }
+
+        if (!resultsContainer) return;
+
+        if (searchResults.length === 0) {
+            if (query) {
+                resultsContainer.innerHTML = 
+                    '<div class="beetagged-empty">' +
+                        '<svg class="beetagged-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>' +
+                        '</svg>' +
+                        '<p class="beetagged-empty-title">No contacts found</p>' +
+                        '<p>Try a different search term or upload more contacts</p>' +
+                    '</div>';
+            } else {
+                resultsContainer.innerHTML = 
+                    '<div class="beetagged-empty">' +
+                        '<svg class="beetagged-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>' +
+                        '</svg>' +
+                        '<p class="beetagged-empty-title">No contacts yet</p>' +
+                        '<p>Upload a LinkedIn CSV file to get started</p>' +
+                    '</div>';
+            }
+            return;
+        }
+
+        const contactsHtml = searchResults.map(contact => {
+            const name = contact.name || 'Unknown';
+            const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+            const tags = contact.tags && Array.isArray(contact.tags) ? contact.tags.slice(0, 3) : [];
+            
+            return '<div class="beetagged-contact">' +
+                '<div class="beetagged-avatar">' + initials + '</div>' +
+                '<div class="beetagged-contact-info">' +
+                    '<h4 class="beetagged-contact-name">' + name + '</h4>' +
+                    '<p class="beetagged-contact-position">' + (contact.position || 'No position') + '</p>' +
+                    '<p class="beetagged-contact-company">' + (contact.company || 'No company') + '</p>' +
+                    (contact.email ? '<p class="beetagged-contact-email">' + contact.email + '</p>' : '') +
+                    (tags.length > 0 ? 
+                        '<div class="beetagged-tags">' +
+                            tags.map(tag => '<span class="beetagged-tag">' + tag + '</span>').join('') +
+                        '</div>' : '') +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        resultsContainer.innerHTML = contactsHtml;
+    }
+
+    // Handle file upload
+    async function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Show upload status
+        if (uploadStatus) uploadStatus.classList.remove('hidden');
+        if (uploadSuccess) uploadSuccess.classList.add('hidden');
+        if (uploadError) uploadError.classList.add('hidden');
+
+        try {
+            const formData = new FormData();
+            formData.append('linkedinCsv', file);
+
+            const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            if (uploadStatus) uploadStatus.classList.add('hidden');
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    if (uploadSuccessText) {
+                        uploadSuccessText.textContent = result.message || 'Successfully imported ' + result.count + ' contacts!';
+                    }
+                    if (uploadSuccess) uploadSuccess.classList.remove('hidden');
+                    
+                    // Reload contacts
+                    setTimeout(() => {
+                        loadContacts();
+                        checkBackendHealth();
+                    }, 1000);
+                } else {
+                    if (uploadErrorText) {
+                        uploadErrorText.textContent = result.message || 'Upload failed. Please check your CSV format.';
+                    }
+                    if (uploadError) uploadError.classList.remove('hidden');
+                }
+            } else {
+                // Handle HTTP error responses
+                let errorMessage = 'Upload failed. Please check your CSV format.';
+                try {
+                    const errorResult = await response.json();
+                    errorMessage = errorResult.message || errorMessage;
+                } catch (e) {
+                    console.error('Non-JSON error response:', e);
+                }
+                if (uploadErrorText) uploadErrorText.textContent = errorMessage;
+                if (uploadError) uploadError.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            if (uploadStatus) uploadStatus.classList.add('hidden');
+            if (uploadErrorText) uploadErrorText.textContent = 'Upload failed. Please check your connection and try again.';
+            if (uploadError) uploadError.classList.remove('hidden');
+        }
+
+        // Clear file input
+        if (csvFileInput) csvFileInput.value = '';
+    }
+
+    // Initialize when page loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBeetagged);
+    } else {
+        initBeetagged();
+    }
+})();
+</script>
