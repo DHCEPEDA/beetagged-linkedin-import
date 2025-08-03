@@ -1,0 +1,159 @@
+<!-- BeeTagged Simple Working Widget - Code Injection Footer -->
+<style>
+.beetagged-simple {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-family: system-ui, sans-serif;
+}
+.beetagged-title {
+  text-align: center;
+  color: #2563eb;
+  margin-bottom: 1rem;
+}
+.beetagged-search {
+  margin-bottom: 1.5rem;
+}
+.beetagged-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+.beetagged-button {
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.beetagged-status {
+  text-align: center;
+  padding: 8px;
+  margin: 1rem 0;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.status-success { background: #dcfce7; color: #166534; }
+.status-error { background: #fef2f2; color: #991b1b; }
+.status-loading { background: #dbeafe; color: #1e40af; }
+.beetagged-results {
+  background: white;
+  border-radius: 6px;
+  padding: 1rem;
+  min-height: 100px;
+}
+.contact-item {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.contact-name { font-weight: 600; color: #1f2937; }
+.contact-details { color: #6b7280; font-size: 14px; margin-top: 4px; }
+</style>
+
+<div class="beetagged-simple">
+  <h2 class="beetagged-title">BeeTagged Contact Search</h2>
+  
+  <div class="beetagged-search">
+    <input type="text" id="searchQuery" class="beetagged-input" 
+           placeholder="Search contacts: 'engineers at Google', 'contacts in Austin'...">
+    <button onclick="searchContacts()" class="beetagged-button">Search</button>
+  </div>
+  
+  <div id="status" class="beetagged-status status-loading">Connecting to backend...</div>
+  <div id="results" class="beetagged-results">Loading contacts...</div>
+</div>
+
+<script>
+let contacts = [];
+const BACKEND = 'https://beetagged-app-53414697acd3.herokuapp.com';
+
+async function loadContacts() {
+  try {
+    const response = await fetch(BACKEND + '/api/contacts');
+    if (response.ok) {
+      contacts = await response.json();
+      updateStatus('success', `Ready! ${contacts.length} contacts loaded`);
+      displayContacts(contacts.slice(0, 10)); // Show first 10
+    } else {
+      throw new Error('Failed to load');
+    }
+  } catch (error) {
+    updateStatus('error', 'Connection failed. Backend may be offline.');
+    document.getElementById('results').innerHTML = '<p>Unable to connect to backend</p>';
+  }
+}
+
+async function searchContacts() {
+  const query = document.getElementById('searchQuery').value.trim();
+  if (!query) {
+    displayContacts(contacts.slice(0, 10));
+    return;
+  }
+  
+  updateStatus('loading', 'Searching...');
+  
+  try {
+    const response = await fetch(BACKEND + '/api/search/natural?q=' + encodeURIComponent(query));
+    if (response.ok) {
+      const result = await response.json();
+      displayContacts(result.results || []);
+      updateStatus('success', `Found ${result.results?.length || 0} matches`);
+    } else {
+      // Fallback to local search
+      const filtered = contacts.filter(c => 
+        (c.name && c.name.toLowerCase().includes(query.toLowerCase())) ||
+        (c.company && c.company.toLowerCase().includes(query.toLowerCase()))
+      );
+      displayContacts(filtered);
+      updateStatus('success', `Found ${filtered.length} matches (local search)`);
+    }
+  } catch (error) {
+    updateStatus('error', 'Search failed');
+  }
+}
+
+function updateStatus(type, message) {
+  const status = document.getElementById('status');
+  status.className = `beetagged-status status-${type}`;
+  status.textContent = message;
+}
+
+function displayContacts(contactList) {
+  const results = document.getElementById('results');
+  
+  if (contactList.length === 0) {
+    results.innerHTML = '<p>No contacts found. Try a different search term.</p>';
+    return;
+  }
+  
+  const html = contactList.map(contact => `
+    <div class="contact-item">
+      <div class="contact-name">${contact.name || 'Unknown'}</div>
+      <div class="contact-details">
+        ${contact.position || 'No position'} • ${contact.company || 'No company'}
+        ${contact.email ? ' • ' + contact.email : ''}
+      </div>
+    </div>
+  `).join('');
+  
+  results.innerHTML = html;
+}
+
+// Initialize when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadContacts);
+} else {
+  loadContacts();
+}
+</script>
