@@ -1,0 +1,151 @@
+<div id="beetagged-widget" style="max-width: 800px; margin: 2rem auto; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+  
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;">🏷️ BeeTagged</h1>
+    <p style="font-size: 1.1rem; opacity: 0.9; margin: 0;">AI-Powered Contact Intelligence & Search</p>
+  </div>
+  
+  <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
+    <input type="text" id="beetagged-search-input" placeholder="Search your contacts naturally: 'people who work at tech companies'" style="width: 100%; padding: 12px 16px; border: none; border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; background: rgba(255,255,255,0.9); color: #333; box-sizing: border-box;">
+    
+    <button id="beetagged-search-btn" style="width: 100%; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.3); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">Search Contacts</button>
+    
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;">
+      <span onclick="searchExample('Michael')" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Find Michael</span>
+      <span onclick="searchExample('people who work at tech companies')" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Tech workers</span>
+      <span onclick="searchExample('contacts in San Francisco')" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">San Francisco</span>
+    </div>
+  </div>
+  
+  <div id="beetagged-results" style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; margin-top: 1rem; display: none;">
+    <h3 style="margin: 0 0 1rem 0;">Search Results</h3>
+    <div id="beetagged-results-list"></div>
+  </div>
+  
+  <div id="beetagged-status" style="margin-top: 1rem; padding: 1rem; border-radius: 8px; text-align: center; display: none;"></div>
+</div>
+
+<script>
+(function() {
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
+  function setupBeeTagged() {
+    const searchBtn = document.getElementById('beetagged-search-btn');
+    const searchInput = document.getElementById('beetagged-search-input');
+    
+    if (searchBtn) {
+      searchBtn.onclick = performSearch;
+    }
+    
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      });
+    }
+    
+    // Load sample contacts
+    loadSampleContacts();
+  }
+  
+  async function loadSampleContacts() {
+    try {
+      const response = await fetch(BACKEND_URL + '/api/contacts?limit=3');
+      if (response.ok) {
+        const contacts = await response.json();
+        if (contacts && contacts.length > 0) {
+          displaySampleContacts(contacts);
+        }
+      }
+    } catch (error) {
+      console.log('Sample load failed - widget still functional');
+    }
+  }
+  
+  function displaySampleContacts(contacts) {
+    const resultsList = document.getElementById('beetagged-results-list');
+    const resultsContainer = document.getElementById('beetagged-results');
+    
+    if (resultsList && resultsContainer) {
+      resultsList.innerHTML = contacts.map(contact => 
+        '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+        (contact.name || 'Unknown Name') + 
+        '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
+        (contact.company || '') + 
+        (contact.position ? ' • ' + contact.position : '') + 
+        (contact.location ? ' • ' + contact.location : '') + 
+        '</div></div>'
+      ).join('');
+      resultsContainer.style.display = 'block';
+    }
+  }
+  
+  async function performSearch() {
+    const input = document.getElementById('beetagged-search-input');
+    const btn = document.getElementById('beetagged-search-btn');
+    const results = document.getElementById('beetagged-results');
+    const resultsList = document.getElementById('beetagged-results-list');
+    
+    if (!input || !btn || !results || !resultsList) return;
+    
+    const query = input.value.trim();
+    if (!query) return;
+    
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/search/natural?q=' + encodeURIComponent(query));
+      const data = await response.json();
+      const contacts = data.results || data;
+      
+      if (contacts && contacts.length > 0) {
+        resultsList.innerHTML = contacts.map(contact => 
+          '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+          (contact.name || 'Unknown Name') + 
+          '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
+          (contact.company || '') + 
+          (contact.position ? ' • ' + contact.position : '') + 
+          (contact.location ? ' • ' + contact.location : '') + 
+          '</div></div>'
+        ).join('');
+        results.style.display = 'block';
+      } else {
+        resultsList.innerHTML = '<p>No contacts found matching your search.</p>';
+        results.style.display = 'block';
+      }
+    } catch (error) {
+      showStatus('Search failed. Please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Search Contacts';
+    }
+  }
+  
+  window.searchExample = function(query) {
+    const input = document.getElementById('beetagged-search-input');
+    if (input) {
+      input.value = query;
+      performSearch();
+    }
+  }
+  
+  function showStatus(message, type) {
+    const status = document.getElementById('beetagged-status');
+    if (status) {
+      status.innerHTML = message;
+      status.style.display = 'block';
+      status.style.background = type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)';
+      status.style.border = type === 'error' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)';
+      setTimeout(function() { status.style.display = 'none'; }, 5000);
+    }
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupBeeTagged);
+  } else {
+    setupBeeTagged();
+  }
+})();
+</script>
