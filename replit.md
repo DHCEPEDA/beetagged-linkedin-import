@@ -18,6 +18,11 @@ Preferred communication style: Simple, everyday language.
   - `SQUARESPACE-GRADIENT-WIDGET.html` - Elegant gradient design
 - **Search**: Natural language AI-powered search functional
 - **Import**: LinkedIn CSV processing working with drag & drop
+- **Build System**: All workflows operational
+  - ViteDev - Development server running on port 3000
+  - ViteBuildDev - Development build working
+  - BuildDevScript - Alternative development build
+  - BuildSquarespaceBundle - Webpack bundle generation
 - **Project**: Cleaned up - removed 40+ outdated files and documentation
 
 ## System Architecture
