@@ -1,56 +1,77 @@
 # BeeTagged - Professional Contact Management Platform
 
 ## Overview
-BeeTagged is a professional networking and contact management platform. Its main purpose is to help users organize and manage their professional relationships by integrating with social media platforms (primarily Facebook and LinkedIn) to import and consolidate contact information. It features AI-powered contact intelligence and tagging capabilities. The business vision is to provide a comprehensive solution for managing professional networks efficiently, with market potential in professional services, sales, and networking-intensive industries. The project aims to become a leading platform for intelligent contact management.
+
+BeeTagged is a production-ready professional contact management platform deployed on Heroku with 5433 contacts. The system provides natural language search ("engineers at Google"), LinkedIn CSV import, and Squarespace widget integration. The backend uses MongoDB Atlas for contact storage and Express.js for API services.
 
 ## User Preferences
+
 Preferred communication style: Simple, everyday language.
-Code quality expectations: Avoid basic integration mistakes like providing full HTML documents for code injection snippets.
+
+## Current Status (Updated: August 6, 2025)
+
+- **Backend**: Production deployed on Heroku (5433 contacts loaded)
+- **Database**: MongoDB Atlas operational
+- **Frontend**: Squarespace widget ready (`SQUARESPACE-FINAL-WIDGET.html`)
+- **Search**: Natural language AI-powered search functional
+- **Import**: LinkedIn CSV processing working
+- **Project**: Cleaned up - removed outdated files and documentation
 
 ## System Architecture
 
-### UI/UX Decisions
-The application combines a React-based Single Page Application (SPA) for the main interface with static HTML pages for standalone features. It also incorporates Progressive Web App (PWA) capabilities for an enhanced mobile experience. The design prioritizes flexibility and rapid development.
+### Frontend Architecture
+- **Framework**: React 19 with TypeScript and Vite for development
+- **Styling**: TailwindCSS with custom component styling
+- **Deployment**: Dual build system supporting both standalone web app and Squarespace widget integration
+- **State Management**: React Query for server state management
+- **Build Tools**: Webpack configuration for Squarespace bundle generation
 
-### Technical Implementations
-The backend is built on **Node.js/Express**, chosen for its scalability and extensive middleware ecosystem, handling file uploads, social media integrations, and database operations. The frontend leverages **React** for rich interactive features, bundled with Webpack, and supports TypeScript for development.
+### Backend Architecture
+- **Framework**: Express.js with Node.js
+- **Database**: MongoDB with Mongoose ODM for contact data persistence
+- **Authentication**: Stateless design with optional user ID filtering
+- **API Design**: RESTful endpoints with CORS enabled for cross-origin requests
+- **File Processing**: Multer for CSV file uploads and processing
+- **Security**: Helmet for security headers, rate limiting, and HTTPS enforcement
 
-### Feature Specifications
-- **Contact Management System**: Features a flexible MongoDB schema to support diverse contact data sources, CSV import capabilities (specifically for LinkedIn), LLM-powered duplicate detection and merging, "baseball card" style detailed contact views, data consolidation logic to merge contacts from multiple sources, and robust search and filtering with tagging.
-- **Social Media Integration**: Includes Facebook OAuth integration using the JavaScript SDK, and CSV-based LinkedIn contact import. The system is designed for multi-source contact consolidation.
-- **Authentication System**: Utilizes Facebook Login for client-side OAuth and basic session management. User profile data is stored from social platforms.
-- **File Processing**: Handles CSV parsing for LinkedIn connection exports, manages file uploads for contact data, and includes data validation and cleaning for imported information.
+### Data Storage Solutions
+- **Primary Database**: MongoDB Atlas for production contact storage
+- **Contact Schema**: Comprehensive contact model with fields for personal info, professional details, rankings, and metadata
+- **Indexing Strategy**: Text search indexes and compound indexes for performance optimization
+- **Data Processing**: Smart tag generation system for enhanced search capabilities
 
-### System Design Choices
-- **Data Storage**: **MongoDB Atlas** (cloud-hosted) is used as the NoSQL database due to its flexible schema, which accommodates varying contact formats from different social platforms. Mongoose ODM is used for schema validation.
-- **Data Flow**: The typical data flow involves user authentication via Facebook OAuth, contact import via LinkedIn CSV or Facebook connection, server-side data processing and validation, storage in MongoDB, and display of consolidated contacts via the React frontend. Users can then search and tag contacts.
-- **Deployment Strategy**: **Heroku-exclusive deployment** for all environments. No Replit server dependencies. Backend uses Node.js buildpack on Heroku. Frontend bundles connect directly to Heroku APIs. All production and pre-production builds target Heroku infrastructure exclusively.
-- **Production Status**: Backend deployed successfully to Heroku at https://beetagged-app-53414697acd3.herokuapp.com with MongoDB Atlas connected. Squarespace integration completed using Code Injection footer method with proper snippet formatting (no HTML wrapper).
-- **Latest Update**: 
-  - **CSV Upload Issue Resolved**: Fixed Squarespace integration by correcting CORS headers and removing HTML wrapper from Code Injection footer
-  - **Squarespace Integration Fixed**: Created proper footer injection code without full HTML document structure to avoid conflicts
-  - **LLM-Powered Duplicate Detection**: Added OpenAI GPT-4o integration to identify and merge similar contacts with shared data (same email/company)
-  - **Baseball Card Contact Details**: Click any contact to view comprehensive profile with full name, email, company, location, interests, profile links, and all available fields
-  - **Binary Search Debugging**: Successfully identified that backend was working correctly - issue was frontend CORS configuration
-  - **Production Status**: Backend healthy with 5433 contacts, all APIs functional, Squarespace widget now production-ready
+### Search and AI Integration
+- **Natural Language Search**: Enhanced pattern matching with keyword analysis
+- **AI-Powered Features**: OpenAI integration for semantic search and contact ranking
+- **Search Types**: Multiple search endpoints including natural language and AI-assisted queries
+- **Performance**: Optimized queries with proper indexing and result limiting
+
+### Import and Integration Systems
+- **LinkedIn Import**: CSV parsing with dual-file support (connections and contacts)
+- **Facebook Integration**: OAuth flow and contact import capabilities
+- **Data Processing**: Intelligent field mapping and contact deduplication
+- **File Handling**: Memory-based file storage with comprehensive CSV parsing
 
 ## External Dependencies
 
-### Third-Party Services
-- **MongoDB Atlas**: Cloud database hosting service.
-- **Facebook Graph API**: Used for social login and access to contact data.
-- **LinkedIn**: Primarily used for CSV export processing, with OAuth integration planned for future development.
+### Core Services
+- **MongoDB Atlas**: Cloud database service for contact data storage
+- **Heroku**: Primary hosting platform for backend API
+- **OpenAI API**: AI-powered search and contact ranking features
 
-### Core Libraries
-- **Express.js**: Core web server framework.
-- **Mongoose**: Object Data Modeling (ODM) library for MongoDB.
-- **React**: Frontend UI library.
-- **Multer**: Middleware for handling `multipart/form-data`, primarily used for file uploads.
-- **CSV-Parser**: Library for parsing CSV data, specifically used for LinkedIn connection exports.
-- **Compression**: Middleware for response compression.
+### Third-Party APIs
+- **LinkedIn**: Contact export via CSV files (no direct API integration)
+- **Facebook Graph API**: OAuth authentication and contact import
+- **Squarespace**: Widget embedding platform for client sites
 
-### Build Tools
-- **Webpack**: Module bundler used for building the frontend.
-- **Babel**: JavaScript compiler for transpiling modern JavaScript (e.g., React JSX).
-- **Vite**: Modern frontend build tool, utilized for development builds and potentially production.
-- **CSS-Loader**: Loader for Webpack to interpret `@import` and `url()` like `import/require()` and resolve them.
+### Development and Build Tools
+- **Vite**: Modern frontend build tool and development server
+- **Webpack**: Bundle generation for Squarespace widget deployment
+- **TailwindCSS**: Utility-first CSS framework for responsive design
+- **TypeScript**: Type safety and enhanced development experience
+
+### Security and Performance
+- **Helmet**: Security middleware for HTTP headers
+- **CORS**: Cross-origin resource sharing for frontend-backend communication
+- **Rate Limiting**: API request throttling for abuse prevention
+- **Compression**: Response compression for improved performance
