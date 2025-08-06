@@ -12,10 +12,13 @@ Preferred communication style: Simple, everyday language.
 
 - **Backend**: Production deployed on Heroku (5433 contacts loaded)
 - **Database**: MongoDB Atlas operational
-- **Frontend**: Squarespace widget ready (`SQUARESPACE-FINAL-WIDGET.html`)
+- **Frontend**: Multiple Squarespace widget versions ready
+  - `SQUARESPACE-FINAL-WIDGET.html` - Clean white card design
+  - `SQUARESPACE-ENHANCED-WIDGET.html` - Professional tabbed interface
+  - `SQUARESPACE-GRADIENT-WIDGET.html` - Elegant gradient design
 - **Search**: Natural language AI-powered search functional
-- **Import**: LinkedIn CSV processing working
-- **Project**: Cleaned up - removed outdated files and documentation
+- **Import**: LinkedIn CSV processing working with drag & drop
+- **Project**: Cleaned up - removed 40+ outdated files and documentation
 
 ## System Architecture
 

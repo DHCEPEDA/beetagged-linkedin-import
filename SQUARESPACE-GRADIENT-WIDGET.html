@@ -1,0 +1,634 @@
+<!-- BeeTagged Gradient Widget - Copy this entire code into Code Injection Footer -->
+
+<style>
+/* BeeTagged Squarespace Integration Styles */
+.beetagged-widget {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.beetagged-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.beetagged-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(45deg, #fff, #f0f0f0);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.beetagged-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.beetagged-tabs {
+  display: flex;
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 2rem;
+}
+
+.beetagged-tab {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.beetagged-tab.active {
+  background: rgba(255,255,255,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.beetagged-tab-content {
+  display: none;
+}
+
+.beetagged-tab-content.active {
+  display: block;
+}
+
+.beetagged-search-container {
+  background: rgba(255,255,255,0.1);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.beetagged-search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  background: rgba(255,255,255,0.9);
+  color: #333;
+  box-sizing: border-box;
+}
+
+.beetagged-search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+}
+
+.beetagged-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  width: 100%;
+  justify-content: center;
+}
+
+.beetagged-btn-primary {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.beetagged-btn-primary:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.beetagged-btn-primary:disabled {
+  background: rgba(255,255,255,0.1);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.beetagged-btn-secondary {
+  background: rgba(255,255,255,0.9);
+  color: #667eea;
+  border: 2px solid transparent;
+}
+
+.beetagged-btn-secondary:hover {
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.beetagged-upload-zone {
+  border: 2px dashed rgba(255,255,255,0.3);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255,255,255,0.05);
+  margin-bottom: 1rem;
+}
+
+.beetagged-upload-zone:hover {
+  border-color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.1);
+}
+
+.beetagged-upload-zone.dragover {
+  border-color: white;
+  background: rgba(255,255,255,0.2);
+}
+
+.beetagged-upload-zone h3 {
+  margin: 0 0 1rem 0;
+  color: white;
+}
+
+.beetagged-upload-zone p {
+  margin: 0.5rem 0;
+  color: rgba(255,255,255,0.8);
+}
+
+.beetagged-results {
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.beetagged-results h3 {
+  margin: 0 0 1rem 0;
+  color: white;
+}
+
+.beetagged-contact-card {
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: all 0.2s ease;
+}
+
+.beetagged-contact-card:hover {
+  background: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+}
+
+.beetagged-contact-name {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: white;
+  font-size: 1.1rem;
+}
+
+.beetagged-contact-details {
+  opacity: 0.8;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.9);
+  line-height: 1.4;
+}
+
+.beetagged-loading {
+  text-align: center;
+  padding: 2rem;
+  color: white;
+}
+
+.beetagged-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top: 3px solid white;
+  animation: beetagged-spin 1s linear infinite;
+}
+
+@keyframes beetagged-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.beetagged-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.beetagged-example-tag {
+  background: rgba(255,255,255,0.2);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+}
+
+.beetagged-example-tag:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-1px);
+}
+
+.beetagged-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.beetagged-message.success {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #bbf7d0;
+}
+
+.beetagged-message.error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fecaca;
+}
+
+.beetagged-instructions {
+  margin-top: 1.5rem;
+}
+
+.beetagged-instructions h4 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.beetagged-instructions ol {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.8);
+  padding-left: 1.2rem;
+  line-height: 1.6;
+}
+
+.beetagged-instructions li {
+  margin-bottom: 0.5rem;
+}
+
+.beetagged-empty-state {
+  text-align: center;
+  color: rgba(255,255,255,0.7);
+  font-style: italic;
+  padding: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .beetagged-widget {
+    padding: 1rem;
+    margin: 1rem;
+  }
+  
+  .beetagged-title {
+    font-size: 2rem;
+  }
+  
+  .beetagged-tabs {
+    flex-direction: column;
+  }
+  
+  .beetagged-tab {
+    margin-bottom: 4px;
+  }
+  
+  .beetagged-examples {
+    flex-direction: column;
+  }
+  
+  .beetagged-search-container {
+    padding: 1.5rem;
+  }
+  
+  .beetagged-upload-zone {
+    padding: 1.5rem 1rem;
+  }
+}
+</style>
+
+<div id="beetagged-widget"></div>
+
+<script>
+(function() {
+  'use strict';
+  
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  let contacts = [];
+  
+  const widgetHTML = `
+    <div class="beetagged-widget">
+      <div class="beetagged-header">
+        <h1 class="beetagged-title">🏷️ BeeTagged</h1>
+        <p class="beetagged-subtitle">AI-Powered Contact Intelligence & Search</p>
+      </div>
+      
+      <div class="beetagged-tabs">
+        <button class="beetagged-tab active" data-tab="search">Search Contacts</button>
+        <button class="beetagged-tab" data-tab="import">Import LinkedIn</button>
+      </div>
+      
+      <!-- Search Tab -->
+      <div class="beetagged-tab-content active" id="search-tab">
+        <div class="beetagged-search-container">
+          <input 
+            type="text" 
+            class="beetagged-search-input" 
+            id="search-input"
+            placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'"
+          />
+          <button class="beetagged-btn beetagged-btn-primary" id="search-btn">
+            <span id="search-btn-text">Search</span>
+            <div class="beetagged-spinner" id="search-spinner" style="display: none;"></div>
+          </button>
+          
+          <div class="beetagged-examples" id="search-examples">
+            <div class="beetagged-example-tag" data-query="engineers at Google">Tech workers</div>
+            <div class="beetagged-example-tag" data-query="people in San Francisco">San Francisco contacts</div>
+            <div class="beetagged-example-tag" data-query="product managers">Product managers</div>
+            <div class="beetagged-example-tag" data-query="marketing professionals">Marketing pros</div>
+          </div>
+        </div>
+        
+        <div id="search-results" class="beetagged-results" style="display: none;">
+          <h3>Search Results</h3>
+          <div id="search-results-list"></div>
+        </div>
+      </div>
+      
+      <!-- Import Tab -->
+      <div class="beetagged-tab-content" id="import-tab">
+        <div class="beetagged-search-container">
+          <div class="beetagged-upload-zone" id="upload-zone">
+            <h3>📁 Upload LinkedIn CSV</h3>
+            <p>Export your LinkedIn connections and upload the CSV file here</p>
+            <p style="font-size: 0.9rem; opacity: 0.8;">Drag & drop or click to select</p>
+            <input type="file" id="file-input" accept=".csv" style="display: none;" />
+          </div>
+          
+          <div id="upload-status" style="display: none;"></div>
+          
+          <div class="beetagged-instructions">
+            <h4>📋 How to export from LinkedIn:</h4>
+            <ol>
+              <li>Go to LinkedIn Settings & Privacy</li>
+              <li>Click "Data Privacy" → "Get a copy of your data"</li>
+              <li>Select "Connections" and download</li>
+              <li>Upload the CSV file here</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  function initWidget() {
+    const container = document.getElementById('beetagged-widget');
+    if (!container) return;
+    
+    container.innerHTML = widgetHTML;
+    setupEventListeners();
+    loadContacts();
+  }
+  
+  async function loadContacts() {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/contacts`);
+      const data = await response.json();
+      contacts = data.contacts || [];
+    } catch (error) {
+      console.error('Failed to load contacts:', error);
+    }
+  }
+  
+  function setupEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.beetagged-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        const tabName = this.dataset.tab;
+        switchTab(tabName);
+      });
+    });
+    
+    // Search functionality
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
+    
+    if (searchBtn) {
+      searchBtn.addEventListener('click', performSearch);
+    }
+    
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      });
+    }
+    
+    // Example queries
+    document.querySelectorAll('.beetagged-example-tag').forEach(tag => {
+      tag.addEventListener('click', function() {
+        const query = this.dataset.query;
+        document.getElementById('search-input').value = query;
+        performSearch();
+      });
+    });
+    
+    // File upload
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    
+    if (uploadZone && fileInput) {
+      uploadZone.addEventListener('click', () => fileInput.click());
+      
+      uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+      });
+      
+      uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+      });
+      
+      uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFileUpload(files[0]);
+        }
+      });
+      
+      fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files[0]);
+        }
+      });
+    }
+  }
+  
+  function switchTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.beetagged-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Update tab content
+    document.querySelectorAll('.beetagged-tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+  }
+  
+  async function performSearch() {
+    const query = document.getElementById('search-input').value.trim();
+    if (!query) return;
+    
+    const searchBtn = document.getElementById('search-btn');
+    const searchSpinner = document.getElementById('search-spinner');
+    const searchBtnText = document.getElementById('search-btn-text');
+    const resultsContainer = document.getElementById('search-results');
+    const resultsList = document.getElementById('search-results-list');
+    
+    // Show loading state
+    searchSpinner.style.display = 'inline-block';
+    searchBtnText.textContent = 'Searching...';
+    searchBtn.disabled = true;
+    
+    try {
+      // Try AI-powered search first
+      const response = await fetch(`${BACKEND_URL}/api/search/natural?q=${encodeURIComponent(query)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        displaySearchResults(data.results || []);
+      } else {
+        // Fallback to local search
+        const filtered = contacts.filter(contact => {
+          const searchText = `${contact.name || ''} ${contact.company || ''} ${contact.position || ''}`.toLowerCase();
+          return searchText.includes(query.toLowerCase());
+        });
+        displaySearchResults(filtered);
+      }
+      
+      resultsContainer.style.display = 'block';
+      
+    } catch (error) {
+      showMessage('Search failed. Please try again.', 'error');
+    } finally {
+      // Reset loading state
+      searchSpinner.style.display = 'none';
+      searchBtnText.textContent = 'Search';
+      searchBtn.disabled = false;
+    }
+  }
+  
+  function displaySearchResults(results) {
+    const resultsList = document.getElementById('search-results-list');
+    
+    if (results.length === 0) {
+      resultsList.innerHTML = '<div class="beetagged-empty-state">No contacts found matching your search.</div>';
+      return;
+    }
+    
+    resultsList.innerHTML = results.map(contact => `
+      <div class="beetagged-contact-card">
+        <div class="beetagged-contact-name">${contact.name || contact.basicInfo?.fullName || 'Unknown Contact'}</div>
+        <div class="beetagged-contact-details">
+          ${contact.company || contact.professional?.company ? `${contact.company || contact.professional?.company}` : ''}
+          ${contact.position || contact.professional?.position ? ` • ${contact.position || contact.professional?.position}` : ''}
+          ${contact.location || contact.professional?.location || contact.personal?.location ? ` • ${contact.location || contact.professional?.location || contact.personal?.location}` : ''}
+          ${contact.email || contact.basicInfo?.email ? `<br>📧 ${contact.email || contact.basicInfo?.email}` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  async function handleFileUpload(file) {
+    if (!file.name.endsWith('.csv')) {
+      showMessage('Please select a CSV file.', 'error');
+      return;
+    }
+    
+    const uploadStatus = document.getElementById('upload-status');
+    uploadStatus.style.display = 'block';
+    uploadStatus.innerHTML = `
+      <div class="beetagged-loading">
+        <div class="beetagged-spinner"></div>
+        <p>Uploading and processing ${file.name}...</p>
+      </div>
+    `;
+    
+    try {
+      const formData = new FormData();
+      formData.append('linkedinCsv', file);
+      
+      const response = await fetch(`${BACKEND_URL}/api/import/linkedin`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const data = await response.json();
+      showMessage(`Successfully imported ${data.imported || data.count || 0} contacts!`, 'success');
+      
+      // Reload contacts
+      await loadContacts();
+      
+    } catch (error) {
+      showMessage('Upload failed. Please try again.', 'error');
+    } finally {
+      uploadStatus.style.display = 'none';
+    }
+  }
+  
+  function showMessage(message, type) {
+    const uploadStatus = document.getElementById('upload-status');
+    uploadStatus.style.display = 'block';
+    uploadStatus.innerHTML = `
+      <div class="beetagged-message ${type}">
+        ${message}
+      </div>
+    `;
+    
+    setTimeout(() => {
+      uploadStatus.style.display = 'none';
+    }, 5000);
+  }
+  
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWidget);
+  } else {
+    initWidget();
+  }
+})();
+</script>
