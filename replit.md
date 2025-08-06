@@ -13,6 +13,8 @@ Preferred communication style: Simple, everyday language.
 - **Backend**: Production ready with MongoDB Atlas (5432 contacts loaded)
 - **Database**: MongoDB Atlas operational - **FIXED deprecated connection warnings**
 - **Frontend**: Multiple Squarespace widget versions ready
+  - `SQUARESPACE-FIXED-WORKING.html` - **WORKING VERSION** with correct API endpoints
+  - `SQUARESPACE-LOCAL-TEST.html` - Debug/testing widget for troubleshooting
   - `SQUARESPACE-FINAL-WIDGET.html` - Clean white card design
   - `SQUARESPACE-ENHANCED-WIDGET.html` - Professional tabbed interface
   - `SQUARESPACE-GRADIENT-WIDGET.html` - Elegant gradient design

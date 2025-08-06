@@ -1,0 +1,165 @@
+<!-- BeeTagged Local Test Widget - Minimal Version for Debugging -->
+
+<style>
+.beetagged-test {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px solid #667eea;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.test-contact {
+  background: white;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  border-left: 4px solid #667eea;
+}
+
+.test-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.test-details {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.test-button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0.5rem 0;
+}
+
+.test-status {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.status-loading { background: #cce7ff; color: #0066cc; border: 1px solid #99d6ff; }
+</style>
+
+<div class="beetagged-test">
+  <h2>🏷️ BeeTagged Connection Test</h2>
+  <p>Testing connection to backend and data display...</p>
+  
+  <button class="test-button" onclick="testLocalBackend()">Test Local Backend</button>
+  <button class="test-button" onclick="testHerokuBackend()">Test Heroku Backend</button>
+  <button class="test-button" onclick="testSearch()">Test Search</button>
+  
+  <div id="test-status"></div>
+  <div id="test-results"></div>
+</div>
+
+<script>
+// Test local backend (Replit)
+async function testLocalBackend() {
+  showStatus('Testing local backend connection...', 'loading');
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/contacts?limit=3');
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      showStatus(`✅ Local backend working! Found ${data.length} sample contacts`, 'success');
+      displayContacts(data, 'Local Backend');
+    } else {
+      showStatus('⚠️ Local backend connected but no data returned', 'error');
+    }
+  } catch (error) {
+    showStatus(`❌ Local backend failed: ${error.message}`, 'error');
+    console.error('Local backend error:', error);
+  }
+}
+
+// Test Heroku backend
+async function testHerokuBackend() {
+  showStatus('Testing Heroku backend connection...', 'loading');
+  
+  try {
+    const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts?limit=3');
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      showStatus(`✅ Heroku backend working! Found ${data.length} sample contacts`, 'success');
+      displayContacts(data, 'Heroku Backend');
+    } else {
+      showStatus('⚠️ Heroku backend connected but no data returned', 'error');
+    }
+  } catch (error) {
+    showStatus(`❌ Heroku backend failed: ${error.message}`, 'error');
+    console.error('Heroku backend error:', error);
+  }
+}
+
+// Test search functionality
+async function testSearch() {
+  showStatus('Testing search with "Michael"...', 'loading');
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/search/natural?q=Michael');
+    
+    const data = await response.json();
+    
+    if (data && (data.results || data.length > 0)) {
+      const results = data.results || data;
+      showStatus(`✅ Search working! Found ${results.length} results for "Michael"`, 'success');
+      displayContacts(results, 'Search Results');
+    } else {
+      showStatus('⚠️ Search connected but no results found', 'error');
+    }
+  } catch (error) {
+    showStatus(`❌ Search failed: ${error.message}`, 'error');
+    console.error('Search error:', error);
+  }
+}
+
+// Display contacts
+function displayContacts(contacts, source) {
+  const resultsDiv = document.getElementById('test-results');
+  
+  const html = `
+    <h3>${source} - Sample Contacts:</h3>
+    ${contacts.map(contact => `
+      <div class="test-contact">
+        <div class="test-name">${contact.name || 'No Name'}</div>
+        <div class="test-details">
+          ${contact.company || 'No Company'} 
+          ${contact.position ? ` • ${contact.position}` : ''}
+          ${contact.location ? ` • ${contact.location}` : ''}
+        </div>
+      </div>
+    `).join('')}
+  `;
+  
+  resultsDiv.innerHTML = html;
+}
+
+// Show status message
+function showStatus(message, type) {
+  const statusDiv = document.getElementById('test-status');
+  statusDiv.innerHTML = `<div class="test-status status-${type}">${message}</div>`;
+}
+
+// Auto-test on load
+window.addEventListener('load', function() {
+  console.log('BeeTagged Test Widget Loaded');
+  setTimeout(() => {
+    testLocalBackend();
+  }, 1000);
+});
+</script>
