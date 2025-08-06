@@ -49,3 +49,9 @@ git push heroku main
 - All API endpoints functional
 - CORS configured for Squarespace integration
 - Production-ready with security headers
+- **FIXED**: MongoDB deprecated warnings removed (useNewUrlParser, useUnifiedTopology)
+
+## Recent Fixes (August 6, 2025)
+- ✅ Removed deprecated MongoDB connection options causing deployment warnings
+- ✅ Updated to Node.js Driver 4.0+ compatible configuration
+- ✅ Build system fully operational with all workflows

@@ -72,10 +72,8 @@ function connectMongoDB() {
     process.exit(1);
   }
 
-  // Enhanced MongoDB connection options for production
+  // Enhanced MongoDB connection options for production (Node.js Driver 4.0+)
   const mongoOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
     serverSelectionTimeoutMS: 5000,    // How long to try selecting a server
     socketTimeoutMS: 10000,            // How long a send or receive on a socket can take
     connectTimeoutMS: 10000,           // How long to wait for initial connection
@@ -1040,12 +1038,16 @@ app.use((req, res) => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
-  mongoose.connection.close(() => {
+  try {
+    await mongoose.connection.close();
     console.log('MongoDB connection closed.');
     process.exit(0);
-  });
+  } catch (error) {
+    console.error('Error closing MongoDB connection:', error);
+    process.exit(1);
+  }
 });
 
 // Start server
