@@ -1,4 +1,5 @@
-<!-- BeeTagged Fixed Working Widget - Corrected API Endpoints -->
+<!-- BeeTagged Production Widget - Ready for Squarespace Deployment -->
+<!-- Copy this entire code into Squarespace Code Injection Footer -->
 
 <style>
 .beetagged-widget {
@@ -192,11 +193,11 @@
   border: 2px solid rgba(255,255,255,0.3);
   border-radius: 50%;
   border-top: 2px solid white;
-  animation: spin 1s linear infinite;
+  animation: beetagged-spin 1s linear infinite;
   margin-right: 8px;
 }
 
-@keyframes spin {
+@keyframes beetagged-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
@@ -216,6 +217,30 @@
 .beetagged-message.error {
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .beetagged-widget {
+    padding: 1rem;
+    margin: 1rem;
+  }
+  
+  .beetagged-title {
+    font-size: 2rem;
+  }
+  
+  .beetagged-tabs {
+    flex-direction: column;
+  }
+  
+  .beetagged-tab {
+    margin-bottom: 4px;
+  }
+  
+  .beetagged-examples {
+    flex-direction: column;
+  }
 }
 </style>
 
@@ -289,64 +314,73 @@
 
 <script>
 (function() {
-  // Backend configuration - Using Heroku production backend
+  'use strict';
+  
+  // Production backend URL
   const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
   
   // Initialize widget
   function initWidget() {
+    console.log('BeeTagged widget initializing...');
     setupEventListeners();
-    // Auto-load some sample contacts to show the widget is working
+    // Load sample contacts to demonstrate connectivity
     setTimeout(loadSampleContacts, 1000);
   }
   
-  // Load sample contacts to demonstrate functionality
+  // Load sample contacts to show the widget is working
   async function loadSampleContacts() {
     try {
+      console.log('Loading sample contacts from:', BACKEND_URL);
       const response = await fetch(`${BACKEND_URL}/api/contacts?limit=5`);
+      
       if (response.ok) {
         const contacts = await response.json();
+        console.log('Sample contacts loaded:', contacts.length);
+        
         if (contacts && contacts.length > 0) {
           displayWelcomeContacts(contacts.slice(0, 3));
         }
+      } else {
+        console.warn('Sample contacts failed to load:', response.status);
       }
     } catch (error) {
-      console.log('Sample contacts load failed - widget still functional');
+      console.warn('Sample contacts error:', error.message);
+      // Widget still functional for search/upload
     }
   }
   
-  // Display welcome contacts
+  // Display welcome contacts with real names
   function displayWelcomeContacts(contacts) {
     const resultsList = document.getElementById('search-results-list');
     const resultsContainer = document.getElementById('search-results');
     
+    if (!resultsList || !resultsContainer) return;
+    
     resultsList.innerHTML = `
       <div style="margin-bottom: 1rem; opacity: 0.8; font-size: 0.9rem;">
-        <strong>✅ Connected successfully! Showing sample contacts:</strong>
+        <strong>✅ Connected to your contact database! Showing sample contacts:</strong>
       </div>
       ${contacts.map(contact => `
         <div class="beetagged-contact-card">
           <div class="beetagged-contact-name">${contact.name || 'Unknown Name'}</div>
           <div class="beetagged-contact-details">
-            ${contact.company ? `${contact.company}` : ''}
-            ${contact.position ? ` • ${contact.position}` : ''}
-            ${contact.location ? ` • ${contact.location}` : ''}
+            ${contact.company ? contact.company : ''}${contact.position ? ` • ${contact.position}` : ''}${contact.location ? ` • ${contact.location}` : ''}
           </div>
         </div>
       `).join('')}
       <div style="margin-top: 1rem; opacity: 0.7; font-size: 0.85rem;">
-        Try searching above to find specific contacts!
+        Try searching above to find specific contacts like "Michael Higgins"!
       </div>
     `;
     resultsContainer.style.display = 'block';
   }
   
-  // Setup event listeners
+  // Setup all event listeners
   function setupEventListeners() {
     // Tab switching
     document.querySelectorAll('.beetagged-tab').forEach(tab => {
       tab.addEventListener('click', function() {
-        const tabName = this.dataset.tab;
-        switchTab(tabName);
+        switchTab(this.dataset.tab);
       });
     });
     
@@ -366,12 +400,15 @@
       });
     }
     
-    // Example queries
+    // Example query tags
     document.querySelectorAll('.beetagged-example-tag').forEach(tag => {
       tag.addEventListener('click', function() {
         const query = this.dataset.query;
-        document.getElementById('search-input').value = query;
-        performSearch();
+        const input = document.getElementById('search-input');
+        if (input) {
+          input.value = query;
+          performSearch();
+        }
       });
     });
     
@@ -379,63 +416,80 @@
     setupFileUpload();
   }
   
-  // Switch tabs
+  // Switch between tabs
   function switchTab(tabName) {
     // Update tab buttons
     document.querySelectorAll('.beetagged-tab').forEach(tab => {
       tab.classList.remove('active');
     });
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeTab) {
+      activeTab.classList.add('active');
+    }
     
     // Update tab content
     document.querySelectorAll('.beetagged-tab-content').forEach(content => {
       content.classList.remove('active');
     });
-    document.getElementById(`${tabName}-tab`).classList.add('active');
+    const activeContent = document.getElementById(`${tabName}-tab`);
+    if (activeContent) {
+      activeContent.classList.add('active');
+    }
   }
   
-  // Perform search with corrected API endpoint
+  // Perform search using correct API endpoint
   async function performSearch() {
-    const query = document.getElementById('search-input').value.trim();
+    const input = document.getElementById('search-input');
+    if (!input) return;
+    
+    const query = input.value.trim();
     if (!query) return;
     
     const searchBtn = document.getElementById('search-btn');
     const searchSpinner = document.getElementById('search-spinner');
     const searchBtnText = document.getElementById('search-btn-text');
     const resultsContainer = document.getElementById('search-results');
-    const resultsList = document.getElementById('search-results-list');
     
     // Show loading state
-    searchSpinner.style.display = 'inline-block';
-    searchBtnText.textContent = 'Searching...';
-    searchBtn.disabled = true;
+    if (searchSpinner) searchSpinner.style.display = 'inline-block';
+    if (searchBtnText) searchBtnText.textContent = 'Searching...';
+    if (searchBtn) searchBtn.disabled = true;
     
     try {
-      // Use the correct GET endpoint with query parameter
+      console.log('Searching for:', query);
+      
+      // Use the correct endpoint that works
       const response = await fetch(`${BACKEND_URL}/api/search/natural?q=${encodeURIComponent(query)}`);
       
-      if (!response.ok) throw new Error('Search failed');
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.status}`);
+      }
       
       const data = await response.json();
       const results = data.results || data;
       
+      console.log('Search results:', results.length);
+      
       displaySearchResults(results);
-      resultsContainer.style.display = 'block';
+      if (resultsContainer) {
+        resultsContainer.style.display = 'block';
+      }
       
     } catch (error) {
       console.error('Search error:', error);
       showMessage('Search failed. Please try again.', 'error');
     } finally {
       // Reset loading state
-      searchSpinner.style.display = 'none';
-      searchBtnText.textContent = 'Search';
-      searchBtn.disabled = false;
+      if (searchSpinner) searchSpinner.style.display = 'none';
+      if (searchBtnText) searchBtnText.textContent = 'Search';
+      if (searchBtn) searchBtn.disabled = false;
     }
   }
   
   // Display search results
   function displaySearchResults(results) {
     const resultsList = document.getElementById('search-results-list');
+    if (!resultsList) return;
     
     if (!results || results.length === 0) {
       resultsList.innerHTML = '<p>No contacts found matching your search.</p>';
@@ -446,9 +500,7 @@
       <div class="beetagged-contact-card">
         <div class="beetagged-contact-name">${contact.name || 'Unknown Name'}</div>
         <div class="beetagged-contact-details">
-          ${contact.company ? `${contact.company}` : ''}
-          ${contact.position ? ` • ${contact.position}` : ''}
-          ${contact.location ? ` • ${contact.location}` : ''}
+          ${contact.company ? contact.company : ''}${contact.position ? ` • ${contact.position}` : ''}${contact.location ? ` • ${contact.location}` : ''}
         </div>
         ${contact.tags && contact.tags.length > 0 ? `
           <div style="margin-top: 0.5rem;">
@@ -494,7 +546,7 @@
     });
   }
   
-  // Handle file upload
+  // Handle CSV file upload
   async function handleFileUpload(file) {
     if (!file.name.endsWith('.csv')) {
       showMessage('Please select a CSV file.', 'error');
@@ -502,13 +554,15 @@
     }
     
     const uploadStatus = document.getElementById('upload-status');
-    uploadStatus.style.display = 'block';
-    uploadStatus.innerHTML = `
-      <div class="beetagged-loading">
-        <div class="beetagged-spinner"></div>
-        <span>Uploading and processing ${file.name}...</span>
-      </div>
-    `;
+    if (uploadStatus) {
+      uploadStatus.style.display = 'block';
+      uploadStatus.innerHTML = `
+        <div class="beetagged-loading">
+          <div class="beetagged-spinner"></div>
+          <span>Uploading and processing ${file.name}...</span>
+        </div>
+      `;
+    }
     
     try {
       const formData = new FormData();
@@ -519,28 +573,35 @@
         body: formData,
       });
       
-      if (!response.ok) throw new Error('Upload failed');
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
       
       const data = await response.json();
-      showMessage(`Successfully imported ${data.count || data.imported || 'some'} contacts!`, 'success');
+      const count = data.count || data.imported || data.contactsImported || 'some';
+      showMessage(`Successfully imported ${count} contacts!`, 'success');
       
     } catch (error) {
       console.error('Upload error:', error);
       showMessage('Upload failed. Please try again.', 'error');
     } finally {
-      uploadStatus.style.display = 'none';
+      if (uploadStatus) {
+        uploadStatus.style.display = 'none';
+      }
     }
   }
   
-  // Show message
+  // Show status message
   function showMessage(message, type) {
     const messageElement = document.getElementById('global-message');
-    messageElement.innerHTML = `<div class="beetagged-message ${type}">${message}</div>`;
-    messageElement.style.display = 'block';
-    
-    setTimeout(() => {
-      messageElement.style.display = 'none';
-    }, 5000);
+    if (messageElement) {
+      messageElement.innerHTML = `<div class="beetagged-message ${type}">${message}</div>`;
+      messageElement.style.display = 'block';
+      
+      setTimeout(() => {
+        messageElement.style.display = 'none';
+      }, 5000);
+    }
   }
   
   // Initialize when DOM is ready
