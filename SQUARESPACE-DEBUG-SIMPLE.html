@@ -1,0 +1,112 @@
+<!-- BeeTagged Debug Widget - Minimal Test for Squarespace -->
+<!-- Copy this ENTIRE code into Squarespace Footer Code Injection -->
+
+<div id="beetagged-debug-test" style="
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #f0f0f0;
+  border: 3px solid #ff0000;
+  border-radius: 8px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+">
+  <h2 style="color: #333; margin: 0 0 1rem 0;">🏷️ BeeTagged Test Widget</h2>
+  <p style="color: #666; margin: 0 0 1rem 0;">If you can see this red border, the code injection is working!</p>
+  
+  <button id="test-connection" style="
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+  ">Test Backend Connection</button>
+  
+  <div id="test-results" style="
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 4px;
+    min-height: 50px;
+  ">
+    Click the button above to test the connection...
+  </div>
+  
+  <div style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
+    Debug info: Widget loaded at <span id="load-time"></span>
+  </div>
+</div>
+
+<script>
+// Immediate debug log
+console.log('BeeTagged Debug Widget Loading...');
+
+// Show load time
+document.addEventListener('DOMContentLoaded', function() {
+  const timeElement = document.getElementById('load-time');
+  if (timeElement) {
+    timeElement.textContent = new Date().toLocaleTimeString();
+  }
+  console.log('BeeTagged Widget DOM Ready');
+});
+
+// Test connection function
+async function testBackendConnection() {
+  const resultsDiv = document.getElementById('test-results');
+  const button = document.getElementById('test-connection');
+  
+  if (!resultsDiv || !button) {
+    console.error('Required elements not found');
+    return;
+  }
+  
+  button.disabled = true;
+  button.textContent = 'Testing...';
+  resultsDiv.innerHTML = 'Testing backend connection...';
+  
+  try {
+    const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts?limit=3');
+    
+    if (response.ok) {
+      const data = await response.json();
+      resultsDiv.innerHTML = `
+        <div style="color: green; font-weight: bold;">✅ Backend Connected!</div>
+        <div>Found ${data.length} contacts</div>
+        <div style="font-size: 0.8rem; margin-top: 0.5rem;">
+          Sample: ${data[0]?.name || 'No name'}
+        </div>
+      `;
+      console.log('Backend test successful:', data.length, 'contacts');
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    resultsDiv.innerHTML = `
+      <div style="color: red; font-weight: bold;">❌ Connection Failed</div>
+      <div style="font-size: 0.9rem;">${error.message}</div>
+    `;
+    console.error('Backend test failed:', error);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Test Backend Connection';
+  }
+}
+
+// Setup event listener
+document.addEventListener('DOMContentLoaded', function() {
+  const button = document.getElementById('test-connection');
+  if (button) {
+    button.addEventListener('click', testBackendConnection);
+    console.log('Test button event listener added');
+  }
+});
+
+// Global error handler
+window.addEventListener('error', function(e) {
+  console.error('BeeTagged Widget Error:', e.error);
+});
+
+console.log('BeeTagged Debug Widget Script Loaded');
+</script>
