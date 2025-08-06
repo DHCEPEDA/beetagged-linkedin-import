@@ -38,12 +38,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Setup Requirements
 
-### Package.json Scripts (Manual Update Required)
-Since package.json is read-only, these scripts need to be added manually:
+### Critical Manual Fixes Required (Read-Only Files)
+
+#### 1. Package.json Scripts (REQUIRED FOR BUILD)
+The package.json file is missing required scripts. Add these to the "scripts" section:
 
 ```json
 {
   "scripts": {
+    "start": "node index.js",
+    "heroku-postbuild": "echo 'No build step required - using static files'",
     "dev": "vite",
     "build": "vite build", 
     "build:dev": "vite build --mode development",
@@ -51,6 +55,17 @@ Since package.json is read-only, these scripts need to be added manually:
   }
 }
 ```
+
+#### 2. Build System Status
+✅ **TypeScript Configuration**: tsconfig.node.json correctly references "vite.config.js"
+✅ **Vite Configuration**: vite.config.js exists and is properly configured
+❌ **Package Scripts**: Missing required "dev" script causing build failures
+
+#### 3. Current Workaround Status
+- Backend server runs successfully on port 5000
+- Squarespace widget works with production backend
+- Frontend development server needs manual package.json fix
+- All webpack builds for Squarespace are working
 
 ### Facebook OAuth Configuration
 For Facebook import functionality to work:
@@ -68,6 +83,28 @@ For Facebook import functionality to work:
 3. **Environment Variables**:
    - `FACEBOOK_APP_ID` - Available in secrets
    - `FACEBOOK_APP_SECRET` - Available in secrets
+
+## Build System Status
+
+### Working Components
+✅ **Backend API**: Express server running on port 5000 with all endpoints
+✅ **Database**: MongoDB Atlas with 5433 contacts loaded
+✅ **Squarespace Builds**: Webpack bundles generating successfully
+✅ **Production Widget**: SQUARESPACE-DUAL-IMPORT.html working with backend
+✅ **Search**: Natural language search confirmed working
+✅ **Import**: Dual CSV upload with duplicate detection operational
+
+### Known Issues
+❌ **Vite Dev Server**: Requires manual package.json script addition
+❌ **Frontend Development**: Limited until package.json is manually updated
+
+### Immediate Workaround
+The core functionality is working through:
+1. Backend API server (port 5000)
+2. Squarespace widget deployment
+3. Production Heroku backend
+
+Development workflow can continue using the working components while package.json is updated manually.
 
 ## System Architecture
 
