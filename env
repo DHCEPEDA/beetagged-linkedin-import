@@ -1,0 +1,21 @@
+# Server Configuration
+PORT=8000
+NODE_ENV=development
+
+# Database Configuration
+# MongoDB Configuration
+MONGODB_URI=mongodb+srv://dhcepeda:EXLqA9xeQGpIaN0N@clusterbeetagged.mpruwpw.mongodb.net/?retryWrites=true&w=majority&appName=ClusterBeeTagged
+# PostgreSQL is available via environment variables (DATABASE_URL, etc.)
+
+# JWT Configuration
+JWT_SECRET=beetagger_jwt_secret_key_2025
+JWT_EXPIRE=30d
+
+# Social Auth Configuration
+LINKEDIN_CLIENT_ID=867adep5adc22g
+LINKEDIN_CLIENT_SECRET=WPL_AP1.j4ipPY9wll4iqDt7.w0yMCA==
+LINKEDIN_REDIRECT_URI=https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/api/auth/linkedin/callback
+
+FACEBOOK_APP_ID=1222790436230433
+# FACEBOOK_APP_SECRET is already set in Replit secrets
+FACEBOOK_REDIRECT_URI=https://d49cd8c1-1139-4a7e-96a2-5d125f417ecd-00-3ftoc46fv9y6p.riker.replit.dev/api/auth/facebook/callback
