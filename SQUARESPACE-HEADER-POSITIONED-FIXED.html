@@ -1,0 +1,453 @@
+<!-- BeeTagged Positioned Widget for Squarespace Header Injection -->
+<!-- Copy this code into: Settings > Advanced > Code Injection > HEADER -->
+
+<div id="beetagged-widget-container"></div>
+
+<script>
+window.addEventListener('load', function() {
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
+  // Create the full widget HTML with positioned layout
+  const widgetHTML = `
+    <div style="
+      padding: 4rem 2rem 2rem 2rem;
+      box-sizing: border-box;
+    ">
+      <!-- Header Section -->
+      <div style="
+        text-align: center;
+        margin-bottom: 4rem;
+      ">
+        <h1 style="
+          font-size: 3rem; 
+          font-weight: 700; 
+          margin: 0 0 1rem 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">🏷️ BeeTagged</h1>
+        <p style="
+          font-size: 1.2rem; 
+          color: #6b7280; 
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">AI-Powered Contact Intelligence & Professional Network Search</p>
+      </div>
+      
+      <!-- Main Widget Container -->
+      <div style="
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        color: white;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      ">
+        
+        <div style="display: flex; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
+          <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s ease;">🔍 Search Contacts</button>
+          <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: white; cursor: pointer; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;">📁 Import LinkedIn</button>
+        </div>
+        
+        <!-- Search Tab Content -->
+        <div id="search-content" style="display: block;">
+          <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
+            <input type="text" id="search-input" placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'" style="
+              width: 100%;
+              padding: 12px 16px;
+              border: none;
+              border-radius: 8px;
+              font-size: 1rem;
+              margin-bottom: 1rem;
+              background: rgba(255,255,255,0.9);
+              color: #333;
+              box-sizing: border-box;
+            ">
+            
+            <button id="search-btn" style="
+              width: 100%;
+              padding: 12px 24px;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              background: rgba(255,255,255,0.2);
+              color: white;
+              border: 2px solid rgba(255,255,255,0.3);
+              transition: all 0.3s ease;
+            ">Search Contacts</button>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; justify-content: center;">
+              <span class="example-tag" data-query="Michael" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Find Michael</span>
+              <span class="example-tag" data-query="people who work at tech companies" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Tech workers</span>
+              <span class="example-tag" data-query="contacts in San Francisco" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">San Francisco</span>
+            </div>
+          </div>
+          
+          <div id="search-results" style="
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+          ">
+            <h3 style="margin: 0 0 1rem 0; text-align: center;">Search Results</h3>
+            <div id="results-list"></div>
+          </div>
+        </div>
+        
+        <!-- Import Tab Content -->
+        <div id="import-content" style="display: none;">
+          <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 1.5rem 0; text-align: center;">📁 LinkedIn CSV Import</h3>
+            
+            <div id="upload-zone" style="
+              border: 2px dashed rgba(255,255,255,0.3);
+              border-radius: 12px;
+              padding: 2rem;
+              text-align: center;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              background: rgba(255,255,255,0.05);
+              margin-bottom: 1rem;
+            ">
+              <h3>📁 Upload LinkedIn CSV</h3>
+              <p>Export your LinkedIn connections and upload the CSV file here</p>
+              <p style="font-size: 0.9rem; opacity: 0.8;">Drag & drop or click to select</p>
+              <input type="file" id="file-input" accept=".csv" style="display: none;" />
+            </div>
+            
+            <div id="upload-status" style="display: none;"></div>
+            
+            <div style="margin-top: 1rem;">
+              <h4 style="margin: 0 0 0.5rem 0; text-align: center;">📋 How to export from LinkedIn:</h4>
+              <ol style="font-size: 0.9rem; opacity: 0.9; padding-left: 1.2rem; margin: 0; max-width: 600px; margin: 0 auto;">
+                <li>Go to LinkedIn Settings & Privacy</li>
+                <li>Click "Data Privacy" → "Get a copy of your data"</li>
+                <li>Select "Connections" and download</li>
+                <li>Upload the CSV file here</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+        
+        <div id="global-message" style="display: none;"></div>
+      </div>
+    </div>
+    
+    <!-- Baseball Card Modal -->
+    <div id="baseball-card-modal" style="
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      padding: 2rem;
+      box-sizing: border-box;
+      overflow-y: auto;
+    ">
+      <div style="
+        max-width: 500px;
+        margin: 0 auto;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        color: white;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        position: relative;
+      ">
+        <button id="close-modal" style="
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(255,255,255,0.2);
+          border: none;
+          color: white;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          cursor: pointer;
+          font-size: 1.2rem;
+          transition: all 0.3s ease;
+        ">×</button>
+        
+        <div id="baseball-card-content"></div>
+      </div>
+    </div>
+  `;
+  
+  // Inject the widget into the page
+  const container = document.getElementById('beetagged-widget-container');
+  if (container) {
+    container.innerHTML = widgetHTML;
+    initializeWidget();
+  }
+  
+  function initializeWidget() {
+    setupTabs();
+    setupSearch();
+    setupFileUpload();
+    setupModals();
+  }
+  
+  function setupTabs() {
+    const searchTab = document.getElementById('search-tab');
+    const importTab = document.getElementById('import-tab');
+    const searchContent = document.getElementById('search-content');
+    const importContent = document.getElementById('import-content');
+    
+    if (searchTab && importTab && searchContent && importContent) {
+      searchTab.onclick = function() {
+        searchTab.style.background = 'rgba(255,255,255,0.2)';
+        searchTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        importTab.style.background = 'transparent';
+        importTab.style.boxShadow = 'none';
+        searchContent.style.display = 'block';
+        importContent.style.display = 'none';
+      };
+      
+      importTab.onclick = function() {
+        importTab.style.background = 'rgba(255,255,255,0.2)';
+        importTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        searchTab.style.background = 'transparent';
+        searchTab.style.boxShadow = 'none';
+        importContent.style.display = 'block';
+        searchContent.style.display = 'none';
+      };
+    }
+  }
+  
+  function setupSearch() {
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
+    const exampleTags = document.querySelectorAll('.example-tag');
+    
+    if (searchBtn && searchInput) {
+      searchBtn.onclick = performSearch;
+      searchInput.onkeypress = function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      };
+    }
+    
+    exampleTags.forEach(function(tag) {
+      tag.onclick = function() {
+        if (searchInput) {
+          searchInput.value = tag.dataset.query;
+          performSearch();
+        }
+      };
+    });
+  }
+  
+  async function performSearch() {
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const resultsContainer = document.getElementById('search-results');
+    const resultsList = document.getElementById('results-list');
+    
+    if (!searchInput || !searchInput.value.trim()) {
+      showMessage('Please enter a search query.', 'error');
+      return;
+    }
+    
+    const query = searchInput.value.trim();
+    
+    if (searchBtn) {
+      searchBtn.disabled = true;
+      searchBtn.textContent = 'Searching...';
+    }
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/search/natural?q=' + encodeURIComponent(query));
+      
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      
+      const data = await response.json();
+      
+      if (resultsList && resultsContainer) {
+        if (data.results && data.results.length > 0) {
+          var resultsHTML = '';
+          for (var i = 0; i < data.results.length; i++) {
+            var contact = data.results[i];
+            resultsHTML += '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.3s ease;" onclick="showBaseballCard(' + JSON.stringify(contact).replace(/"/g, '&quot;') + ')">';
+            resultsHTML += '<div style="font-weight: 600; margin-bottom: 0.5rem;">' + contact.name + '</div>';
+            resultsHTML += '<div style="opacity: 0.8; font-size: 0.9rem;">';
+            if (contact.company) resultsHTML += contact.company + ' • ';
+            if (contact.position) resultsHTML += contact.position;
+            if (contact.location) resultsHTML += ' • ' + contact.location;
+            resultsHTML += '</div>';
+            if (contact.tags && contact.tags.length > 0) {
+              resultsHTML += '<div style="margin-top: 0.5rem;">';
+              for (var j = 0; j < contact.tags.length; j++) {
+                resultsHTML += '<span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; margin-right: 4px;">' + contact.tags[j] + '</span>';
+              }
+              resultsHTML += '</div>';
+            }
+            resultsHTML += '</div>';
+          }
+          resultsList.innerHTML = resultsHTML;
+          resultsContainer.style.display = 'block';
+        } else {
+          resultsList.innerHTML = '<p style="text-align: center; opacity: 0.8;">No contacts found matching your search.</p>';
+          resultsContainer.style.display = 'block';
+        }
+      }
+      
+    } catch (error) {
+      showMessage('Search failed. Please try again.', 'error');
+    } finally {
+      if (searchBtn) {
+        searchBtn.disabled = false;
+        searchBtn.textContent = 'Search Contacts';
+      }
+    }
+  }
+  
+  function setupFileUpload() {
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    
+    if (uploadZone && fileInput) {
+      uploadZone.onclick = function() { fileInput.click(); };
+      
+      uploadZone.ondragover = function(e) {
+        e.preventDefault();
+        uploadZone.style.borderColor = 'rgba(255,255,255,0.6)';
+        uploadZone.style.background = 'rgba(255,255,255,0.1)';
+      };
+      
+      uploadZone.ondragleave = function(e) {
+        e.preventDefault();
+        uploadZone.style.borderColor = 'rgba(255,255,255,0.3)';
+        uploadZone.style.background = 'rgba(255,255,255,0.05)';
+      };
+      
+      uploadZone.ondrop = function(e) {
+        e.preventDefault();
+        uploadZone.style.borderColor = 'rgba(255,255,255,0.3)';
+        uploadZone.style.background = 'rgba(255,255,255,0.05)';
+        if (e.dataTransfer.files.length > 0) {
+          handleFileUpload(e.dataTransfer.files[0]);
+        }
+      };
+      
+      fileInput.onchange = function(e) {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files[0]);
+        }
+      };
+    }
+  }
+  
+  async function handleFileUpload(file) {
+    if (!file.name.endsWith('.csv')) {
+      showMessage('Please select a CSV file.', 'error');
+      return;
+    }
+    
+    const uploadStatus = document.getElementById('upload-status');
+    if (uploadStatus) {
+      uploadStatus.style.display = 'block';
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem;">Uploading and processing ' + file.name + '...</div>';
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append('csvFile', file);
+      
+      const response = await fetch(BACKEND_URL + '/api/linkedin/import', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      showMessage('Successfully imported ' + (data.count || 'some') + ' contacts!', 'success');
+      
+    } catch (error) {
+      showMessage('Upload failed. Please try again.', 'error');
+    } finally {
+      if (uploadStatus) {
+        uploadStatus.style.display = 'none';
+      }
+    }
+  }
+  
+  function setupModals() {
+    const cardModal = document.getElementById('baseball-card-modal');
+    const closeModal = document.getElementById('close-modal');
+    
+    if (closeModal && cardModal) {
+      closeModal.onclick = function() { cardModal.style.display = 'none'; };
+      cardModal.onclick = function(e) {
+        if (e.target === cardModal) cardModal.style.display = 'none';
+      };
+    }
+  }
+  
+  function showBaseballCard(contact) {
+    const modal = document.getElementById('baseball-card-modal');
+    const content = document.getElementById('baseball-card-content');
+    
+    if (!modal || !content) return;
+    
+    var cardHTML = '<div style="padding: 2rem;">';
+    cardHTML += '<div style="text-align: center; margin-bottom: 2rem;">';
+    cardHTML += '<div style="width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.2); margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 3rem;">';
+    cardHTML += contact.name ? contact.name.charAt(0).toUpperCase() : '👤';
+    cardHTML += '</div>';
+    cardHTML += '<h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">' + contact.name + '</h2>';
+    cardHTML += '<p style="margin: 0; opacity: 0.8;">' + (contact.position || 'Professional Contact') + '</p>';
+    cardHTML += '</div>';
+    cardHTML += '<div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem;">';
+    if (contact.company) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Company:</strong> ' + contact.company + '</div>';
+    if (contact.email) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Email:</strong> ' + contact.email + '</div>';
+    if (contact.phone) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Phone:</strong> ' + contact.phone + '</div>';
+    if (contact.location) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Location:</strong> ' + contact.location + '</div>';
+    cardHTML += '</div>';
+    if (contact.tags && contact.tags.length > 0) {
+      cardHTML += '<div style="margin-top: 1.5rem;">';
+      cardHTML += '<h4 style="margin: 0 0 0.5rem 0;">Tags:</h4>';
+      cardHTML += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
+      for (var i = 0; i < contact.tags.length; i++) {
+        cardHTML += '<span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 0.85rem;">' + contact.tags[i] + '</span>';
+      }
+      cardHTML += '</div>';
+      cardHTML += '</div>';
+    }
+    cardHTML += '</div>';
+    
+    content.innerHTML = cardHTML;
+    modal.style.display = 'block';
+  }
+  
+  function showMessage(message, type) {
+    const messageContainer = document.getElementById('global-message');
+    if (!messageContainer) return;
+    
+    const bgColor = type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+    const borderColor = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+    
+    messageContainer.innerHTML = '<div style="background: ' + bgColor + '; border: 1px solid ' + borderColor + '; border-radius: 8px; padding: 1rem; margin: 1rem 0; text-align: center;">' + message + '</div>';
+    messageContainer.style.display = 'block';
+    
+    setTimeout(function() {
+      messageContainer.style.display = 'none';
+    }, 5000);
+  }
+});
+</script>
