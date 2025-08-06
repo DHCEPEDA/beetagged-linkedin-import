@@ -13,10 +13,12 @@ Preferred communication style: Simple, everyday language.
 - **Backend**: Production ready with MongoDB Atlas (5432 contacts loaded)
 - **Database**: MongoDB Atlas operational - **FIXED deprecated connection warnings**
 - **Frontend**: **DEPLOYED AND WORKING** on Squarespace
-  - `SQUARESPACE-HEADER-CENTERED.html` - **UPDATED VERSION** with proper page centering
+  - `SQUARESPACE-BASEBALL-CARDS.html` - **LATEST VERSION** with clickable contact cards and detailed profiles
+  - `SQUARESPACE-HEADER-CENTERED.html` - Previous centered version
   - `SQUARESPACE-HEADER-PRODUCTION.html` - Original working version (top of page)
-  - Search functionality confirmed working by user
+  - Search functionality confirmed working by user (includes Google search fix)
   - Widget displays sample contacts and processes natural language queries
+  - Baseball card style detailed contact views with modal popups
   - Other versions: Footer injection (blocked), Code block (plan restrictions)
 - **Search**: Natural language AI-powered search **CONFIRMED WORKING** in production
 - **Import**: LinkedIn CSV processing working with drag & drop
