@@ -10,7 +10,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Current Status (Updated: August 6, 2025)
 
-- **Backend**: Production ready with MongoDB Atlas (5432 contacts loaded)
+- **Backend**: Production ready with MongoDB Atlas (5433 contacts loaded)
 - **Database**: MongoDB Atlas operational - **FIXED deprecated connection warnings**
 - **Frontend**: **DEPLOYED AND WORKING** on Squarespace
   - `SQUARESPACE-DUAL-IMPORT.html` - **LATEST VERSION** with dual CSV upload and duplicate detection
@@ -20,10 +20,13 @@ Preferred communication style: Simple, everyday language.
   - Search functionality confirmed working by user (includes Google search fix)
   - Widget displays sample contacts and processes natural language queries
   - Baseball card style detailed contact views with modal popups
-  - Dual CSV import with intelligent duplicate consolidation prompts
+  - **NEW**: Dual CSV import with intelligent duplicate consolidation prompts
   - Other versions: Footer injection (blocked), Code block (plan restrictions)
 - **Search**: Natural language AI-powered search **CONFIRMED WORKING** in production
-- **Import**: LinkedIn CSV processing working with drag & drop
+- **Import**: **ENHANCED** LinkedIn CSV processing with dual file support and duplicate detection
+  - Supports both contacts.csv and connections.csv files simultaneously
+  - Intelligent duplicate detection using name, email, and company matching
+  - User choice prompts for consolidation vs separate import
 - **Build System**: All workflows operational
   - ViteDev - Frontend development server running on port 3000
   - Backend - Express API server running on port 5000
@@ -31,7 +34,40 @@ Preferred communication style: Simple, everyday language.
   - BuildDevScript - Alternative development build
   - BuildSquarespaceBundle - Webpack bundle generation
 - **Deployment**: Working in Replit (port 5000) and ready for Heroku
-- **Project**: Cleaned up - removed 40+ outdated files and documentation
+- **Project**: Enhanced with duplicate detection and consolidation features
+
+## Setup Requirements
+
+### Package.json Scripts (Manual Update Required)
+Since package.json is read-only, these scripts need to be added manually:
+
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build", 
+    "build:dev": "vite build --mode development",
+    "preview": "vite preview"
+  }
+}
+```
+
+### Facebook OAuth Configuration
+For Facebook import functionality to work:
+
+1. **Facebook App Setup**: 
+   - Replace `YOUR_FACEBOOK_APP_ID` in components with actual Facebook App ID
+   - Configure redirect URLs in Facebook Developer Console
+   - Set up proper app permissions for contact access
+
+2. **Required Backend Endpoints**:
+   - `/api/facebook/exchange-token` - Exchange OAuth code for access token
+   - `/api/facebook/profile` - Get user profile information
+   - `/api/facebook/import` - Import Facebook contacts
+
+3. **Environment Variables**:
+   - `FACEBOOK_APP_ID` - Available in secrets
+   - `FACEBOOK_APP_SECRET` - Available in secrets
 
 ## System Architecture
 
@@ -63,9 +99,12 @@ Preferred communication style: Simple, everyday language.
 - **Performance**: Optimized queries with proper indexing and result limiting
 
 ### Import and Integration Systems
-- **LinkedIn Import**: CSV parsing with dual-file support (connections and contacts)
-- **Facebook Integration**: OAuth flow and contact import capabilities
-- **Data Processing**: Intelligent field mapping and contact deduplication
+- **LinkedIn Import**: Enhanced CSV parsing with dual-file support (connections and contacts)
+  - Intelligent duplicate detection using name, email, and company matching
+  - User choice prompts for consolidation vs separate import
+  - Support for multiple LinkedIn export formats
+- **Facebook Integration**: OAuth flow and contact import capabilities (requires setup)
+- **Data Processing**: Intelligent field mapping and contact deduplication with LLM assistance
 - **File Handling**: Memory-based file storage with comprehensive CSV parsing
 
 ## External Dependencies
