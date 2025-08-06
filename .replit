@@ -40,6 +40,10 @@ args = "ViteBuildDev"
 task = "workflow.run"
 args = "BuildDevScript"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Build"
+
 [[workflows.workflow]]
 name = "UpdateHerokuBuild"
 author = "agent"
@@ -97,6 +101,14 @@ author = "agent"
 task = "shell.exec"
 args = "vite build --mode development"
 
+[[workflows.workflow]]
+name = "Build"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "vite build"
+
 [deployment]
 run = ["sh", "-c", "node index.js"]
 
@@ -107,6 +119,10 @@ externalPort = 3000
 [[ports]]
 localPort = 3001
 externalPort = 3001
+
+[[ports]]
+localPort = 4173
+externalPort = 3002
 
 [[ports]]
 localPort = 5000
