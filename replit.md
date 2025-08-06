@@ -19,11 +19,12 @@ Preferred communication style: Simple, everyday language.
 - **Search**: Natural language AI-powered search functional
 - **Import**: LinkedIn CSV processing working with drag & drop
 - **Build System**: All workflows operational
-  - ViteDev - Development server running on port 3000
+  - ViteDev - Frontend development server running on port 3000
+  - Backend - Express API server running on port 5000
   - ViteBuildDev - Development build working
   - BuildDevScript - Alternative development build
   - BuildSquarespaceBundle - Webpack bundle generation
-- **Deployment**: Ready for Heroku with all MongoDB warnings fixed
+- **Deployment**: Working in Replit (port 5000) and ready for Heroku
 - **Project**: Cleaned up - removed 40+ outdated files and documentation
 
 ## System Architecture
