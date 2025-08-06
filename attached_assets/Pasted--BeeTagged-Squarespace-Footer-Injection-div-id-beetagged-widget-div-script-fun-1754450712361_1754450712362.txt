@@ -1,0 +1,295 @@
+<!-- BeeTagged Squarespace Footer Injection -->
+<div id="beetagged-widget"></div>
+
+<script>
+(function() {
+  // Configuration
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
+  // Create widget HTML
+  const widgetHTML = `
+    <div class="beetagged-widget">
+      <div class="beetagged-header">
+        <h1 class="beetagged-title">🏷️ BeeTagged</h1>
+        <p class="beetagged-subtitle">AI-Powered Contact Intelligence & Search</p>
+      </div>
+      
+      <div class="beetagged-tabs">
+        <button class="beetagged-tab active" data-tab="search">Search Contacts</button>
+        <button class="beetagged-tab" data-tab="import">Import LinkedIn</button>
+      </div>
+      
+      <!-- Search Tab -->
+      <div class="beetagged-tab-content active" id="search-tab">
+        <div class="beetagged-search-container">
+          <input 
+            type="text" 
+            class="beetagged-search-input" 
+            id="search-input"
+            placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'"
+          />
+          <button class="beetagged-btn beetagged-btn-primary" id="search-btn">
+            <span id="search-btn-text">Search</span>
+            <div class="beetagged-spinner" id="search-spinner" style="display: none;"></div>
+          </button>
+          
+          <div class="beetagged-examples" id="search-examples">
+            <div class="beetagged-example-tag" data-query="people who work at tech companies">Tech workers</div>
+            <div class="beetagged-example-tag" data-query="contacts in San Francisco">San Francisco contacts</div>
+            <div class="beetagged-example-tag" data-query="people I met at conferences">Conference connections</div>
+            <div class="beetagged-example-tag" data-query="marketing professionals">Marketing pros</div>
+          </div>
+        </div>
+        
+        <div id="search-results" class="beetagged-results" style="display: none;">
+          <h3>Search Results</h3>
+          <div id="search-results-list"></div>
+        </div>
+      </div>
+      
+      <!-- Import Tab -->
+      <div class="beetagged-tab-content" id="import-tab">
+        <div class="beetagged-search-container">
+          <div class="beetagged-upload-zone" id="upload-zone">
+            <h3>📁 Upload LinkedIn CSV</h3>
+            <p>Export your LinkedIn connections and upload the CSV file here</p>
+            <p style="font-size: 0.9rem; opacity: 0.8;">Drag & drop or click to select</p>
+            <input type="file" id="file-input" accept=".csv" style="display: none;" />
+          </div>
+          
+          <div id="upload-status" style="display: none;"></div>
+          
+          <div style="margin-top: 1rem;">
+            <h4>📋 How to export from LinkedIn:</h4>
+            <ol style="font-size: 0.9rem; opacity: 0.9; padding-left: 1.2rem;">
+              <li>Go to LinkedIn Settings & Privacy</li>
+              <li>Click "Data Privacy" → "Get a copy of your data"</li>
+              <li>Select "Connections" and download</li>
+              <li>Upload the CSV file here</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Initialize widget
+  function initWidget() {
+    const container = document.getElementById('beetagged-widget');
+    if (!container) return;
+    
+    container.innerHTML = widgetHTML;
+    setupEventListeners();
+  }
+  
+  // Setup event listeners
+  function setupEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.beetagged-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        const tabName = this.dataset.tab;
+        switchTab(tabName);
+      });
+    });
+    
+    // Search functionality
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
+    
+    if (searchBtn) {
+      searchBtn.addEventListener('click', performSearch);
+    }
+    
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      });
+    }
+    
+    // Example queries
+    document.querySelectorAll('.beetagged-example-tag').forEach(tag => {
+      tag.addEventListener('click', function() {
+        const query = this.dataset.query;
+        document.getElementById('search-input').value = query;
+        performSearch();
+      });
+    });
+    
+    // File upload
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    
+    if (uploadZone && fileInput) {
+      uploadZone.addEventListener('click', () => fileInput.click());
+      
+      uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+      });
+      
+      uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+      });
+      
+      uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFileUpload(files[0]);
+        }
+      });
+      
+      fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files[0]);
+        }
+      });
+    }
+  }
+  
+  // Switch tabs
+  function switchTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.beetagged-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Update tab content
+    document.querySelectorAll('.beetagged-tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+  }
+  
+  // Perform search
+  async function performSearch() {
+    const query = document.getElementById('search-input').value.trim();
+    if (!query) return;
+    
+    const searchBtn = document.getElementById('search-btn');
+    const searchSpinner = document.getElementById('search-spinner');
+    const searchBtnText = document.getElementById('search-btn-text');
+    const resultsContainer = document.getElementById('search-results');
+    const resultsList = document.getElementById('search-results-list');
+    
+    // Show loading state
+    searchSpinner.style.display = 'inline-block';
+    searchBtnText.textContent = 'Searching...';
+    searchBtn.disabled = true;
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      
+      if (!response.ok) throw new Error('Search failed');
+      
+      const data = await response.json();
+      displaySearchResults(data.results);
+      resultsContainer.style.display = 'block';
+      
+    } catch (error) {
+      showMessage('Search failed. Please try again.', 'error');
+    } finally {
+      // Reset loading state
+      searchSpinner.style.display = 'none';
+      searchBtnText.textContent = 'Search';
+      searchBtn.disabled = false;
+    }
+  }
+  
+  // Display search results
+  function displaySearchResults(results) {
+    const resultsList = document.getElementById('search-results-list');
+    
+    if (results.length === 0) {
+      resultsList.innerHTML = '<p>No contacts found matching your search.</p>';
+      return;
+    }
+    
+    resultsList.innerHTML = results.map(contact => `
+      <div class="beetagged-contact-card">
+        <div class="beetagged-contact-name">${contact.name}</div>
+        <div class="beetagged-contact-details">
+          ${contact.company ? `${contact.company}` : ''}
+          ${contact.position ? ` • ${contact.position}` : ''}
+          ${contact.location ? ` • ${contact.location}` : ''}
+        </div>
+        ${contact.tags && contact.tags.length > 0 ? `
+          <div style="margin-top: 0.5rem;">
+            ${contact.tags.map(tag => `<span class="beetagged-example-tag" style="margin-right: 4px; margin-bottom: 4px;">${tag}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+  }
+  
+  // Handle file upload
+  async function handleFileUpload(file) {
+    if (!file.name.endsWith('.csv')) {
+      showMessage('Please select a CSV file.', 'error');
+      return;
+    }
+    
+    const uploadStatus = document.getElementById('upload-status');
+    uploadStatus.style.display = 'block';
+    uploadStatus.innerHTML = `
+      <div class="beetagged-loading">
+        <div class="beetagged-spinner"></div>
+        <p>Uploading and processing ${file.name}...</p>
+      </div>
+    `;
+    
+    try {
+      const formData = new FormData();
+      formData.append('csvFile', file);
+      
+      const response = await fetch(`${BACKEND_URL}/api/linkedin/import`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const data = await response.json();
+      showMessage(`Successfully imported ${data.count} contacts!`, 'success');
+      
+    } catch (error) {
+      showMessage('Upload failed. Please try again.', 'error');
+    } finally {
+      uploadStatus.style.display = 'none';
+    }
+  }
+  
+  // Show message
+  function showMessage(message, type) {
+    const uploadStatus = document.getElementById('upload-status');
+    uploadStatus.style.display = 'block';
+    uploadStatus.innerHTML = `
+      <div class="beetagged-message ${type}">
+        ${message}
+      </div>
+    `;
+    
+    setTimeout(() => {
+      uploadStatus.style.display = 'none';
+    }, 5000);
+  }
+  
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWidget);
+  } else {
+    initWidget();
+  }
+})();
+</script>
