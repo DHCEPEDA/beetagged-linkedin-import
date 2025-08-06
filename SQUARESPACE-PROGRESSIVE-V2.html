@@ -1,0 +1,96 @@
+<!-- PROGRESSIVE V2: Add File Upload -->
+<div style="max-width: 600px; margin: 20px auto; padding: 20px; background: #f5f5f5; border-radius: 8px; font-family: Arial, sans-serif;">
+  <h3 style="text-align: center; color: #333; margin-bottom: 20px;">BeeTagged Contact Search</h3>
+  
+  <!-- Search Section -->
+  <div style="margin-bottom: 25px;">
+    <input type="text" id="searchBox" placeholder="Search contacts..." 
+           style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px;">
+    
+    <button onclick="doSearch()" 
+            style="width: 100%; padding: 12px; background: #007cba; color: white; border: none; border-radius: 4px; margin-top: 10px; font-size: 16px; cursor: pointer;">
+      Search Contacts
+    </button>
+  </div>
+  
+  <!-- Upload Section -->
+  <div style="border-top: 1px solid #ddd; padding-top: 20px; margin-bottom: 20px;">
+    <h4 style="margin-bottom: 10px; color: #555;">Import LinkedIn Contacts</h4>
+    <input type="file" id="csvFile" accept=".csv" 
+           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+    
+    <button onclick="uploadFile()" 
+            style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;">
+      Upload CSV
+    </button>
+  </div>
+  
+  <div id="results" style="padding: 15px; background: white; border-radius: 4px; min-height: 60px;">
+    Ready to search contacts or import CSV
+  </div>
+</div>
+
+<script>
+function doSearch() {
+  const query = document.getElementById('searchBox').value;
+  const results = document.getElementById('results');
+  
+  if (!query.trim()) {
+    results.innerHTML = 'Please enter a search term';
+    return;
+  }
+  
+  results.innerHTML = 'Searching for: "' + query + '"...';
+  
+  fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/search/natural?q=' + encodeURIComponent(query))
+    .then(response => response.json())
+    .then(data => {
+      if (data.results && data.results.length > 0) {
+        let html = '<strong>Found ' + data.results.length + ' matches:</strong><br><br>';
+        data.results.slice(0, 5).forEach(contact => {
+          html += '<div style="padding: 8px; border-bottom: 1px solid #eee;">';
+          html += '<strong>' + (contact.name || 'Unknown') + '</strong><br>';
+          html += '<small>' + (contact.company || 'No company') + ' • ' + (contact.position || 'No position') + '</small>';
+          html += '</div>';
+        });
+        results.innerHTML = html;
+      } else {
+        results.innerHTML = 'No matches found for "' + query + '"';
+      }
+    })
+    .catch(error => {
+      results.innerHTML = 'Search failed: ' + error.message;
+    });
+}
+
+function uploadFile() {
+  const fileInput = document.getElementById('csvFile');
+  const results = document.getElementById('results');
+  
+  if (!fileInput.files.length) {
+    results.innerHTML = 'Please select a CSV file first';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('csvFile', fileInput.files[0]);
+  
+  results.innerHTML = 'Uploading and processing CSV...';
+  
+  fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/upload/csv', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      results.innerHTML = '<strong>Success!</strong><br>Imported ' + (data.imported || 0) + ' contacts<br>Duplicates found: ' + (data.duplicates || 0);
+    } else {
+      results.innerHTML = 'Upload failed: ' + (data.error || 'Unknown error');
+    }
+  })
+  .catch(error => {
+    results.innerHTML = 'Upload failed: ' + error.message;
+  });
+}
+</script>
