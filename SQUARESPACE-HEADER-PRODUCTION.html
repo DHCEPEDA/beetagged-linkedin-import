@@ -206,15 +206,21 @@ window.addEventListener('load', function() {
     if (resultsList && resultsContainer) {
       resultsList.innerHTML = 
         '<div style="margin-bottom: 1rem; opacity: 0.8; font-size: 0.9rem;"><strong>✅ Connected to your contact database! Sample contacts:</strong></div>' +
-        contacts.map(contact => 
-          '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+        contacts.map(contact => {
+          console.log('Sample contact data:', contact); // Debug log
+          const details = [];
+          if (contact.company) details.push(contact.company);
+          if (contact.position) details.push(contact.position);
+          if (contact.jobTitle) details.push(contact.jobTitle); // Alternative field name
+          if (contact.location) details.push(contact.location);
+          if (contact.email) details.push(contact.email);
+          
+          return '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
           (contact.name || 'Unknown Name') + 
           '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
-          (contact.company || '') + 
-          (contact.position ? ' • ' + contact.position : '') + 
-          (contact.location ? ' • ' + contact.location : '') + 
-          '</div></div>'
-        ).join('') +
+          (details.length > 0 ? details.join(' • ') : 'No additional details available') + 
+          '</div><div style="opacity: 0.6; font-size: 0.8rem; margin-top: 0.5rem;">Source: ' + (contact.source || 'Unknown') + '</div></div>';
+        }).join('') +
         '<div style="margin-top: 1rem; opacity: 0.7; font-size: 0.85rem;">Try searching above to find specific contacts!</div>';
       resultsContainer.style.display = 'block';
     }
@@ -240,15 +246,21 @@ window.addEventListener('load', function() {
       const contacts = data.results || data;
       
       if (contacts && contacts.length > 0) {
-        resultsList.innerHTML = contacts.map(contact => 
-          '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+        resultsList.innerHTML = contacts.map(contact => {
+          console.log('Contact data:', contact); // Debug log
+          const details = [];
+          if (contact.company) details.push(contact.company);
+          if (contact.position) details.push(contact.position);
+          if (contact.jobTitle) details.push(contact.jobTitle); // Alternative field name
+          if (contact.location) details.push(contact.location);
+          if (contact.email) details.push(contact.email);
+          
+          return '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
           (contact.name || 'Unknown Name') + 
           '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
-          (contact.company || '') + 
-          (contact.position ? ' • ' + contact.position : '') + 
-          (contact.location ? ' • ' + contact.location : '') + 
-          '</div></div>'
-        ).join('');
+          (details.length > 0 ? details.join(' • ') : 'No additional details available') + 
+          '</div><div style="opacity: 0.6; font-size: 0.8rem; margin-top: 0.5rem;">Source: ' + (contact.source || 'Unknown') + '</div></div>';
+        }).join('');
         results.style.display = 'block';
       } else {
         resultsList.innerHTML = '<p>No contacts found matching your search.</p>';
