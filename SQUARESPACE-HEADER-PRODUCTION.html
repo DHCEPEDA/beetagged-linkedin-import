@@ -1,0 +1,355 @@
+<!-- BeeTagged Production Widget for Squarespace Header Injection -->
+<!-- Copy this code into: Settings > Advanced > Code Injection > HEADER -->
+
+<div id="beetagged-widget-container"></div>
+
+<script>
+window.addEventListener('load', function() {
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
+  // Create the full widget HTML
+  const widgetHTML = `
+    <div style="
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    ">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;">🏷️ BeeTagged</h1>
+        <p style="font-size: 1.1rem; opacity: 0.9; margin: 0;">AI-Powered Contact Intelligence & Search</p>
+      </div>
+      
+      <div style="display: flex; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
+        <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">Search Contacts</button>
+        <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: white; cursor: pointer; border-radius: 8px; font-weight: 500;">Import LinkedIn</button>
+      </div>
+      
+      <!-- Search Tab Content -->
+      <div id="search-content" style="display: block;">
+        <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
+          <input type="text" id="search-input" placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'" style="
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            box-sizing: border-box;
+          ">
+          
+          <button id="search-btn" style="
+            width: 100%;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+          ">Search Contacts</button>
+          
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;">
+            <span class="example-tag" data-query="Michael" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Find Michael</span>
+            <span class="example-tag" data-query="people who work at tech companies" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Tech workers</span>
+            <span class="example-tag" data-query="contacts in San Francisco" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">San Francisco</span>
+          </div>
+        </div>
+        
+        <div id="search-results" style="
+          background: rgba(255,255,255,0.1);
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-top: 1rem;
+          display: none;
+        ">
+          <h3 style="margin: 0 0 1rem 0;">Search Results</h3>
+          <div id="results-list"></div>
+        </div>
+      </div>
+      
+      <!-- Import Tab Content -->
+      <div id="import-content" style="display: none;">
+        <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px;">
+          <div id="upload-zone" style="
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 1rem;
+          ">
+            <h3 style="margin: 0 0 1rem 0;">📁 Upload LinkedIn CSV</h3>
+            <p style="margin: 0 0 0.5rem 0;">Export your LinkedIn connections and upload the CSV file here</p>
+            <p style="font-size: 0.9rem; opacity: 0.8; margin: 0;">Drag & drop or click to select</p>
+            <input type="file" id="file-input" accept=".csv" style="display: none;">
+          </div>
+          
+          <div id="upload-status" style="display: none;"></div>
+          
+          <div style="margin-top: 1rem;">
+            <h4 style="margin: 0 0 0.5rem 0;">📋 How to export from LinkedIn:</h4>
+            <ol style="font-size: 0.9rem; opacity: 0.9; padding-left: 1.2rem; margin: 0;">
+              <li>Go to LinkedIn Settings & Privacy</li>
+              <li>Click "Data Privacy" → "Get a copy of your data"</li>
+              <li>Select "Connections" and download</li>
+              <li>Upload the CSV file here</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      
+      <div id="global-message" style="display: none;"></div>
+    </div>
+  `;
+  
+  // Insert widget into container
+  const container = document.getElementById('beetagged-widget-container');
+  if (container) {
+    container.innerHTML = widgetHTML;
+    setupWidget();
+  }
+  
+  function setupWidget() {
+    // Tab switching
+    const searchTab = document.getElementById('search-tab');
+    const importTab = document.getElementById('import-tab');
+    const searchContent = document.getElementById('search-content');
+    const importContent = document.getElementById('import-content');
+    
+    if (searchTab && importTab && searchContent && importContent) {
+      searchTab.onclick = function() {
+        searchTab.style.background = 'rgba(255,255,255,0.2)';
+        searchTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        importTab.style.background = 'transparent';
+        importTab.style.boxShadow = 'none';
+        searchContent.style.display = 'block';
+        importContent.style.display = 'none';
+      };
+      
+      importTab.onclick = function() {
+        importTab.style.background = 'rgba(255,255,255,0.2)';
+        importTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        searchTab.style.background = 'transparent';
+        searchTab.style.boxShadow = 'none';
+        importContent.style.display = 'block';
+        searchContent.style.display = 'none';
+      };
+    }
+    
+    // Search functionality
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
+    
+    if (searchBtn) {
+      searchBtn.onclick = performSearch;
+    }
+    
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      });
+    }
+    
+    // Example tags
+    const exampleTags = document.querySelectorAll('.example-tag');
+    exampleTags.forEach(tag => {
+      tag.onclick = function() {
+        const query = this.getAttribute('data-query');
+        if (searchInput) {
+          searchInput.value = query;
+          performSearch();
+        }
+      };
+      
+      // Hover effects
+      tag.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.3)'; };
+      tag.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.2)'; };
+    });
+    
+    // File upload
+    setupFileUpload();
+    
+    // Load sample contacts
+    loadSampleContacts();
+  }
+  
+  async function loadSampleContacts() {
+    try {
+      const response = await fetch(BACKEND_URL + '/api/contacts?limit=3');
+      if (response.ok) {
+        const contacts = await response.json();
+        if (contacts && contacts.length > 0) {
+          displaySampleContacts(contacts);
+        }
+      }
+    } catch (error) {
+      console.log('Sample contacts failed to load - widget still functional');
+    }
+  }
+  
+  function displaySampleContacts(contacts) {
+    const resultsList = document.getElementById('results-list');
+    const resultsContainer = document.getElementById('search-results');
+    
+    if (resultsList && resultsContainer) {
+      resultsList.innerHTML = 
+        '<div style="margin-bottom: 1rem; opacity: 0.8; font-size: 0.9rem;"><strong>✅ Connected to your contact database! Sample contacts:</strong></div>' +
+        contacts.map(contact => 
+          '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+          (contact.name || 'Unknown Name') + 
+          '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
+          (contact.company || '') + 
+          (contact.position ? ' • ' + contact.position : '') + 
+          (contact.location ? ' • ' + contact.location : '') + 
+          '</div></div>'
+        ).join('') +
+        '<div style="margin-top: 1rem; opacity: 0.7; font-size: 0.85rem;">Try searching above to find specific contacts!</div>';
+      resultsContainer.style.display = 'block';
+    }
+  }
+  
+  async function performSearch() {
+    const input = document.getElementById('search-input');
+    const btn = document.getElementById('search-btn');
+    const results = document.getElementById('search-results');
+    const resultsList = document.getElementById('results-list');
+    
+    if (!input || !btn || !results || !resultsList) return;
+    
+    const query = input.value.trim();
+    if (!query) return;
+    
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/search/natural?q=' + encodeURIComponent(query));
+      const data = await response.json();
+      const contacts = data.results || data;
+      
+      if (contacts && contacts.length > 0) {
+        resultsList.innerHTML = contacts.map(contact => 
+          '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+          (contact.name || 'Unknown Name') + 
+          '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
+          (contact.company || '') + 
+          (contact.position ? ' • ' + contact.position : '') + 
+          (contact.location ? ' • ' + contact.location : '') + 
+          '</div></div>'
+        ).join('');
+        results.style.display = 'block';
+      } else {
+        resultsList.innerHTML = '<p>No contacts found matching your search.</p>';
+        results.style.display = 'block';
+      }
+    } catch (error) {
+      showMessage('Search failed. Please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Search Contacts';
+    }
+  }
+  
+  function setupFileUpload() {
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    
+    if (!uploadZone || !fileInput) return;
+    
+    uploadZone.onclick = function() { fileInput.click(); };
+    
+    uploadZone.ondragover = function(e) {
+      e.preventDefault();
+      this.style.borderColor = 'rgba(255,255,255,0.6)';
+      this.style.background = 'rgba(255,255,255,0.1)';
+    };
+    
+    uploadZone.ondragleave = function(e) {
+      e.preventDefault();
+      this.style.borderColor = 'rgba(255,255,255,0.3)';
+      this.style.background = 'rgba(255,255,255,0.05)';
+    };
+    
+    uploadZone.ondrop = function(e) {
+      e.preventDefault();
+      this.style.borderColor = 'rgba(255,255,255,0.3)';
+      this.style.background = 'rgba(255,255,255,0.05)';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    };
+    
+    fileInput.onchange = function(e) {
+      if (e.target.files.length > 0) {
+        handleFileUpload(e.target.files[0]);
+      }
+    };
+  }
+  
+  async function handleFileUpload(file) {
+    if (!file.name.endsWith('.csv')) {
+      showMessage('Please select a CSV file.', 'error');
+      return;
+    }
+    
+    const uploadStatus = document.getElementById('upload-status');
+    if (uploadStatus) {
+      uploadStatus.style.display = 'block';
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem;">Uploading and processing ' + file.name + '...</div>';
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append('csvFile', file);
+      
+      const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      const count = data.count || data.imported || data.contactsImported || 'some';
+      showMessage('Successfully imported ' + count + ' contacts!', 'success');
+      
+    } catch (error) {
+      showMessage('Upload failed. Please try again.', 'error');
+    } finally {
+      if (uploadStatus) {
+        uploadStatus.style.display = 'none';
+      }
+    }
+  }
+  
+  function showMessage(message, type) {
+    const messageElement = document.getElementById('global-message');
+    if (messageElement) {
+      const bgColor = type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)';
+      const borderColor = type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)';
+      
+      messageElement.innerHTML = '<div style="padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: center; background: ' + bgColor + '; border: 1px solid ' + borderColor + ';">' + message + '</div>';
+      messageElement.style.display = 'block';
+      
+      setTimeout(function() {
+        messageElement.style.display = 'none';
+      }, 5000);
+    }
+  }
+});
+</script>

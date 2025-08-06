@@ -13,8 +13,9 @@ Preferred communication style: Simple, everyday language.
 - **Backend**: Production ready with MongoDB Atlas (5432 contacts loaded)
 - **Database**: MongoDB Atlas operational - **FIXED deprecated connection warnings**
 - **Frontend**: Multiple Squarespace widget versions ready
-  - `SQUARESPACE-PRODUCTION-READY.html` - **FINAL VERSION** using Heroku backend, ready to deploy
-  - `SQUARESPACE-FIXED-WORKING.html` - Working version with correct API endpoints
+  - `SQUARESPACE-HEADER-PRODUCTION.html` - **WORKING VERSION** for header injection (confirmed working)
+  - `SQUARESPACE-PRODUCTION-READY.html` - Footer injection version (code injection issues)
+  - `SQUARESPACE-CODE-BLOCK.html` - Code block version (plan restrictions)
   - `SQUARESPACE-LOCAL-TEST.html` - Debug/testing widget for troubleshooting
   - Legacy versions: FINAL, ENHANCED, GRADIENT (outdated endpoints)
 - **Search**: Natural language AI-powered search functional
