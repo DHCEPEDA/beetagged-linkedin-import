@@ -13,7 +13,8 @@ Preferred communication style: Simple, everyday language.
 - **Backend**: Production ready with MongoDB Atlas (5432 contacts loaded)
 - **Database**: MongoDB Atlas operational - **FIXED deprecated connection warnings**
 - **Frontend**: **DEPLOYED AND WORKING** on Squarespace
-  - `SQUARESPACE-HEADER-PRODUCTION.html` - **LIVE VERSION** deployed via header injection
+  - `SQUARESPACE-HEADER-CENTERED.html` - **UPDATED VERSION** with proper page centering
+  - `SQUARESPACE-HEADER-PRODUCTION.html` - Original working version (top of page)
   - Search functionality confirmed working by user
   - Widget displays sample contacts and processes natural language queries
   - Other versions: Footer injection (blocked), Code block (plan restrictions)
