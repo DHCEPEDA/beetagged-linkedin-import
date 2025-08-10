@@ -626,12 +626,23 @@ app.post('/api/import/linkedin', upload.fields([
     if (duplicates.length > 0) {
       console.log(`Found ${duplicates.length} potential duplicate groups`);
       
+      // Store contacts temporarily for duplicate resolution
+      const sessionId = Date.now().toString();
+      global.pendingImports = global.pendingImports || {};
+      global.pendingImports[sessionId] = {
+        contacts: mergedContacts,
+        duplicates: duplicates,
+        timestamp: Date.now()
+      };
+      
       // Return duplicates for user review
       return res.json({
         success: true,
         duplicatesFound: true,
         duplicates: duplicates,
+        sessionId: sessionId,
         totalContacts: mergedContacts.length,
+        nonDuplicates: mergedContacts.length - duplicates.reduce((acc, group) => acc + group.length, 0),
         message: `Found ${duplicates.length} potential duplicate groups requiring review`
       });
     }
@@ -699,6 +710,160 @@ app.post('/api/import/linkedin', upload.fields([
     res.status(500).json({ 
       success: false, 
       message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
+  }
+});
+
+// Handle duplicate resolution and final import
+app.post('/api/import/resolve-duplicates', express.json(), async (req, res) => {
+  try {
+    const { sessionId, resolutions } = req.body;
+    
+    if (!sessionId || !global.pendingImports?.[sessionId]) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid session or session expired' 
+      });
+    }
+    
+    const importData = global.pendingImports[sessionId];
+    const { contacts, duplicates } = importData;
+    
+    console.log('Resolving duplicates for session:', sessionId);
+    console.log('Resolutions received:', resolutions);
+    
+    let finalContacts = [...contacts];
+    let removedCount = 0;
+    let mergedCount = 0;
+    
+    // Process each duplicate group based on user choice
+    for (let i = 0; i < duplicates.length; i++) {
+      const group = duplicates[i];
+      const resolution = resolutions[i];
+      
+      if (resolution.action === 'merge') {
+        // Merge contacts in this group
+        const mergedContact = mergeContactInfo(group);
+        
+        // Remove original contacts from final list
+        finalContacts = finalContacts.filter(contact => 
+          !group.some(dup => 
+            dup.name === contact.name && 
+            dup.email === contact.email
+          )
+        );
+        
+        // Add merged contact
+        finalContacts.push(mergedContact);
+        mergedCount++;
+        removedCount += group.length - 1;
+        
+      } else if (resolution.action === 'skip') {
+        // Remove all contacts in this duplicate group
+        finalContacts = finalContacts.filter(contact => 
+          !group.some(dup => 
+            dup.name === contact.name && 
+            dup.email === contact.email
+          )
+        );
+        removedCount += group.length;
+        
+      } else if (resolution.action === 'keep_all') {
+        // Keep all duplicates as separate contacts - no action needed
+      } else if (resolution.action === 'keep_selected' && resolution.selectedIndex !== undefined) {
+        // Keep only the selected contact
+        const selectedContact = group[resolution.selectedIndex];
+        
+        // Remove all contacts in group
+        finalContacts = finalContacts.filter(contact => 
+          !group.some(dup => 
+            dup.name === contact.name && 
+            dup.email === contact.email
+          )
+        );
+        
+        // Add back only the selected one
+        finalContacts.push(selectedContact);
+        removedCount += group.length - 1;
+      }
+    }
+    
+    // Save final contacts to database
+    let insertedCount = 0;
+    let duplicateCount = 0;
+    let contactsWithCompany = 0;
+    let contactsWithEmail = 0;
+    
+    for (const contactData of finalContacts) {
+      if (contactData.company) contactsWithCompany++;
+      if (contactData.email) contactsWithEmail++;
+      
+      try {
+        const existingContact = await Contact.findOne({ 
+          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        });
+        
+        if (!existingContact) {
+          const contact = new Contact({
+            name: contactData.name,
+            email: contactData.email,
+            phone: contactData.phone,
+            company: contactData.company,
+            position: contactData.position,
+            location: contactData.location,
+            tags: generateTags(contactData),
+            source: 'linkedin_import_resolved',
+            connectedOn: contactData.connectedOn,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          await contact.save();
+          insertedCount++;
+        } else {
+          // Update existing contact with additional data
+          const updates = {};
+          if (contactData.email && !existingContact.email) updates.email = contactData.email;
+          if (contactData.company && !existingContact.company) updates.company = contactData.company;
+          if (contactData.position && !existingContact.position) updates.position = contactData.position;
+          if (contactData.phone && !existingContact.phone) updates.phone = contactData.phone;
+          
+          if (Object.keys(updates).length > 0) {
+            await Contact.findByIdAndUpdate(existingContact._id, updates);
+            console.log(`Enhanced existing contact: ${contactData.name}`);
+          }
+          duplicateCount++;
+        }
+      } catch (error) {
+        console.error(`Error saving contact ${contactData.name}:`, error);
+        duplicateCount++;
+      }
+    }
+    
+    // Clean up session data
+    delete global.pendingImports[sessionId];
+    
+    console.log('=== Final Import Statistics ===');
+    console.log(`Inserted: ${insertedCount}`);
+    console.log(`Duplicates skipped: ${duplicateCount}`);
+    console.log(`Merged: ${mergedCount}`);
+    console.log(`Removed: ${removedCount}`);
+    
+    res.json({
+      success: true,
+      count: insertedCount,
+      duplicates: duplicateCount,
+      merged: mergedCount,
+      removed: removedCount,
+      contactsWithCompany,
+      contactsWithEmail,
+      message: `Successfully imported ${insertedCount} contacts with ${mergedCount} merged and ${removedCount} duplicates resolved`
+    });
+    
+  } catch (error) {
+    console.error('Duplicate resolution error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
     });
   }
 });

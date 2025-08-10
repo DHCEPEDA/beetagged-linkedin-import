@@ -410,6 +410,18 @@ window.addEventListener('load', function() {
       const data = await response.json();
       console.log('Upload response data:', data);
       
+      // Check if duplicates were found
+      if (data.duplicatesFound) {
+        if (statusDiv) {
+          statusDiv.textContent = '⚠ ' + file.name + ' (duplicates found)';
+          statusDiv.style.color = '#f59e0b';
+        }
+        
+        // Show duplicate resolution interface
+        showDuplicateResolution(data, type);
+        return;
+      }
+      
       if (statusDiv) {
         statusDiv.textContent = '✓ ' + file.name;
         statusDiv.style.color = '#10b981';
@@ -597,6 +609,120 @@ window.addEventListener('load', function() {
     setTimeout(function() {
       messageContainer.style.display = 'none';
     }, 8000);
+  }
+  
+  function showDuplicateResolution(data, fileType) {
+    const uploadStatus = document.getElementById('upload-status');
+    if (!uploadStatus) return;
+    
+    let resolutionHTML = '<div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px; margin-top: 1rem;">';
+    resolutionHTML += '<h3 style="margin: 0 0 1rem 0; text-align: center; color: #f59e0b;">⚠ Duplicate Contacts Found</h3>';
+    resolutionHTML += '<p style="text-align: center; margin-bottom: 2rem; color: #00A86B;">Found ' + data.duplicates.length + ' groups of potentially duplicate contacts. Choose how to handle each group:</p>';
+    
+    // Create resolution form
+    resolutionHTML += '<div id="duplicate-groups">';
+    
+    for (let i = 0; i < data.duplicates.length; i++) {
+      const group = data.duplicates[i];
+      resolutionHTML += '<div style="background: rgba(255,255,255,0.2); padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">';
+      resolutionHTML += '<h4 style="margin: 0 0 1rem 0; color: #00A86B;">Group ' + (i + 1) + ': Potential Duplicates</h4>';
+      
+      // Show contacts in group
+      for (let j = 0; j < group.length; j++) {
+        const contact = group[j];
+        resolutionHTML += '<div style="background: rgba(255,255,255,0.3); padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">';
+        resolutionHTML += '<div style="font-weight: bold;">' + contact.name + '</div>';
+        resolutionHTML += '<div style="font-size: 0.9rem; opacity: 0.8;">';
+        if (contact.email) resolutionHTML += '📧 ' + contact.email + ' ';
+        if (contact.company) resolutionHTML += '🏢 ' + contact.company + ' ';
+        if (contact.position) resolutionHTML += '💼 ' + contact.position;
+        resolutionHTML += '</div>';
+        resolutionHTML += '</div>';
+      }
+      
+      // Resolution options
+      resolutionHTML += '<div style="margin-top: 1rem;">';
+      resolutionHTML += '<label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #00A86B;">Choose action:</label>';
+      resolutionHTML += '<select class="duplicate-resolution" data-group="' + i + '" style="width: 100%; padding: 8px; border: none; border-radius: 6px; background: rgba(255,255,255,0.9); color: #333;">';
+      resolutionHTML += '<option value="merge">Merge all contacts into one</option>';
+      resolutionHTML += '<option value="keep_all">Keep all as separate contacts</option>';
+      resolutionHTML += '<option value="skip">Skip this group (don\'t import)</option>';
+      resolutionHTML += '</select>';
+      resolutionHTML += '</div>';
+      
+      resolutionHTML += '</div>';
+    }
+    
+    resolutionHTML += '</div>';
+    
+    // Action buttons
+    resolutionHTML += '<div style="display: flex; gap: 1rem; margin-top: 2rem;">';
+    resolutionHTML += '<button id="resolve-duplicates-btn" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: rgba(255,255,255,0.5); color: #00A86B; font-weight: bold; cursor: pointer;">Apply Choices & Import</button>';
+    resolutionHTML += '<button id="cancel-import-btn" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: rgba(255,255,255,0.3); color: #ef4444; font-weight: bold; cursor: pointer;">Cancel Import</button>';
+    resolutionHTML += '</div>';
+    
+    resolutionHTML += '</div>';
+    
+    uploadStatus.innerHTML = resolutionHTML;
+    uploadStatus.style.display = 'block';
+    
+    // Add event listeners
+    document.getElementById('resolve-duplicates-btn').onclick = async function() {
+      await resolveDuplicates(data);
+    };
+    
+    document.getElementById('cancel-import-btn').onclick = function() {
+      uploadStatus.style.display = 'none';
+      showMessage('Import cancelled', 'info');
+    };
+  }
+  
+  async function resolveDuplicates(data) {
+    const resolutionSelects = document.querySelectorAll('.duplicate-resolution');
+    const resolutions = [];
+    
+    resolutionSelects.forEach(function(select) {
+      const groupIndex = parseInt(select.dataset.group);
+      resolutions[groupIndex] = {
+        action: select.value
+      };
+    });
+    
+    console.log('Sending resolutions:', resolutions);
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/import/resolve-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionId: data.sessionId,
+          resolutions: resolutions
+        }),
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('upload-status').style.display = 'none';
+        
+        let message = 'Successfully resolved duplicates! ';
+        if (result.count) message += 'Imported ' + result.count + ' contacts. ';
+        if (result.merged) message += 'Merged ' + result.merged + ' duplicate groups. ';
+        if (result.removed) message += 'Removed ' + result.removed + ' duplicates.';
+        
+        showMessage(message, 'success');
+      } else {
+        showMessage('Error resolving duplicates: ' + result.message, 'error');
+      }
+      
+    } catch (error) {
+      console.error('Error resolving duplicates:', error);
+      showMessage('Failed to resolve duplicates: ' + error.message, 'error');
+    }
   }
 });
 </script>
