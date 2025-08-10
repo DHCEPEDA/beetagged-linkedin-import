@@ -1,952 +1,794 @@
-// COMPLETE BACKEND - BeeTagged with Duplicate Detection
-// Updated backend with CSV upload fixes and duplicate contact merging
+// HEROKU DEPLOYMENT FILE: index.js
+// Copy this entire file as index.js for your Heroku deployment
 
 const express = require('express');
 const mongoose = require('mongoose');
+const multer = require('multer');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-const multer = require('multer');
 const morgan = require('morgan');
+const axios = require('axios');
+const csvParser = require('csv-parser');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// ===== MIDDLEWARE SETUP =====
-
-// HTTPS redirect for production
-if (process.env.NODE_ENV === 'production') {
-  app.use((req, res, next) => {
-    if (req.header('x-forwarded-proto') !== 'https') {
-      res.redirect(`https://${req.header('host')}${req.url}`);
-    } else {
-      next();
-    }
-  });
-}
-
-// Security headers
-app.use((req, res, next) => {
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
+const port = process.env.PORT || 5000;
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https:"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
 }));
 
 // CORS configuration
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'https://beetagged-app-53414697acd3.herokuapp.com',
+      'https://beetagged-backend-9cf78f6f55b8.herokuapp.com',
+      /\.squarespace\.com$/,
+      /\.squarespace-cdn\.com$/,
+      /^https?:\/\/.*\.squarespace\.com/,
+      /^https?:\/\/.*\.squarespace-cdn\.com/
+    ];
+    
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return origin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    callback(null, isAllowed);
+  },
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-  credentials: false
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
-// Compression and parsing
+// Middleware
 app.use(compression());
+app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging
-app.use(morgan('combined'));
-
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
 
-// ===== MONGODB CONNECTION =====
-
-function connectMongoDB() {
-  if (!process.env.MONGODB_URI) {
-    console.error('MONGODB_URI environment variable is required');
-    process.exit(1);
-  }
-
-  const mongoOptions = {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 10000,
-    connectTimeoutMS: 10000,
-    maxPoolSize: 10,
-    minPoolSize: 2,
-    maxIdleTimeMS: 30000,
-    retryWrites: true,
-    w: 'majority'
-  };
-
-  mongoose.connect(process.env.MONGODB_URI, mongoOptions)
-    .then(() => {
-      console.log('MongoDB Atlas connected successfully');
-      console.log('Database:', mongoose.connection.db.databaseName);
-    })
-    .catch(err => {
-      console.error('MongoDB connection error:', err);
-    });
-}
-
-connectMongoDB();
-
-// ===== MONGODB SCHEMA =====
-
-const contactSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  phone: String,
-  company: String,
-  position: String,
-  location: String,
-  tags: [String],
-  source: String,
-  connectedOn: String,
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
-
-const Contact = mongoose.model('Contact', contactSchema);
-
-// ===== FILE UPLOAD SETUP =====
-
+// Memory storage for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   }
 });
 
-// ===== API ROUTES =====
+// MongoDB connection
+const connectMongoDB = async () => {
+  try {
+    const mongoUri = process.env.MONGODB_URI;
+    
+    if (!mongoUri) {
+      throw new Error('MONGODB_URI environment variable is not set');
+    }
+    
+    console.log('Connecting to MongoDB with database: beetagged');
+    
+    await mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    
+    console.log('MongoDB Atlas connected successfully');
+    console.log('Database: beetagged');
+    
+    // Log current indexes
+    const Contact = mongoose.model('Contact');
+    const indexes = await Contact.collection.listIndexes().toArray();
+    console.log('Current indexes:', indexes.map(idx => idx.name));
+    
+    // Ensure text search index exists
+    try {
+      await Contact.collection.createIndex({
+        name: 'text',
+        company: 'text',
+        jobTitle: 'text',
+        location: 'text',
+        'tags.value': 'text',
+        searchableText: 'text'
+      }, { 
+        name: 'contact_text_search',
+        background: true
+      });
+      console.log('✅ Text search index created/verified');
+    } catch (indexError) {
+      if (indexError.code === 85 || indexError.codeName === 'IndexOptionsConflict') {
+        console.log('✅ Text search index already exists');
+      } else {
+        console.error('Index creation error:', indexError);
+      }
+    }
+    
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    console.error('Connection string prefix:', process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 20) + '...' : 'Not provided');
+    throw error;
+  }
+};
 
-// Health check
+// Contact Schema
+const contactSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, default: '' },
+  phoneNumber: { type: String, default: '' },
+  company: { type: String, default: '' },
+  jobTitle: { type: String, default: '' },
+  location: { type: String, default: '' },
+  linkedinId: { type: String, default: '' },
+  facebookId: { type: String, default: '' },
+  profileImageUrl: { type: String, default: '' },
+  url: { type: String, default: '' },
+  source: { type: String, default: 'manual' },
+  tags: [{
+    value: String,
+    category: String,
+    confidence: { type: Number, default: 1.0 }
+  }],
+  searchableText: { type: String, default: '' },
+  userId: { type: String, default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Add indexes for better performance
+contactSchema.index({ userId: 1, name: 1 });
+contactSchema.index({ userId: 1, email: 1 });
+contactSchema.index({ userId: 1, linkedinId: 1 });
+contactSchema.index({ userId: 1, facebookId: 1 });
+contactSchema.index({ userId: 1 });
+contactSchema.index({ userId: 1, name: 1 });
+contactSchema.index({ userId: 1, company: 1 });
+contactSchema.index({ userId: 1, location: 1 });
+contactSchema.index({ userId: 1, 'tags.value': 1 });
+contactSchema.index({ userId: 1, 'tags.category': 1 });
+contactSchema.index({ facebookId: 1 });
+contactSchema.index({ linkedinId: 1 });
+contactSchema.index({ email: 1 });
+contactSchema.index({ phoneNumber: 1 });
+contactSchema.index({ userId: 1, createdAt: -1 });
+contactSchema.index({ company: 1, position: 1 });
+
+const Contact = mongoose.model('Contact', contactSchema);
+
+// Health check endpoint
 app.get('/', (req, res) => {
-  res.json({
-    status: 'BeeTagged Server running',
-    environment: process.env.NODE_ENV || 'development',
-    mongodb: 'configured'
+  res.json({ 
+    status: 'BeeTagged API is running',
+    version: '2.0.0',
+    features: ['natural_search', 'linkedin_import', 'facebook_integration', 'duplicate_detection'],
+    timestamp: new Date().toISOString()
   });
 });
 
-// ===== SEARCH ENDPOINT =====
-
-app.get('/api/search', async (req, res) => {
+// Health check endpoint
+app.get('/health', async (req, res) => {
   try {
-    const query = req.query.q;
-    console.log('Search request for:', query);
-    
-    if (!query) {
-      return res.status(400).json({ error: 'Query parameter required' });
-    }
-
-    // Enhanced search with timeout protection
-    const searchPromise = performEnhancedSearch(query);
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Database timeout')), 10000);
+    await Contact.countDocuments();
+    res.json({ 
+      status: 'healthy',
+      database: 'connected',
+      timestamp: new Date().toISOString()
     });
-
-    const contacts = await Promise.race([searchPromise, timeoutPromise]);
-    
-    console.log(`Found ${contacts.length} contacts for query: "${query}"`);
-    res.json({ contacts });
-    
   } catch (error) {
-    console.error('Error fetching contacts:', error);
-    if (error.message === 'Database timeout') {
-      res.status(504).json({ error: 'Database timeout - please try again' });
-    } else {
-      res.status(500).json({ error: 'Failed to fetch contacts' });
-    }
+    res.status(500).json({ 
+      status: 'unhealthy',
+      database: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
-// LinkedIn CSV import with dual-file support and duplicate detection
+// Get contact by ID
+app.get('/api/contacts/:id', async (req, res) => {
+  try {
+    const contact = await Contact.findById(req.params.id);
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+    res.json(contact);
+  } catch (error) {
+    console.error('Error fetching contact:', error);
+    res.status(500).json({ error: 'Failed to fetch contact' });
+  }
+});
+
+// Natural language search endpoint
+app.get('/api/search-natural', async (req, res) => {
+  try {
+    const { q: query, userId } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    console.log('🔍 Natural language search:', query);
+    
+    // Build MongoDB query
+    let mongoQuery = {};
+    
+    // Add user filter if provided
+    if (userId) {
+      mongoQuery.userId = userId;
+    }
+
+    // Enhanced search patterns
+    const searchTerms = query.toLowerCase();
+    
+    // Company-specific searches
+    if (searchTerms.includes('google') || searchTerms.includes('at google')) {
+      mongoQuery.company = { $regex: /google/i };
+    } else if (searchTerms.includes('apple') || searchTerms.includes('at apple')) {
+      mongoQuery.company = { $regex: /apple/i };
+    } else if (searchTerms.includes('microsoft') || searchTerms.includes('at microsoft')) {
+      mongoQuery.company = { $regex: /microsoft/i };
+    } else if (searchTerms.includes('meta') || searchTerms.includes('facebook') || searchTerms.includes('at meta')) {
+      mongoQuery.company = { $regex: /(meta|facebook)/i };
+    }
+    
+    // Location-based searches
+    else if (searchTerms.includes('san francisco') || searchTerms.includes('sf') || searchTerms.includes('in sf')) {
+      mongoQuery.location = { $regex: /san francisco|sf/i };
+    } else if (searchTerms.includes('new york') || searchTerms.includes('ny') || searchTerms.includes('nyc')) {
+      mongoQuery.location = { $regex: /new york|ny|nyc/i };
+    } else if (searchTerms.includes('seattle')) {
+      mongoQuery.location = { $regex: /seattle/i };
+    }
+    
+    // Job title searches
+    else if (searchTerms.includes('engineer') || searchTerms.includes('engineers')) {
+      mongoQuery.jobTitle = { $regex: /engineer/i };
+    } else if (searchTerms.includes('designer') || searchTerms.includes('design')) {
+      mongoQuery.jobTitle = { $regex: /design/i };
+    } else if (searchTerms.includes('manager') || searchTerms.includes('management')) {
+      mongoQuery.jobTitle = { $regex: /manager|management/i };
+    } else if (searchTerms.includes('director')) {
+      mongoQuery.jobTitle = { $regex: /director/i };
+    } else if (searchTerms.includes('ceo') || searchTerms.includes('founder')) {
+      mongoQuery.jobTitle = { $regex: /(ceo|founder)/i };
+    }
+    
+    // Industry searches
+    else if (searchTerms.includes('tech') || searchTerms.includes('technology')) {
+      mongoQuery.$or = [
+        { company: { $regex: /(google|apple|microsoft|meta|facebook|amazon|netflix|uber|airbnb|twitter|linkedin|salesforce|oracle|adobe|nvidia|intel|tesla|spacex)/i } },
+        { jobTitle: { $regex: /engineer|developer|programmer|architect/i } }
+      ];
+    }
+    
+    // Generic text search fallback
+    else {
+      mongoQuery.$text = { $search: query };
+    }
+
+    console.log('MongoDB query:', JSON.stringify(mongoQuery, null, 2));
+
+    // Execute search with limit
+    const contacts = await Contact.find(mongoQuery)
+      .limit(50)
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    console.log(`Found ${contacts.length} contacts`);
+
+    res.json({
+      query: query,
+      count: contacts.length,
+      contacts: contacts
+    });
+
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ 
+      error: 'Search failed', 
+      message: error.message,
+      query: req.query.q
+    });
+  }
+});
+
+// LinkedIn CSV import with duplicate detection
 app.post('/api/import/linkedin', upload.fields([
-  { name: 'linkedinCsv', maxCount: 1 },
-  { name: 'contactsCsv', maxCount: 1 },
-  { name: 'csvFile', maxCount: 1 },
-  { name: 'contactsFile', maxCount: 1 },
-  { name: 'connectionsFile', maxCount: 1 }
+  { name: 'contacts', maxCount: 1 },
+  { name: 'connections', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    console.log('=== LinkedIn CSV Import Started ===');
-    console.log('Files received:', req.files);
+    console.log('=== LinkedIn Import Started ===');
+    console.log('Files received:', Object.keys(req.files || {}));
     
-    const linkedinFile = req.files?.linkedinCsv?.[0] || req.files?.csvFile?.[0] || req.files?.connectionsFile?.[0];
-    const contactsFile = req.files?.contactsCsv?.[0] || req.files?.contactsFile?.[0];
+    const files = req.files || {};
+    const { userId, duplicateAction } = req.body;
     
-    if (!linkedinFile && !contactsFile) {
+    if (!files.contacts && !files.connections) {
       return res.status(400).json({ 
         success: false, 
-        message: 'No files uploaded. Please select at least one CSV file from LinkedIn (Connections or Contacts).' 
-      });
-    }
-    
-    console.log('LinkedIn Connections file:', !!linkedinFile);
-    console.log('LinkedIn Contacts file:', !!contactsFile);
-
-    // Validate file types
-    const files = [linkedinFile, contactsFile].filter(Boolean);
-    for (const file of files) {
-      if (!file.originalname?.toLowerCase().endsWith('.csv')) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `${file.originalname} is not a CSV file. LinkedIn exports are in CSV format.` 
-        });
-      }
-    }
-
-    // Parse both CSV files
-    const csvDataSets = {};
-    if (linkedinFile) {
-      csvDataSets.connections = linkedinFile.buffer.toString('utf8');
-      console.log('Connections CSV length:', csvDataSets.connections.length);
-    }
-    if (contactsFile) {
-      csvDataSets.contacts = contactsFile.buffer.toString('utf8');
-      console.log('Contacts CSV length:', csvDataSets.contacts.length);
-    }
-
-    // Merge data from both CSV files
-    let mergedContacts = [];
-    
-    if (Object.keys(csvDataSets).length === 2) {
-      // Both files provided - merge them
-      console.log('🔄 Merging Connections + Contacts CSV files...');
-      mergedContacts = mergeLinkedInData(csvDataSets.connections, csvDataSets.contacts);
-      console.log(`✅ Merged ${mergedContacts.length} contacts from both files`);
-    } else {
-      // Single file - process normally
-      const csvData = csvDataSets.connections || csvDataSets.contacts;
-      const lines = csvData.split(/\r?\n/).filter(line => line.trim());
-      console.log('Total lines found:', lines.length);
-      
-      if (lines.length < 2) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
-        });
-      }
-      
-      // Process single file
-      mergedContacts = processSingleCSV(lines);
-    }
-    
-    if (mergedContacts.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No valid contacts found in the uploaded files.' 
+        message: 'At least one CSV file (contacts or connections) is required' 
       });
     }
 
-    // Detect duplicates before saving
-    const duplicates = detectDuplicates(mergedContacts);
-    
-    if (duplicates.length > 0) {
-      console.log(`Found ${duplicates.length} potential duplicate groups`);
-      
-      // Store contacts temporarily for duplicate resolution
-      const sessionId = Date.now().toString();
-      global.pendingImports = global.pendingImports || {};
-      global.pendingImports[sessionId] = {
-        contacts: mergedContacts,
-        duplicates: duplicates,
-        timestamp: Date.now()
-      };
-      
-      // Return duplicates for user review
+    let allContacts = [];
+    let duplicatesFound = [];
+    let processedCounts = { contacts: 0, connections: 0 };
+
+    // Process contacts.csv
+    if (files.contacts && files.contacts[0]) {
+      console.log('Processing contacts.csv...');
+      const contactsData = await processLinkedInCSV(files.contacts[0].buffer, 'contacts');
+      allContacts.push(...contactsData);
+      processedCounts.contacts = contactsData.length;
+      console.log(`Parsed ${contactsData.length} contacts from contacts.csv`);
+    }
+
+    // Process connections.csv
+    if (files.connections && files.connections[0]) {
+      console.log('Processing connections.csv...');
+      const connectionsData = await processLinkedInCSV(files.connections[0].buffer, 'connections');
+      allContacts.push(...connectionsData);
+      processedCounts.connections = connectionsData.length;
+      console.log(`Parsed ${connectionsData.length} connections from connections.csv`);
+    }
+
+    if (allContacts.length === 0) {
       return res.json({
-        success: true,
-        duplicatesFound: true,
-        duplicates: duplicates,
-        sessionId: sessionId,
-        totalContacts: mergedContacts.length,
-        nonDuplicates: mergedContacts.length - duplicates.reduce((acc, group) => acc + group.length, 0),
-        message: `Found ${duplicates.length} potential duplicate groups requiring review`
+        success: false,
+        message: 'No valid contacts found in the uploaded files'
       });
     }
 
-    // Save merged contacts to database
-    let insertedCount = 0;
-    let duplicateCount = 0;
-    let contactsWithCompany = 0;
-    let contactsWithEmail = 0;
-    
-    for (const contactData of mergedContacts) {
-      if (contactData.company) contactsWithCompany++;
-      if (contactData.email) contactsWithEmail++;
+    // Check for duplicates in database
+    console.log('Checking for duplicates in database...');
+    for (let contact of allContacts) {
+      const existing = await Contact.findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${contact.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+          ...(contact.email ? [{ email: contact.email }] : [])
+        ]
+      });
       
-      try {
-        const existingContact = await Contact.findOne({ 
-          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      if (existing) {
+        duplicatesFound.push({
+          new: contact,
+          existing: existing.toObject(),
+          matchType: existing.name.toLowerCase() === contact.name.toLowerCase() ? 'name' : 'email'
         });
-        
-        if (!existingContact) {
-          await Contact.create(contactData);
-          insertedCount++;
-        } else {
-          // Update existing contact with additional data
-          const updates = {};
-          if (contactData.email && !existingContact.email) updates.email = contactData.email;
-          if (contactData.company && !existingContact.company) updates.company = contactData.company;
-          if (contactData.position && !existingContact.position) updates.position = contactData.position;
-          if (contactData.url && !existingContact.url) updates.url = contactData.url;
-          if (contactData.phone && !existingContact.phone) updates.phone = contactData.phone;
-          
-          if (Object.keys(updates).length > 0) {
-            await Contact.findByIdAndUpdate(existingContact._id, updates);
-            console.log(`Enhanced existing contact: ${contactData.name}`);
+      }
+    }
+
+    if (duplicatesFound.length > 0 && !duplicateAction) {
+      console.log(`Found ${duplicatesFound.length} potential duplicates`);
+      return res.json({
+        success: false,
+        requiresDuplicateHandling: true,
+        duplicates: duplicatesFound.slice(0, 5), // Send first 5 for review
+        totalDuplicates: duplicatesFound.length,
+        totalContacts: allContacts.length,
+        message: `Found ${duplicatesFound.length} potential duplicate contacts. Please choose how to handle them.`
+      });
+    }
+
+    // Process based on duplicate action
+    let insertedCount = 0;
+    let skippedCount = 0;
+    let updatedCount = 0;
+
+    for (let contact of allContacts) {
+      try {
+        const existing = await Contact.findOne({
+          $or: [
+            { name: { $regex: new RegExp(`^${contact.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+            ...(contact.email ? [{ email: contact.email }] : [])
+          ]
+        });
+
+        if (existing) {
+          if (duplicateAction === 'update') {
+            // Update existing contact
+            await Contact.findByIdAndUpdate(existing._id, {
+              ...contact,
+              updatedAt: new Date()
+            });
+            updatedCount++;
+            console.log(`Updated existing contact: ${contact.name}`);
+          } else if (duplicateAction === 'skip') {
+            skippedCount++;
+            console.log(`Skipped duplicate: ${contact.name}`);
+          } else if (duplicateAction === 'add') {
+            // Add as new contact
+            const newContact = new Contact({
+              ...contact,
+              userId: userId || null,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            await newContact.save();
+            insertedCount++;
+            console.log(`Added duplicate as new: ${contact.name}`);
           }
-          duplicateCount++;
+        } else {
+          // New contact
+          const newContact = new Contact({
+            ...contact,
+            userId: userId || null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          await newContact.save();
+          insertedCount++;
+          console.log(`Added new contact: ${contact.name}`);
         }
       } catch (error) {
-        console.error(`Error saving contact ${contactData.name}:`, error);
+        console.error(`Error processing contact ${contact.name}:`, error);
       }
     }
 
     const totalContacts = await Contact.countDocuments();
+    
     console.log(`=== Import Complete ===`);
-    console.log(`Processed: ${mergedContacts.length}`);
-    console.log(`Inserted: ${insertedCount}`);
-    console.log(`Enhanced/Skipped: ${duplicateCount}`);
-    console.log(`Total contacts in DB: ${totalContacts}`);
+    console.log(`Processed: contacts=${processedCounts.contacts}, connections=${processedCounts.connections}`);
+    console.log(`Results: inserted=${insertedCount}, updated=${updatedCount}, skipped=${skippedCount}`);
+    console.log(`Total contacts in database: ${totalContacts}`);
 
     res.json({
       success: true,
-      count: insertedCount,
-      processed: mergedContacts.length,
-      enhanced: duplicateCount,
-      totalContacts: totalContacts,
-      message: insertedCount > 0 
-        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}profile links, and connection dates.`
-        : duplicateCount > 0
-          ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with additional data from your files.`
-          : `❌ No valid contacts found in the uploaded files.`
+      inserted: insertedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      duplicatesFound: duplicatesFound.length,
+      processedCounts,
+      totalContacts,
+      message: `Successfully processed ${allContacts.length} contacts. Added ${insertedCount} new, updated ${updatedCount}, skipped ${skippedCount}.`
     });
 
   } catch (error) {
-    console.error('=== Import Error ===', error);
+    console.error('Import error:', error);
     res.status(500).json({ 
       success: false, 
-      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+      message: `Import failed: ${error.message}` 
     });
   }
 });
 
-// Handle duplicate resolution and final import
-app.post('/api/import/resolve-duplicates', express.json(), async (req, res) => {
+async function processLinkedInCSV(buffer, fileType) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    const stream = require('stream');
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(buffer);
+
+    bufferStream
+      .pipe(csvParser())
+      .on('data', (row) => {
+        try {
+          let contact = {};
+          
+          // Normalize field names by removing spaces and converting to lowercase
+          const normalizedRow = {};
+          Object.keys(row).forEach(key => {
+            normalizedRow[key.toLowerCase().replace(/\s+/g, '')] = row[key];
+          });
+
+          if (fileType === 'contacts') {
+            // Handle contacts.csv format
+            contact = {
+              name: normalizedRow.firstname && normalizedRow.lastname 
+                ? `${normalizedRow.firstname} ${normalizedRow.lastname}`.trim()
+                : normalizedRow.name || normalizedRow.fullname || '',
+              email: normalizedRow.emailaddress || normalizedRow.email || '',
+              company: normalizedRow.company || '',
+              jobTitle: normalizedRow.position || normalizedRow.jobtitle || '',
+              location: normalizedRow.location || '',
+              source: 'linkedin_contacts'
+            };
+          } else {
+            // Handle connections.csv format
+            contact = {
+              name: normalizedRow.firstname && normalizedRow.lastname 
+                ? `${normalizedRow.firstname} ${normalizedRow.lastname}`.trim()
+                : normalizedRow.name || normalizedRow.fullname || '',
+              email: normalizedRow.emailaddress || normalizedRow.email || '',
+              company: normalizedRow.company || '',
+              jobTitle: normalizedRow.position || normalizedRow.jobtitle || '',
+              location: normalizedRow.location || '',
+              source: 'linkedin_connections'
+            };
+          }
+
+          // Only add if we have a name
+          if (contact.name && contact.name.trim()) {
+            // Generate searchable text
+            contact.searchableText = [
+              contact.name,
+              contact.company,
+              contact.jobTitle,
+              contact.location,
+              contact.email
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            results.push(contact);
+          }
+        } catch (error) {
+          console.error('Error parsing CSV row:', error, row);
+        }
+      })
+      .on('end', () => {
+        resolve(results);
+      })
+      .on('error', (error) => {
+        reject(error);
+      });
+  });
+}
+
+// Facebook OAuth endpoints
+
+// Facebook OAuth initiation
+app.get('/api/facebook/auth', (req, res) => {
+  const fbAppId = process.env.FACEBOOK_APP_ID;
+  const redirectUri = req.get('origin') + '/api/facebook/callback';
+  
+  const params = new URLSearchParams({
+    client_id: fbAppId,
+    redirect_uri: redirectUri,
+    scope: 'public_profile,email,user_friends',
+    response_type: 'code',
+    state: 'beetagged_facebook_auth'
+  });
+  
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
+  console.log('Facebook auth URL:', authUrl);
+  
+  res.json({ authUrl });
+});
+
+// Facebook OAuth callback
+app.get('/api/facebook/callback', async (req, res) => {
+  const { code, error, error_description } = req.query;
+  
+  if (error) {
+    console.error('Facebook OAuth error:', error, error_description);
+    return res.redirect('/?facebook_error=' + encodeURIComponent(error_description || error));
+  }
+  
   try {
-    const { sessionId, resolutions } = req.body;
+    const fbAppId = process.env.FACEBOOK_APP_ID;
+    const fbAppSecret = process.env.FACEBOOK_APP_SECRET;
+    const redirectUri = req.get('origin') + '/api/facebook/callback';
     
-    if (!sessionId || !global.pendingImports?.[sessionId]) {
+    // Exchange code for access token
+    const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+      params: {
+        client_id: fbAppId,
+        client_secret: fbAppSecret,
+        redirect_uri: redirectUri,
+        code: code
+      }
+    });
+    
+    const accessToken = tokenResponse.data.access_token;
+    console.log('Facebook access token obtained');
+    
+    // Get user profile
+    const profileResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
+      params: {
+        fields: 'id,name,email,link',
+        access_token: accessToken
+      }
+    });
+    
+    const profile = profileResponse.data;
+    console.log('Facebook profile obtained:', profile.name);
+    
+    // Import Facebook data
+    const importResult = await importFacebookData(accessToken, profile);
+    
+    // Redirect back to frontend with success
+    res.redirect('/?facebook_success=' + encodeURIComponent(JSON.stringify({
+      profile: profile.name,
+      count: importResult.count,
+      friends: importResult.friendsCount
+    })));
+    
+  } catch (error) {
+    console.error('Facebook callback error:', error.response?.data || error.message);
+    res.redirect('/?facebook_error=' + encodeURIComponent('Failed to process Facebook login'));
+  }
+});
+
+// Enhanced Facebook import with friends support
+app.post('/api/facebook/import', async (req, res) => {
+  try {
+    console.log('=== Facebook Import Started ===');
+    const { accessToken, userID, profile } = req.body;
+    
+    if (!accessToken) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Invalid session or session expired' 
+        message: 'Facebook access token is required' 
       });
     }
     
-    const importData = global.pendingImports[sessionId];
-    const { contacts, duplicates } = importData;
-    
-    console.log('Resolving duplicates for session:', sessionId);
-    console.log('Resolutions received:', resolutions);
-    
-    let finalContacts = [...contacts];
-    let removedCount = 0;
-    let mergedCount = 0;
-    
-    // Process each duplicate group based on user choice
-    for (let i = 0; i < duplicates.length; i++) {
-      const group = duplicates[i];
-      const resolution = resolutions[i];
-      
-      if (resolution.action === 'merge') {
-        // Merge contacts in this group
-        const mergedContact = mergeContactInfo(group);
-        
-        // Remove original contacts from final list
-        finalContacts = finalContacts.filter(contact => 
-          !group.some(dup => 
-            dup.name === contact.name && 
-            dup.email === contact.email
-          )
-        );
-        
-        // Add merged contact
-        finalContacts.push(mergedContact);
-        mergedCount++;
-        removedCount += group.length - 1;
-        
-      } else if (resolution.action === 'skip') {
-        // Remove all contacts in this duplicate group
-        finalContacts = finalContacts.filter(contact => 
-          !group.some(dup => 
-            dup.name === contact.name && 
-            dup.email === contact.email
-          )
-        );
-        removedCount += group.length;
-        
-      } else if (resolution.action === 'keep_all') {
-        // Keep all duplicates as separate contacts - no action needed
-      } else if (resolution.action === 'keep_selected' && resolution.selectedIndex !== undefined) {
-        // Keep only the selected contact
-        const selectedContact = group[resolution.selectedIndex];
-        
-        // Remove all contacts in group
-        finalContacts = finalContacts.filter(contact => 
-          !group.some(dup => 
-            dup.name === contact.name && 
-            dup.email === contact.email
-          )
-        );
-        
-        // Add back only the selected one
-        finalContacts.push(selectedContact);
-        removedCount += group.length - 1;
-      }
-    }
-    
-    // Save final contacts to database
-    let insertedCount = 0;
-    let duplicateCount = 0;
-    let contactsWithCompany = 0;
-    let contactsWithEmail = 0;
-    
-    for (const contactData of finalContacts) {
-      if (contactData.company) contactsWithCompany++;
-      if (contactData.email) contactsWithEmail++;
-      
-      try {
-        const existingContact = await Contact.findOne({ 
-          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
-        });
-        
-        if (!existingContact) {
-          const contact = new Contact({
-            name: contactData.name,
-            email: contactData.email,
-            phone: contactData.phone,
-            company: contactData.company,
-            position: contactData.position,
-            location: contactData.location,
-            tags: generateTags(contactData),
-            source: 'linkedin_import_resolved',
-            connectedOn: contactData.connectedOn,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          await contact.save();
-          insertedCount++;
-        } else {
-          // Update existing contact with additional data
-          const updates = {};
-          if (contactData.email && !existingContact.email) updates.email = contactData.email;
-          if (contactData.company && !existingContact.company) updates.company = contactData.company;
-          if (contactData.position && !existingContact.position) updates.position = contactData.position;
-          if (contactData.phone && !existingContact.phone) updates.phone = contactData.phone;
-          
-          if (Object.keys(updates).length > 0) {
-            await Contact.findByIdAndUpdate(existingContact._id, updates);
-            console.log(`Enhanced existing contact: ${contactData.name}`);
-          }
-          duplicateCount++;
-        }
-      } catch (error) {
-        console.error(`Error saving contact ${contactData.name}:`, error);
-        duplicateCount++;
-      }
-    }
-    
-    // Clean up session data
-    delete global.pendingImports[sessionId];
-    
-    console.log('=== Final Import Statistics ===');
-    console.log(`Inserted: ${insertedCount}`);
-    console.log(`Duplicates skipped: ${duplicateCount}`);
-    console.log(`Merged: ${mergedCount}`);
-    console.log(`Removed: ${removedCount}`);
+    const importResult = await importFacebookData(accessToken, profile);
     
     res.json({
       success: true,
-      count: insertedCount,
-      duplicates: duplicateCount,
-      merged: mergedCount,
-      removed: removedCount,
-      contactsWithCompany,
-      contactsWithEmail,
-      message: `Successfully imported ${insertedCount} contacts with ${mergedCount} merged and ${removedCount} duplicates resolved`
+      count: importResult.count,
+      friendsCount: importResult.friendsCount,
+      totalContacts: importResult.totalContacts,
+      message: importResult.message
     });
-    
+
   } catch (error) {
-    console.error('Duplicate resolution error:', error);
+    console.error('=== Facebook Import Error ===', error);
     res.status(500).json({ 
       success: false, 
-      message: error.message 
+      message: `Facebook import failed: ${error.message}`
     });
   }
 });
 
-// ===== HELPER FUNCTIONS =====
-
-async function performEnhancedSearch(query) {
-  const lowercaseQuery = query.toLowerCase().trim();
+// Facebook data import helper function
+async function importFacebookData(accessToken, userProfile) {
+  let insertedCount = 0;
+  let friendsCount = 0;
   
-  // Handle empty or very short queries
-  if (lowercaseQuery.length < 2) {
-    return [];
-  }
-  
-  const searchConditions = [];
-  
-  // Basic text search using MongoDB text index
-  searchConditions.push({
-    $text: { $search: query }
-  });
-  
-  // Name-based search (partial matches)
-  searchConditions.push({
-    name: { $regex: new RegExp(lowercaseQuery.split(' ').join('|'), 'i') }
-  });
-  
-  // Company search
-  if (lowercaseQuery.includes('company') || lowercaseQuery.includes('work')) {
-    const companyTerms = extractCompanyNames(lowercaseQuery);
-    if (companyTerms.length > 0) {
-      searchConditions.push({
-        company: { $regex: new RegExp(companyTerms.join('|'), 'i') }
+  try {
+    // Import user's own profile
+    if (userProfile) {
+      const existingUser = await Contact.findOne({ 
+        name: { $regex: new RegExp(`^${userProfile.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
       });
-    }
-  }
-  
-  // Location search
-  if (lowercaseQuery.includes('location') || hasLocationKeywords(lowercaseQuery)) {
-    const locationTerms = extractLocationNames(lowercaseQuery);
-    if (locationTerms.length > 0) {
-      searchConditions.push({
-        location: { $regex: new RegExp(locationTerms.join('|'), 'i') }
-      });
-    }
-  }
-  
-  // Position/title search
-  if (lowercaseQuery.includes('engineer') || lowercaseQuery.includes('manager') || lowercaseQuery.includes('director')) {
-    searchConditions.push({
-      position: { $regex: new RegExp(lowercaseQuery, 'i') }
-    });
-  }
-  
-  // Tag-based search
-  const queryTags = generateTagsFromQuery(lowercaseQuery);
-  if (queryTags.length > 0) {
-    searchConditions.push({
-      tags: { $in: queryTags }
-    });
-  }
-  
-  // Execute search with OR conditions
-  const contacts = await Contact.find({
-    $or: searchConditions
-  }).limit(50).lean();
-  
-  return contacts;
-}
-
-function extractCompanyNames(query) {
-  const companies = [];
-  const commonCompanies = ['google', 'apple', 'microsoft', 'amazon', 'facebook', 'meta', 'tesla', 'netflix', 'uber', 'airbnb', 'spotify', 'twitter', 'linkedin', 'salesforce', 'oracle', 'ibm', 'intel', 'nvidia'];
-  
-  for (const company of commonCompanies) {
-    if (query.includes(company)) {
-      companies.push(company);
-    }
-  }
-  
-  // Extract potential company names after "at" or "work"
-  const companyMatch = query.match(/(?:at|work.*?at|company.*?)\s+([a-zA-Z][a-zA-Z\s]{2,20})/i);
-  if (companyMatch && companyMatch[1]) {
-    companies.push(companyMatch[1].trim());
-  }
-  
-  return companies;
-}
-
-function extractLocationNames(query) {
-  const locations = [];
-  const commonLocations = ['san francisco', 'new york', 'los angeles', 'seattle', 'chicago', 'boston', 'austin', 'denver', 'portland', 'california', 'texas', 'florida'];
-  
-  for (const location of commonLocations) {
-    if (query.includes(location)) {
-      locations.push(location);
-    }
-  }
-  
-  return locations;
-}
-
-function hasLocationKeywords(query) {
-  const locationKeywords = ['in', 'from', 'area', 'city', 'state', 'country', 'lives', 'based'];
-  return locationKeywords.some(keyword => query.includes(keyword));
-}
-
-function generateTagsFromQuery(query) {
-  const tags = [];
-  
-  // Role-based tags
-  if (query.includes('engineer') || query.includes('developer')) tags.push('function:engineering');
-  if (query.includes('manager') || query.includes('director')) tags.push('function:management');
-  if (query.includes('designer')) tags.push('function:design');
-  if (query.includes('sales')) tags.push('function:sales');
-  if (query.includes('marketing')) tags.push('function:marketing');
-  
-  // Industry tags
-  if (query.includes('tech') || query.includes('technology')) tags.push('industry:technology');
-  if (query.includes('finance') || query.includes('banking')) tags.push('industry:finance');
-  if (query.includes('healthcare') || query.includes('medical')) tags.push('industry:healthcare');
-  
-  return tags;
-}
-
-// Merge LinkedIn data from both files
-function mergeLinkedInData(connectionsData, contactsData) {
-  const mergedContacts = new Map();
-  
-  // Process Connections CSV
-  if (connectionsData) {
-    const connectionsLines = connectionsData.split(/\r?\n/).filter(line => line.trim());
-    if (connectionsLines.length > 1) {
-      const connectionsHeaders = parseCSVLine(connectionsLines[0]);
       
-      for (let i = 1; i < connectionsLines.length; i++) {
-        const fields = parseCSVLine(connectionsLines[i]);
-        const firstName = fields[0]?.trim() || '';
-        const lastName = fields[1]?.trim() || '';
-        const connectedOn = fields[2]?.trim() || '';
-        
-        if (firstName || lastName) {
-          const fullName = `${firstName} ${lastName}`.trim();
-          const key = fullName.toLowerCase();
-          
-          mergedContacts.set(key, {
-            name: fullName,
-            firstName,
-            lastName,
-            connectedOn,
-            email: '',
-            company: '',
-            position: '',
-            location: '',
-            source: 'linkedin_connections'
+      if (!existingUser) {
+        const contact = new Contact({
+          name: userProfile.name,
+          email: userProfile.email || '',
+          source: 'facebook_profile',
+          url: userProfile.link || '',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        await contact.save();
+        insertedCount++;
+        console.log(`Added Facebook profile: ${userProfile.name}`);
+      }
+    }
+    
+    // Fetch friends who also use the app
+    try {
+      console.log('Fetching Facebook friends...');
+      const friendsResponse = await axios.get('https://graph.facebook.com/v18.0/me/friends', {
+        params: {
+          fields: 'id,name,link',
+          limit: 5000,
+          access_token: accessToken
+        }
+      });
+      
+      const friends = friendsResponse.data.data || [];
+      console.log(`Found ${friends.length} Facebook friends who use the app`);
+      
+      // Process each friend
+      for (const friend of friends) {
+        try {
+          // Get friend's profile picture
+          const pictureResponse = await axios.get(`https://graph.facebook.com/v18.0/${friend.id}/picture`, {
+            params: {
+              type: 'large',
+              redirect: 0,
+              access_token: accessToken
+            }
           });
-        }
-      }
-    }
-  }
-  
-  // Process Contacts CSV and merge with connections
-  if (contactsData) {
-    const contactsLines = contactsData.split(/\r?\n/).filter(line => line.trim());
-    if (contactsLines.length > 1) {
-      const contactsHeaders = parseCSVLine(contactsLines[0]);
-      
-      for (let i = 1; i < contactsLines.length; i++) {
-        const fields = parseCSVLine(contactsLines[i]);
-        const contact = parseContactFields(fields, contactsHeaders);
-        
-        if (contact.name) {
-          const key = contact.name.toLowerCase();
           
-          if (mergedContacts.has(key)) {
-            // Merge with existing connection
-            const existing = mergedContacts.get(key);
-            mergedContacts.set(key, {
-              ...existing,
-              ...contact,
-              source: 'linkedin_merged'
+          const pictureUrl = pictureResponse.data?.data?.url;
+          
+          // Check if friend already exists
+          const existingFriend = await Contact.findOne({ 
+            name: { $regex: new RegExp(`^${friend.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+          });
+          
+          if (!existingFriend) {
+            const contact = new Contact({
+              name: friend.name,
+              source: 'facebook_friend',
+              url: friend.link || `https://www.facebook.com/${friend.id}`,
+              profileImageUrl: pictureUrl,
+              facebookId: friend.id,
+              createdAt: new Date(),
+              updatedAt: new Date()
             });
-          } else {
-            // New contact
-            mergedContacts.set(key, {
-              ...contact,
-              source: 'linkedin_contacts'
-            });
+            await contact.save();
+            insertedCount++;
+            friendsCount++;
+            console.log(`Added Facebook friend: ${friend.name}`);
           }
+          
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (friendError) {
+          console.error(`Error processing friend ${friend.name}:`, friendError.message);
         }
       }
-    }
-  }
-  
-  return Array.from(mergedContacts.values());
-}
-
-function processSingleCSV(lines) {
-  const contacts = [];
-  if (lines.length < 2) return contacts;
-  
-  const headers = parseCSVLine(lines[0]);
-  console.log('CSV Headers:', headers);
-  
-  for (let i = 1; i < lines.length; i++) {
-    const fields = parseCSVLine(lines[i]);
-    
-    // Detect file type based on headers
-    const isConnectionsFile = headers.some(h => 
-      h.toLowerCase().includes('first name') && 
-      headers.some(h2 => h2.toLowerCase().includes('last name'))
-    );
-    
-    let contact;
-    if (isConnectionsFile) {
-      // Process as connections file
-      const firstName = fields[0]?.trim() || '';
-      const lastName = fields[1]?.trim() || '';
-      const connectedOn = fields[2]?.trim() || '';
       
-      contact = {
-        name: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        connectedOn,
-        email: '',
-        company: '',
-        position: '',
-        location: '',
-        source: 'linkedin_connections'
-      };
-    } else {
-      // Process as contacts file
-      contact = parseContactFields(fields, headers);
+    } catch (friendsError) {
+      console.log('Facebook friends fetch failed (normal for non-approved apps):', friendsError.message);
     }
     
-    if (contact && contact.name && contact.name.trim()) {
-      contacts.push(contact);
-    }
-  }
-  
-  return contacts;
-}
-
-function parseContactFields(fields, headers) {
-  const contact = {
-    name: '',
-    email: '',
-    company: '',
-    position: '',
-    location: '',
-    connectedOn: '',
-    source: 'linkedin_contacts'
-  };
-  
-  // Map headers to contact fields
-  const headerMapping = {};
-  headers.forEach((header, index) => {
-    const lowerHeader = header.toLowerCase();
-    if (lowerHeader.includes('name') && !lowerHeader.includes('first') && !lowerHeader.includes('last')) {
-      headerMapping.name = index;
-    } else if (lowerHeader.includes('email')) {
-      headerMapping.email = index;
-    } else if (lowerHeader.includes('company') || lowerHeader.includes('organization')) {
-      headerMapping.company = index;
-    } else if (lowerHeader.includes('position') || lowerHeader.includes('title')) {
-      headerMapping.position = index;
-    } else if (lowerHeader.includes('location')) {
-      headerMapping.location = index;
-    } else if (lowerHeader.includes('connected')) {
-      headerMapping.connectedOn = index;
-    }
-  });
-  
-  // Fill contact data
-  Object.keys(headerMapping).forEach(field => {
-    const index = headerMapping[field];
-    if (index < fields.length) {
-      contact[field] = fields[index]?.trim() || '';
-    }
-  });
-  
-  return contact;
-}
-
-function parseCSVLine(line) {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-  let i = 0;
-
-  while (i < line.length) {
-    const char = line[i];
+    const totalContacts = await Contact.countDocuments();
     
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i += 2;
+    console.log(`=== Facebook Import Complete ===`);
+    console.log(`User profile: ${userProfile ? 1 : 0}`);
+    console.log(`Friends imported: ${friendsCount}`);
+    console.log(`Total inserted: ${insertedCount}`);
+    console.log(`Total contacts in DB: ${totalContacts}`);
+    
+    let message;
+    if (insertedCount > 0) {
+      if (friendsCount > 0) {
+        message = `✅ Successfully imported your profile and ${friendsCount} friends from Facebook!`;
       } else {
-        inQuotes = !inQuotes;
-        i++;
+        message = `✅ Successfully imported your Facebook profile! (No friends available - they need to use this app too)`;
       }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-      i++;
     } else {
-      current += char;
-      i++;
+      message = `ℹ️ Your Facebook data is already in the system.`;
     }
-  }
-
-  result.push(current.trim());
-  return result;
-}
-
-// Generate tags for contacts
-function generateTags(contact) {
-  const tags = [];
-  
-  if (contact.company) {
-    tags.push(`company:${contact.company.toLowerCase()}`);
     
-    // Industry-based tags
-    const company = contact.company.toLowerCase();
-    if (company.includes('tech') || company.includes('software') || company.includes('google') || company.includes('microsoft')) {
-      tags.push('industry:technology');
-    }
-  }
-
-  if (contact.position) {
-    tags.push(`role:${contact.position.toLowerCase()}`);
+    return {
+      count: insertedCount,
+      friendsCount,
+      totalContacts,
+      message
+    };
     
-    // Function-based tags
-    const position = contact.position.toLowerCase();
-    if (position.includes('engineer') || position.includes('developer') || position.includes('programmer')) {
-      tags.push('function:engineering');
-    } else if (position.includes('manager') || position.includes('director') || position.includes('lead')) {
-      tags.push('function:management');
-    } else if (position.includes('designer') || position.includes('ux') || position.includes('ui')) {
-      tags.push('function:design');
-    }
+  } catch (error) {
+    console.error('Facebook import error:', error);
+    throw error;
   }
-
-  if (contact.location) {
-    tags.push(`location:${contact.location.toLowerCase()}`);
-  }
-
-  return tags;
 }
 
-// Duplicate detection functions
-function detectDuplicates(contacts) {
-  const duplicateGroups = [];
-  const processed = new Set();
-  
-  for (let i = 0; i < contacts.length; i++) {
-    if (processed.has(i)) continue;
-    
-    const currentContact = contacts[i];
-    const duplicateGroup = [currentContact];
-    
-    for (let j = i + 1; j < contacts.length; j++) {
-      if (processed.has(j)) continue;
-
-      const otherContact = contacts[j];
-      
-      if (isDuplicate(currentContact, otherContact)) {
-        duplicateGroup.push(otherContact);
-        processed.add(j);
-      }
-    }
-
-    if (duplicateGroup.length > 1) {
-      duplicateGroups.push(duplicateGroup);
-      processed.add(i);
-    }
-  }
-
-  return duplicateGroups;
-}
-
-function isDuplicate(contact1, contact2) {
-  // Exact name match
-  if (contact1.name && contact2.name && 
-      contact1.name.toLowerCase().trim() === contact2.name.toLowerCase().trim()) {
-    return true;
-  }
-
-  // Email match
-  if (contact1.email && contact2.email && 
-      contact1.email.toLowerCase().trim() === contact2.email.toLowerCase().trim()) {
-    return true;
-  }
-
-  // Name similarity with company match
-  if (contact1.name && contact2.name && contact1.company && contact2.company) {
-    const name1 = contact1.name.toLowerCase().trim();
-    const name2 = contact2.name.toLowerCase().trim();
-    const company1 = contact1.company.toLowerCase().trim();
-    const company2 = contact2.company.toLowerCase().trim();
-    
-    // Check if names are very similar
-    const nameSimilarity = calculateNameSimilarity(name1, name2);
-    if (nameSimilarity > 0.8 && company1 === company2) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function calculateNameSimilarity(name1, name2) {
-  const words1 = name1.split(' ').filter(w => w.length > 1);
-  const words2 = name2.split(' ').filter(w => w.length > 1);
-  
-  let matches = 0;
-  const maxWords = Math.max(words1.length, words2.length);
-  
-  for (const word1 of words1) {
-    for (const word2 of words2) {
-      if (word1 === word2 || 
-          (word1.length > 2 && word2.length > 2 && 
-           (word1.includes(word2) || word2.includes(word1)))) {
-        matches++;
-        break;
-      }
-    }
-  }
-  
-  return matches / maxWords;
-}
-
-function mergeContactInfo(contacts) {
-  const merged = {
-    name: '',
-    email: '',
-    company: '',
-    position: '',
-    location: '',
-    phone: '',
-    connectedOn: '',
-    source: 'linkedin_merged'
-  };
-  
-  // Merge information from all contacts, preferring non-empty values
-  for (const contact of contacts) {
-    Object.keys(merged).forEach(field => {
-      if (!merged[field] && contact[field]) {
-        merged[field] = contact[field];
-      }
-    });
-  }
-  
-  return merged;
-}
-
-// Start the server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`BeeTagged Server running on port ${PORT}`);
+// Start server
+app.listen(port, '0.0.0.0', () => {
+  console.log(`BeeTagged Server running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('MongoDB: configured');
+});
+
+// Connect to MongoDB when server starts
+connectMongoDB().catch(error => {
+  console.error('MongoDB runtime error:', error);
 });
