@@ -1,0 +1,141 @@
+2025-08-10T04:10:51.273030+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273031+00:00 app[web.1]: '3/9/07, 10:18 AM',
+2025-08-10T04:10:51.273031+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273031+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273031+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273032+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273032+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273032+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273032+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273032+00:00 app[web.1]: ''
+2025-08-10T04:10:51.273033+00:00 app[web.1]: ]
+2025-08-10T04:10:51.273066+00:00 app[web.1]: Sample contact 3: {"name":"Lauren Schaff","email":"","company":"","position":"","location":"","connectedOn":"","url":""}
+2025-08-10T04:10:51.273199+00:00 app[web.1]: Raw fields for row 3: [
+2025-08-10T04:10:51.273200+00:00 app[web.1]: 'USER_CREATE',
+2025-08-10T04:10:51.273200+00:00 app[web.1]: 'Lauren',
+2025-08-10T04:10:51.273200+00:00 app[web.1]: 'Schaff',
+2025-08-10T04:10:51.273200+00:00 app[web.1]: 'null',
+2025-08-10T04:10:51.273200+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273201+00:00 app[web.1]: 'Laurenanntaylor@gmail.com, laurenschaff2@gmail.com',
+2025-08-10T04:10:51.273201+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273201+00:00 app[web.1]: '2/12/13, 11:55 AM',
+2025-08-10T04:10:51.273202+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273202+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273202+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273202+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273203+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273203+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273203+00:00 app[web.1]: '',
+2025-08-10T04:10:51.273203+00:00 app[web.1]: ''
+2025-08-10T04:10:51.273203+00:00 app[web.1]: ]
+2025-08-10T04:10:51.301150+00:00 app[web.1]: Processed 9077 rows, 8696 valid contacts, 0 skipped, 381 errors
+2025-08-10T04:10:55.877072+00:00 app[web.1]: === LinkedIn CSV Import Started ===
+2025-08-10T04:10:55.877355+00:00 app[web.1]: Files received: [Object: null prototype] {
+2025-08-10T04:10:55.877356+00:00 app[web.1]: linkedinCsv: [
+2025-08-10T04:10:55.877356+00:00 app[web.1]: {
+2025-08-10T04:10:55.877357+00:00 app[web.1]: fieldname: 'linkedinCsv',
+2025-08-10T04:10:55.877357+00:00 app[web.1]: originalname: 'Connections.csv',
+2025-08-10T04:10:55.877357+00:00 app[web.1]: encoding: '7bit',
+2025-08-10T04:10:55.877357+00:00 app[web.1]: mimetype: 'text/csv',
+2025-08-10T04:10:55.877358+00:00 app[web.1]: buffer: <Buffer 4e 6f 74 65 73 3a 0a 22 57 68 65 6e 20 65 78 70 6f 72 74 69 6e 67 20 79 6f 75 72 20 63 6f 6e 6e 65 63 74 69 6f 6e 20 64 61 74 61 2c 20 79 6f 75 20 6d ... 320018 more bytes>,
+2025-08-10T04:10:55.877358+00:00 app[web.1]: size: 320068
+2025-08-10T04:10:55.877358+00:00 app[web.1]: }
+2025-08-10T04:10:55.877359+00:00 app[web.1]: ]
+2025-08-10T04:10:55.877359+00:00 app[web.1]: }
+2025-08-10T04:10:55.877378+00:00 app[web.1]: LinkedIn Connections file: true
+2025-08-10T04:10:55.877389+00:00 app[web.1]: LinkedIn Contacts file: false
+2025-08-10T04:10:55.878550+00:00 app[web.1]: Connections CSV length: 319733
+2025-08-10T04:10:55.879137+00:00 app[web.1]: Total lines found: 2703
+2025-08-10T04:10:55.879234+00:00 app[web.1]: CSV Headers found: [ 'Notes:' ]
+2025-08-10T04:10:55.879252+00:00 app[web.1]: Raw header line: Notes:
+2025-08-10T04:10:55.880151+00:00 app[web.1]: === Import Error === Error: This doesn't appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Last Name", etc.
+2025-08-10T04:10:55.880152+00:00 app[web.1]: at processSingleCSV (/app/index.js:596:13)
+2025-08-10T04:10:55.880153+00:00 app[web.1]: at /app/index.js:404:24
+2025-08-10T04:10:55.880153+00:00 app[web.1]: at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+2025-08-10T04:10:55.880154+00:00 app[web.1]: at next (/app/node_modules/express/lib/router/route.js:149:13)
+2025-08-10T04:10:55.880154+00:00 app[web.1]: at done (/app/node_modules/multer/lib/make-middleware.js:47:7)
+2025-08-10T04:10:55.880154+00:00 app[web.1]: at indicateDone (/app/node_modules/multer/lib/make-middleware.js:51:68)
+2025-08-10T04:10:55.880155+00:00 app[web.1]: at Multipart.<anonymous> (/app/node_modules/multer/lib/make-middleware.js:168:7)
+2025-08-10T04:10:55.880155+00:00 app[web.1]: at Multipart.emit (node:events:517:28)
+2025-08-10T04:10:55.880156+00:00 app[web.1]: at emitCloseNT (node:internal/streams/destroy:132:10)
+2025-08-10T04:10:55.880156+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:81:21)
+2025-08-10T04:10:55.881228+00:00 app[web.1]: 10.1.89.247 - - [10/Aug/2025:04:10:55 +0000] "POST /api/import/linkedin HTTP/1.1" 500 206 "https://www.beetagged.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+2025-08-10T04:10:55.881524+00:00 heroku[router]: at=info method=POST path="/api/import/linkedin" host=beetagged-app-53414697acd3.herokuapp.com request_id=bab0560e-56df-a22b-f076-631f2dea91a0 fwd="74.194.173.30" dyno=web.1 connect=0ms service=281ms status=500 bytes=206 protocol=http1.1 tls=true tls_version=unknown
+2025-08-10T04:11:21.264188+00:00 heroku[router]: at=error code=H12 desc="Request timeout" method=POST path="/api/import/linkedin" host=beetagged-app-53414697acd3.herokuapp.com request_id=9f1d57e7-a6f3-d6af-58c3-7c7f258d6cfd fwd="74.194.173.30" dyno=web.1 connect=0ms service=30423ms status=503 bytes=567 protocol=http1.1 tls=true tls_version=unknown
+2025-08-10T04:11:21.265180+00:00 app[web.1]: 10.1.89.247 - - [10/Aug/2025:04:11:21 +0000] "POST /api/import/linkedin HTTP/1.1" - - "https://www.beetagged.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+2025-08-10T04:12:17.668155+00:00 app[web.1]: === Import Complete ===
+2025-08-10T04:12:17.668169+00:00 app[web.1]: Processed: 8696
+2025-08-10T04:12:17.668170+00:00 app[web.1]: Inserted: 0
+2025-08-10T04:12:17.668534+00:00 app[web.1]: Enhanced/Skipped: 8696
+2025-08-10T04:12:17.668575+00:00 app[web.1]: Total contacts in DB: 5433
+2025-08-10T04:32:52.000000+00:00 app[api]: Build started by user dhcepeda@gmail.com
+2025-08-10T04:33:14.661294+00:00 app[api]: Deploy 0e17fdf1 by user dhcepeda@gmail.com
+2025-08-10T04:33:14.661294+00:00 app[api]: Release v119 created by user dhcepeda@gmail.com
+2025-08-10T04:33:14.878219+00:00 heroku[web.1]: Restarting
+2025-08-10T04:33:14.930037+00:00 heroku[web.1]: State changed from up to starting
+2025-08-10T04:33:15.496958+00:00 heroku[web.1]: Stopping all processes with SIGTERM
+2025-08-10T04:33:15.516564+00:00 app[web.1]: SIGTERM received, shutting down gracefully
+2025-08-10T04:33:15.522182+00:00 app[web.1]: MongoDB disconnected
+2025-08-10T04:33:15.522273+00:00 app[web.1]: MongoDB connection closed.
+2025-08-10T04:33:15.565797+00:00 heroku[web.1]: Process exited with status 0
+2025-08-10T04:33:19.603103+00:00 heroku[web.1]: Starting process with command `node index.js`
+2025-08-10T04:33:20.619320+00:00 app[web.1]: BeeTagged Server running on port 56893
+2025-08-10T04:33:20.619451+00:00 app[web.1]: Environment: production
+2025-08-10T04:33:20.619478+00:00 app[web.1]: MongoDB: configured
+2025-08-10T04:33:20.778170+00:00 app[web.1]: MongoDB Atlas connected successfully
+2025-08-10T04:33:20.778204+00:00 app[web.1]: Database: test
+2025-08-10T04:33:20.822576+00:00 heroku[web.1]: State changed from starting to up
+2025-08-10T04:33:27.000000+00:00 app[api]: Build succeeded
+2025-08-10T04:33:34.838322+00:00 app[web.1]: ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+2025-08-10T04:33:34.838341+00:00 app[web.1]: at Object.xForwardedForHeader (/app/node_modules/express-rate-limit/dist/index.cjs:364:13)
+2025-08-10T04:33:34.838342+00:00 app[web.1]: at wrappedValidations.<computed> [as xForwardedForHeader] (/app/node_modules/express-rate-limit/dist/index.cjs:606:22)
+2025-08-10T04:33:34.838342+00:00 app[web.1]: at Object.keyGenerator (/app/node_modules/express-rate-limit/dist/index.cjs:708:20)
+2025-08-10T04:33:34.838343+00:00 app[web.1]: at /app/node_modules/express-rate-limit/dist/index.cjs:766:32
+2025-08-10T04:33:34.838344+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-08-10T04:33:34.838344+00:00 app[web.1]: at async /app/node_modules/express-rate-limit/dist/index.cjs:747:5 {
+2025-08-10T04:33:34.838345+00:00 app[web.1]: code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+2025-08-10T04:33:34.838345+00:00 app[web.1]: help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+2025-08-10T04:33:34.838345+00:00 app[web.1]: }
+2025-08-10T04:33:34.843180+00:00 heroku[router]: at=info method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=1ed14388-02a8-e829-1423-34d6a789d4d0 fwd="74.194.173.30" dyno=web.1 connect=0ms service=14ms status=200 bytes=87 protocol=http1.1 tls=true tls_version=unknown
+2025-08-10T04:33:34.843880+00:00 app[web.1]: 10.1.60.236 - - [10/Aug/2025:04:33:34 +0000] "GET / HTTP/1.1" 200 87 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+2025-08-10T04:34:12.707546+00:00 heroku[router]: at=info method=GET path="/api/search?q=Michael" host=beetagged-app-53414697acd3.herokuapp.com request_id=f79bc260-c7ae-327e-e9a6-c26d7dd0cc9c fwd="74.194.173.30" dyno=web.1 connect=0ms service=17ms status=500 bytes=36 protocol=http1.1 tls=true tls_version=unknown
+2025-08-10T04:34:12.692932+00:00 app[web.1]: Search request for: Michael
+2025-08-10T04:34:12.706755+00:00 app[web.1]: Error fetching contacts: MongoServerError: text index required for $text query
+2025-08-10T04:34:12.706758+00:00 app[web.1]: at Connection.sendCommand (/app/node_modules/mongodb/lib/cmap/connection.js:305:27)
+2025-08-10T04:34:12.706758+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-08-10T04:34:12.706759+00:00 app[web.1]: at async Connection.command (/app/node_modules/mongodb/lib/cmap/connection.js:333:26)
+2025-08-10T04:34:12.706759+00:00 app[web.1]: at async Server.command (/app/node_modules/mongodb/lib/sdam/server.js:171:29)
+2025-08-10T04:34:12.706760+00:00 app[web.1]: at async FindOperation.execute (/app/node_modules/mongodb/lib/operations/find.js:36:16)
+2025-08-10T04:34:12.706761+00:00 app[web.1]: at async tryOperation (/app/node_modules/mongodb/lib/operations/execute_operation.js:207:20)
+2025-08-10T04:34:12.706761+00:00 app[web.1]: at async executeOperation (/app/node_modules/mongodb/lib/operations/execute_operation.js:75:16)
+2025-08-10T04:34:12.706762+00:00 app[web.1]: at async FindCursor._initialize (/app/node_modules/mongodb/lib/cursor/find_cursor.js:61:26)
+2025-08-10T04:34:12.706762+00:00 app[web.1]: at async FindCursor.cursorInit (/app/node_modules/mongodb/lib/cursor/abstract_cursor.js:633:27)
+2025-08-10T04:34:12.706762+00:00 app[web.1]: at async FindCursor.fetchBatch (/app/node_modules/mongodb/lib/cursor/abstract_cursor.js:667:13) {
+2025-08-10T04:34:12.706763+00:00 app[web.1]: errorLabelSet: Set(0) {},
+2025-08-10T04:34:12.706764+00:00 app[web.1]: errorResponse: {
+2025-08-10T04:34:12.706764+00:00 app[web.1]: ok: 0,
+2025-08-10T04:34:12.706765+00:00 app[web.1]: errmsg: 'text index required for $text query',
+2025-08-10T04:34:12.706765+00:00 app[web.1]: code: 27,
+2025-08-10T04:34:12.706765+00:00 app[web.1]: codeName: 'IndexNotFound',
+2025-08-10T04:34:12.706766+00:00 app[web.1]: '$clusterTime': {
+2025-08-10T04:34:12.706766+00:00 app[web.1]: clusterTime: new Timestamp({ t: 1754800452, i: 51 }),
+2025-08-10T04:34:12.706766+00:00 app[web.1]: signature: [Object]
+2025-08-10T04:34:12.706766+00:00 app[web.1]: },
+2025-08-10T04:34:12.706767+00:00 app[web.1]: operationTime: new Timestamp({ t: 1754800452, i: 51 })
+2025-08-10T04:34:12.706767+00:00 app[web.1]: },
+2025-08-10T04:34:12.706767+00:00 app[web.1]: ok: 0,
+2025-08-10T04:34:12.706767+00:00 app[web.1]: code: 27,
+2025-08-10T04:34:12.706767+00:00 app[web.1]: codeName: 'IndexNotFound',
+2025-08-10T04:34:12.706768+00:00 app[web.1]: '$clusterTime': {
+2025-08-10T04:34:12.706768+00:00 app[web.1]: clusterTime: new Timestamp({ t: 1754800452, i: 51 }),
+2025-08-10T04:34:12.706768+00:00 app[web.1]: signature: {
+2025-08-10T04:34:12.706768+00:00 app[web.1]: hash: Binary.createFromBase64('6zG8Ff3hywFuK10uWZCB2FGD+To=', 0),
+2025-08-10T04:34:12.706769+00:00 app[web.1]: keyId: new Long('7481020842726391821')
+2025-08-10T04:34:12.706769+00:00 app[web.1]: }
+2025-08-10T04:34:12.706769+00:00 app[web.1]: },
+2025-08-10T04:34:12.706770+00:00 app[web.1]: operationTime: new Timestamp({ t: 1754800452, i: 51 })
+2025-08-10T04:34:12.706770+00:00 app[web.1]: }
+2025-08-10T04:34:12.707485+00:00 app[web.1]: 10.1.52.240 - - [10/Aug/2025:04:34:12 +0000] "GET /api/search?q=Michael HTTP/1.1" 500 36 "https://www.beetagged.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+2025-08-10T04:34:49.857961+00:00 heroku[router]: at=info method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=cc556236-fc99-02b5-1cae-6f5957725ddc fwd="43.157.95.131" dyno=web.1 connect=0ms service=2ms status=302 bytes=78 protocol=http1.1 tls=false
+2025-08-10T04:34:51.181455+00:00 heroku[router]: at=info method=GET path="/" host=beetagged-app-53414697acd3.herokuapp.com request_id=5579983b-ad52-39d9-ba52-b2fbc6e11dad fwd="43.157.95.131" dyno=web.1 connect=0ms service=1ms status=200 bytes=87 protocol=http1.1 tls=true tls_version=unknown
+2025-08-10T04:34:51.181404+00:00 app[web.1]: 10.1.87.195 - - [10/Aug/2025:04:34:51 +0000] "GET / HTTP/1.1" 200 87 "http://beetagged-app-53414697acd3.herokuapp.com" "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"

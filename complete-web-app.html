@@ -547,18 +547,20 @@ window.addEventListener('load', function() {
         statusDiv.style.color = '#10b981';
       }
       
-      var message = 'Successfully processed ' + type + ' file!';
+      var message = 'Successfully processed ' + type + ' file! ';
       if (data.count && data.count > 0) {
-        message += ' Added ' + data.count + ' new contacts.';
+        message += 'Added ' + data.count + ' new contacts. ';
+      } else {
+        message += 'No new contacts added (contacts may already exist in database). ';
       }
       if (data.enhanced && data.enhanced > 0) {
-        message += ' Enhanced ' + data.enhanced + ' existing contacts.';
+        message += 'Enhanced ' + data.enhanced + ' existing contacts with additional data. ';
       }
       if (data.processed) {
-        message += ' Processed ' + data.processed + ' records total.';
+        message += 'Processed ' + data.processed + ' records from CSV.';
       }
       
-      showMessage(message, 'success');
+      showMessage(message, data.count > 0 ? 'success' : 'info');
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -707,12 +709,17 @@ window.addEventListener('load', function() {
       if (result.success) {
         document.getElementById('upload-status').style.display = 'none';
         
-        let message = 'Successfully resolved duplicates! ';
-        if (result.count) message += 'Imported ' + result.count + ' contacts. ';
-        if (result.merged) message += 'Merged ' + result.merged + ' duplicate groups. ';
-        if (result.removed) message += 'Removed ' + result.removed + ' duplicates.';
+        let message = 'Import completed! ';
+        if (result.count > 0) {
+          message += 'Added ' + result.count + ' new contacts. ';
+        } else {
+          message += 'No new contacts (contacts may already exist). ';
+        }
+        if (result.enhanced > 0) message += 'Enhanced ' + result.enhanced + ' existing contacts. ';
+        if (result.merged > 0) message += 'Merged ' + result.merged + ' duplicate groups. ';
+        if (result.removed > 0) message += 'Removed ' + result.removed + ' duplicates.';
         
-        showMessage(message, 'success');
+        showMessage(message, result.count > 0 ? 'success' : 'info');
       } else {
         showMessage('Error resolving duplicates: ' + result.message, 'error');
       }
