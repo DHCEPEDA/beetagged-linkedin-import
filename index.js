@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const axios = require('axios');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -579,66 +580,102 @@ app.post('/api/import/linkedin', upload.fields([
   }
 });
 
-// Facebook import endpoint
+// Facebook OAuth endpoints
+
+// Facebook OAuth initiation
+app.get('/api/facebook/auth', (req, res) => {
+  const fbAppId = process.env.FACEBOOK_APP_ID;
+  const redirectUri = req.get('origin') + '/api/facebook/callback';
+  
+  const params = new URLSearchParams({
+    client_id: fbAppId,
+    redirect_uri: redirectUri,
+    scope: 'public_profile,email,user_friends',
+    response_type: 'code',
+    state: 'beetagged_facebook_auth'
+  });
+  
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
+  console.log('Facebook auth URL:', authUrl);
+  
+  res.json({ authUrl });
+});
+
+// Facebook OAuth callback
+app.get('/api/facebook/callback', async (req, res) => {
+  const { code, error, error_description } = req.query;
+  
+  if (error) {
+    console.error('Facebook OAuth error:', error, error_description);
+    return res.redirect('/?facebook_error=' + encodeURIComponent(error_description || error));
+  }
+  
+  try {
+    const fbAppId = process.env.FACEBOOK_APP_ID;
+    const fbAppSecret = process.env.FACEBOOK_APP_SECRET;
+    const redirectUri = req.get('origin') + '/api/facebook/callback';
+    
+    // Exchange code for access token
+    const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+      params: {
+        client_id: fbAppId,
+        client_secret: fbAppSecret,
+        redirect_uri: redirectUri,
+        code: code
+      }
+    });
+    
+    const accessToken = tokenResponse.data.access_token;
+    console.log('Facebook access token obtained');
+    
+    // Get user profile
+    const profileResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
+      params: {
+        fields: 'id,name,email,link',
+        access_token: accessToken
+      }
+    });
+    
+    const profile = profileResponse.data;
+    console.log('Facebook profile obtained:', profile.name);
+    
+    // Import Facebook data
+    const importResult = await importFacebookData(accessToken, profile);
+    
+    // Redirect back to frontend with success
+    res.redirect('/?facebook_success=' + encodeURIComponent(JSON.stringify({
+      profile: profile.name,
+      count: importResult.count,
+      friends: importResult.friendsCount
+    })));
+    
+  } catch (error) {
+    console.error('Facebook callback error:', error.response?.data || error.message);
+    res.redirect('/?facebook_error=' + encodeURIComponent('Failed to process Facebook login'));
+  }
+});
+
+// Enhanced Facebook import with friends support
 app.post('/api/facebook/import', async (req, res) => {
   try {
     console.log('=== Facebook Import Started ===');
     const { accessToken, userID, profile } = req.body;
     
-    if (!accessToken || !userID) {
+    if (!accessToken) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Facebook access token and user ID are required' 
+        message: 'Facebook access token is required' 
       });
     }
     
-    console.log('Facebook profile:', profile?.name);
+    const importResult = await importFacebookData(accessToken, profile);
     
-    // Note: Facebook Graph API has severely limited friend/contact access
-    // This endpoint currently processes the user's own profile only
-    // Real Facebook contacts require special app approval from Facebook
-    
-    let insertedCount = 0;
-    
-    try {
-      // Check if user's own profile already exists
-      const existingContact = await Contact.findOne({ 
-        name: { $regex: new RegExp(`^${profile.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
-      });
-      
-      if (!existingContact) {
-        // Create contact from user's own profile
-        const contact = new Contact({
-          name: profile.name,
-          email: profile.email || '',
-          source: 'facebook_import',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        await contact.save();
-        insertedCount = 1;
-        console.log(`Added Facebook profile: ${profile.name}`);
-      } else {
-        console.log(`Profile already exists: ${profile.name}`);
-      }
-      
-    } catch (error) {
-      console.error(`Error saving Facebook profile:`, error);
-    }
-
-    const totalContacts = await Contact.countDocuments();
-    console.log(`=== Facebook Import Complete ===`);
-    console.log(`Inserted: ${insertedCount}`);
-    console.log(`Total contacts in DB: ${totalContacts}`);
-
     res.json({
       success: true,
-      count: insertedCount,
-      totalContacts: totalContacts,
-      message: insertedCount > 0 
-        ? `✅ Successfully imported your Facebook profile!`
-        : `ℹ️ Your Facebook profile is already in the system.`,
-      note: 'Facebook contact access requires special app approval. Only your profile can be imported currently.'
+      count: importResult.count,
+      friendsCount: importResult.friendsCount,
+      totalContacts: importResult.totalContacts,
+      message: importResult.message
     });
 
   } catch (error) {
@@ -649,6 +686,126 @@ app.post('/api/facebook/import', async (req, res) => {
     });
   }
 });
+
+// Facebook data import helper function
+async function importFacebookData(accessToken, userProfile) {
+  let insertedCount = 0;
+  let friendsCount = 0;
+  
+  try {
+    // Import user's own profile
+    if (userProfile) {
+      const existingUser = await Contact.findOne({ 
+        name: { $regex: new RegExp(`^${userProfile.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+      
+      if (!existingUser) {
+        const contact = new Contact({
+          name: userProfile.name,
+          email: userProfile.email || '',
+          source: 'facebook_profile',
+          url: userProfile.link || '',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        await contact.save();
+        insertedCount++;
+        console.log(`Added Facebook profile: ${userProfile.name}`);
+      }
+    }
+    
+    // Fetch friends who also use the app
+    try {
+      console.log('Fetching Facebook friends...');
+      const friendsResponse = await axios.get('https://graph.facebook.com/v18.0/me/friends', {
+        params: {
+          fields: 'id,name,link',
+          limit: 5000,
+          access_token: accessToken
+        }
+      });
+      
+      const friends = friendsResponse.data.data || [];
+      console.log(`Found ${friends.length} Facebook friends who use the app`);
+      
+      // Process each friend
+      for (const friend of friends) {
+        try {
+          // Get friend's profile picture
+          const pictureResponse = await axios.get(`https://graph.facebook.com/v18.0/${friend.id}/picture`, {
+            params: {
+              type: 'large',
+              redirect: 0,
+              access_token: accessToken
+            }
+          });
+          
+          const pictureUrl = pictureResponse.data?.data?.url;
+          
+          // Check if friend already exists
+          const existingFriend = await Contact.findOne({ 
+            name: { $regex: new RegExp(`^${friend.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+          });
+          
+          if (!existingFriend) {
+            const contact = new Contact({
+              name: friend.name,
+              source: 'facebook_friend',
+              url: friend.link || `https://www.facebook.com/${friend.id}`,
+              profileImageUrl: pictureUrl,
+              facebookId: friend.id,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            await contact.save();
+            insertedCount++;
+            friendsCount++;
+            console.log(`Added Facebook friend: ${friend.name}`);
+          }
+          
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (friendError) {
+          console.error(`Error processing friend ${friend.name}:`, friendError.message);
+        }
+      }
+      
+    } catch (friendsError) {
+      console.log('Facebook friends fetch failed (normal for non-approved apps):', friendsError.message);
+    }
+    
+    const totalContacts = await Contact.countDocuments();
+    
+    console.log(`=== Facebook Import Complete ===`);
+    console.log(`User profile: ${userProfile ? 1 : 0}`);
+    console.log(`Friends imported: ${friendsCount}`);
+    console.log(`Total inserted: ${insertedCount}`);
+    console.log(`Total contacts in DB: ${totalContacts}`);
+    
+    let message;
+    if (insertedCount > 0) {
+      if (friendsCount > 0) {
+        message = `✅ Successfully imported your profile and ${friendsCount} friends from Facebook!`;
+      } else {
+        message = `✅ Successfully imported your Facebook profile! (No friends available - they need to use this app too)`;
+      }
+    } else {
+      message = `ℹ️ Your Facebook data is already in the system.`;
+    }
+    
+    return {
+      count: insertedCount,
+      friendsCount,
+      totalContacts,
+      message
+    };
+    
+  } catch (error) {
+    console.error('Facebook import error:', error);
+    throw error;
+  }
+}
 
 // Start server
 app.listen(port, '0.0.0.0', () => {

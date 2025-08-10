@@ -223,8 +223,9 @@ window.addEventListener('load', function() {
             <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
               <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; opacity: 0.9;">🔒 Privacy & Security:</h4>
               <div style="font-size: 0.8rem; opacity: 0.8; line-height: 1.4;">
-                • We only access your basic profile and friends list<br>
+                • Access to your profile and friends who also use this app<br>
                 • No posts, photos, or private messages are accessed<br>
+                • Profile pictures and basic info only<br>
                 • Data is used solely for contact management<br>
                 • You can disconnect at any time
               </div>
@@ -422,11 +423,6 @@ window.addEventListener('load', function() {
     const progressDiv = document.getElementById('facebook-progress');
     const loginBtn = document.getElementById('facebook-login-btn');
     
-    if (!window.FB) {
-      showMessage('Facebook SDK not loaded. Please refresh the page and try again.', 'error');
-      return;
-    }
-    
     // Update UI
     if (statusDiv) {
       statusDiv.style.display = 'block';
@@ -438,21 +434,65 @@ window.addEventListener('load', function() {
       loginBtn.style.opacity = '0.6';
     }
     
-    FB.login(function(response) {
-      if (response.authResponse) {
-        console.log('Facebook login successful:', response);
-        handleFacebookAuth(response.authResponse);
-      } else {
-        console.log('Facebook login failed or cancelled');
-        if (statusDiv) {
-          statusDiv.innerHTML = '<div style="color: #ef4444;">❌ Facebook login cancelled or failed</div>';
+    // Use server-side OAuth flow for better security and friend access
+    if (window.FB) {
+      // Enhanced scope to include friends
+      FB.login(function(response) {
+        if (response.authResponse) {
+          console.log('Facebook login successful:', response);
+          handleFacebookAuth(response.authResponse);
+        } else {
+          console.log('Facebook login failed or cancelled');
+          if (statusDiv) {
+            statusDiv.innerHTML = '<div style="color: #ef4444;">❌ Facebook login cancelled or failed</div>';
+          }
+          if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.style.opacity = '1';
+          }
         }
-        if (loginBtn) {
-          loginBtn.disabled = false;
-          loginBtn.style.opacity = '1';
-        }
+      }, {scope: 'public_profile,email,user_friends'});
+    } else {
+      // Fallback to server-side OAuth
+      handleServerSideFacebookAuth();
+    }
+  }
+  
+  async function handleServerSideFacebookAuth() {
+    const statusDiv = document.getElementById('facebook-status');
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/facebook/auth', {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get Facebook auth URL');
       }
-    }, {scope: 'public_profile,email'});
+      
+      const data = await response.json();
+      
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">🔄 Redirecting to Facebook...</div>';
+      }
+      
+      // Redirect to Facebook OAuth
+      window.location.href = data.authUrl;
+      
+    } catch (error) {
+      console.error('Server-side Facebook auth error:', error);
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #ef4444;">❌ Failed to connect to Facebook</div>';
+      }
+      
+      const loginBtn = document.getElementById('facebook-login-btn');
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.style.opacity = '1';
+      }
+    }
   }
   
   async function handleFacebookAuth(authResponse) {
@@ -465,17 +505,17 @@ window.addEventListener('load', function() {
         statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">✅ Connected! Getting your profile...</div>';
       }
       
-      // Get user profile
-      FB.api('/me', {fields: 'name,email'}, function(userProfile) {
+      // Get user profile and friends
+      FB.api('/me', {fields: 'name,email,link'}, function(userProfile) {
         console.log('Facebook profile:', userProfile);
         
         if (statusDiv) {
-          statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">👋 Hello ' + userProfile.name + '! Importing contacts...</div>';
+          statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">👋 Hello ' + userProfile.name + '! Getting your contacts...</div>';
         }
         
         if (progressDiv) {
           progressDiv.style.display = 'block';
-          progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #1877f2;">🔄 Processing Facebook data...</div>';
+          progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #1877f2;">🔄 Fetching friends who use this app...</div>';
         }
         
         // Send auth data to backend
@@ -521,14 +561,18 @@ window.addEventListener('load', function() {
       const data = await response.json();
       
       if (data.success) {
+        const friendsText = data.friendsCount > 0 ? ` and ${data.friendsCount} friends` : '';
+        const totalImported = data.count || 0;
+        
         if (statusDiv) {
-          statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">✅ Success! Imported ' + (data.count || 0) + ' Facebook contacts</div>';
+          statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">✅ Success! Imported your profile' + friendsText + '</div>';
         }
         if (progressDiv) {
-          progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #10b981;">🎉 Import completed successfully!</div>';
+          const friendsNote = data.friendsCount === 0 ? '<br><small style="opacity: 0.8;">Friends need to use this app to appear here</small>' : '';
+          progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #10b981;">🎉 Import completed! ' + totalImported + ' contacts added' + friendsNote + '</div>';
         }
         
-        showMessage('Successfully imported ' + (data.count || 0) + ' contacts from Facebook!', 'success');
+        showMessage('Successfully imported ' + totalImported + ' contacts from Facebook' + friendsText + '!', 'success');
       } else {
         throw new Error(data.message || 'Import failed');
       }
@@ -560,6 +604,26 @@ window.addEventListener('load', function() {
   
   // Initialize Facebook SDK when page loads
   initFacebookSDK();
+  
+  // Check for Facebook OAuth callback results
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('facebook_success')) {
+    try {
+      const result = JSON.parse(urlParams.get('facebook_success'));
+      showMessage('Facebook import successful! Added ' + result.profile + ' and ' + (result.friends || 0) + ' friends.', 'success');
+      
+      // Switch to Facebook tab to show results
+      const facebookTab = document.getElementById('facebook-tab');
+      if (facebookTab) {
+        facebookTab.click();
+      }
+    } catch (e) {
+      console.error('Error parsing Facebook success result:', e);
+    }
+  } else if (urlParams.has('facebook_error')) {
+    const error = urlParams.get('facebook_error');
+    showMessage('Facebook login failed: ' + error, 'error');
+  }
   
   async function performSearch() {
     const searchInput = document.getElementById('search-input');

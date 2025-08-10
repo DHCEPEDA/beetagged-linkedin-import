@@ -39,12 +39,15 @@ Always provide exact files and deployment locations after making changes.
   - BuildSquarespaceBundle - Webpack bundle generation
 - **Deployment**: Working in Replit (port 5000) and ready for Heroku
 - **Project**: Enhanced with duplicate detection and consolidation features
-- **Facebook Integration**: ✅ FULLY IMPLEMENTED
+- **Facebook Integration**: ✅ FULLY ENHANCED
   - Facebook SDK integration with proper App ID (1222790436230433)
-  - Facebook login button with OAuth flow
-  - Backend endpoint `/api/facebook/import` for processing Facebook data
-  - Privacy-compliant implementation (profile only, no friends access without special approval)
-  - Complete UI with status updates and error handling
+  - Dual OAuth flow: Client-side FB SDK + Server-side OAuth for maximum compatibility
+  - Enhanced friend access with `user_friends` permission
+  - Imports user profile + friends who also use the app
+  - Profile pictures and Facebook profile links included
+  - Complete error handling and user feedback
+  - Server-side endpoints: `/api/facebook/auth`, `/api/facebook/callback`, `/api/facebook/import`
+  - Rate limiting protection for Facebook API calls
   - Ready for deployment with both Squarespace widget and Heroku backend
 
 ## Setup Requirements
