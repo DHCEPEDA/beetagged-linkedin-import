@@ -7,6 +7,7 @@ BeeTagged is a production-ready professional contact management platform deploye
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Always provide exact files and deployment locations after making changes.
 
 ## Current Status (Updated: August 6, 2025)
 
