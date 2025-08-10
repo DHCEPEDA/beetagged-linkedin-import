@@ -492,6 +492,20 @@ window.addEventListener('load', function() {
     cardHTML += '</div>';
     cardHTML += '</div>';
     
+    // Work History Row
+    cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; margin-bottom: 1rem;">';
+    cardHTML += '<div onclick="toggleSection(\'work\')" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; padding: 1rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2);">';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Previous Employer</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Years Worked</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Managed Teams</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '</div>';
+    cardHTML += '<div id="work-details" style="display: none; padding: 1rem; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.previousCompany || contact.pastEmployer || 'Not specified') + '</div>';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.yearsWorked || contact.experience || contact.tenure || 'Not specified') + '</div>';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.managedTeams || contact.teamSize || contact.directReports || 'Not specified') + '</div>';
+    cardHTML += '</div>';
+    cardHTML += '</div>';
+    
     // Contact Info Row
     cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; margin-bottom: 1rem;">';
     cardHTML += '<div onclick="toggleSection(\'contact\')" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; padding: 1rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2);">';
@@ -505,7 +519,7 @@ window.addEventListener('load', function() {
     cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.linkedinUrl ? 'Available' : 'Not available') + '</div>';
     cardHTML += '</div>';
     cardHTML += '</div>';
-    
+
     // Additional Info Row
     if (contact.tags || contact.industry || contact.notes) {
       cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; margin-bottom: 1rem;">';
