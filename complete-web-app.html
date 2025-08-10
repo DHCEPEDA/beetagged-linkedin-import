@@ -52,6 +52,7 @@ window.addEventListener('load', function() {
         <div style="display: flex; background: rgba(255,255,255,0.3); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
           <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.5); color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s ease;">🔍 Search Contacts</button>
           <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;">📁 Import LinkedIn</button>
+          <button id="facebook-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;">📘 Facebook</button>
         </div>
         
         <!-- Search Tab Content -->
@@ -177,6 +178,60 @@ window.addEventListener('load', function() {
           </div>
         </div>
         
+        <!-- Facebook Tab Content -->
+        <div id="facebook-content" style="display: none;">
+          <div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 1.5rem 0; text-align: center;">📘 Facebook Import</h3>
+            
+            <!-- Facebook Login Section -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <p style="margin: 0 0 1rem 0; opacity: 0.9;">Import contacts from your Facebook account:</p>
+              <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">Connect securely to access your Facebook contacts</p>
+            </div>
+            
+            <!-- Facebook Login Button -->
+            <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
+              <button id="facebook-login-btn" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px 24px;
+                border: none;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                background: #1877f2;
+                color: white;
+                font-size: 1rem;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(24, 119, 242, 0.3);
+              ">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Connect with Facebook
+              </button>
+            </div>
+            
+            <!-- Facebook Status -->
+            <div id="facebook-status" style="display: none; text-align: center; margin-bottom: 1rem;"></div>
+            
+            <!-- Import Progress -->
+            <div id="facebook-progress" style="display: none; margin-bottom: 1rem;"></div>
+            
+            <!-- Privacy Notice -->
+            <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+              <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; opacity: 0.9;">🔒 Privacy & Security:</h4>
+              <div style="font-size: 0.8rem; opacity: 0.8; line-height: 1.4;">
+                • We only access your basic profile and friends list<br>
+                • No posts, photos, or private messages are accessed<br>
+                • Data is used solely for contact management<br>
+                • You can disconnect at any time
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Global Message Container -->
         <div id="global-message" style="display: none;"></div>
       </div>
@@ -196,32 +251,41 @@ window.addEventListener('load', function() {
     // Tab switching
     const searchTab = document.getElementById('search-tab');
     const importTab = document.getElementById('import-tab');
+    const facebookTab = document.getElementById('facebook-tab');
     const searchContent = document.getElementById('search-content');
     const importContent = document.getElementById('import-content');
+    const facebookContent = document.getElementById('facebook-content');
     
-    if (searchTab && importTab && searchContent && importContent) {
+    if (searchTab && importTab && facebookTab && searchContent && importContent && facebookContent) {
+      function resetTabStyles() {
+        [searchTab, importTab, facebookTab].forEach(tab => {
+          tab.style.background = 'transparent';
+          tab.style.boxShadow = 'none';
+        });
+        [searchContent, importContent, facebookContent].forEach(content => {
+          content.style.display = 'none';
+        });
+      }
+      
       searchTab.addEventListener('click', function() {
-        // Update tab styles
+        resetTabStyles();
         searchTab.style.background = 'rgba(255,255,255,0.5)';
         searchTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        importTab.style.background = 'transparent';
-        importTab.style.boxShadow = 'none';
-        
-        // Show/hide content
         searchContent.style.display = 'block';
-        importContent.style.display = 'none';
       });
       
       importTab.addEventListener('click', function() {
-        // Update tab styles
+        resetTabStyles();
         importTab.style.background = 'rgba(255,255,255,0.5)';
         importTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        searchTab.style.background = 'transparent';
-        searchTab.style.boxShadow = 'none';
-        
-        // Show/hide content
         importContent.style.display = 'block';
-        searchContent.style.display = 'none';
+      });
+      
+      facebookTab.addEventListener('click', function() {
+        resetTabStyles();
+        facebookTab.style.background = 'rgba(255,255,255,0.5)';
+        facebookTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        facebookContent.style.display = 'block';
       });
     }
     
@@ -322,7 +386,180 @@ window.addEventListener('load', function() {
         }
       }
     }
+    
+    // Facebook functionality
+    const facebookLoginBtn = document.getElementById('facebook-login-btn');
+    const facebookStatus = document.getElementById('facebook-status');
+    const facebookProgress = document.getElementById('facebook-progress');
+    
+    if (facebookLoginBtn) {
+      facebookLoginBtn.addEventListener('click', handleFacebookLogin);
+    }
   }
+  
+  // Facebook SDK initialization
+  function initFacebookSDK() {
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId: '1222790436230433', // Facebook App ID from secrets
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0'
+      });
+    };
+
+    (function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = 'https://connect.facebook.net/en_US/sdk.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+  }
+  
+  function handleFacebookLogin() {
+    const statusDiv = document.getElementById('facebook-status');
+    const progressDiv = document.getElementById('facebook-progress');
+    const loginBtn = document.getElementById('facebook-login-btn');
+    
+    if (!window.FB) {
+      showMessage('Facebook SDK not loaded. Please refresh the page and try again.', 'error');
+      return;
+    }
+    
+    // Update UI
+    if (statusDiv) {
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">🔄 Connecting to Facebook...</div>';
+    }
+    
+    if (loginBtn) {
+      loginBtn.disabled = true;
+      loginBtn.style.opacity = '0.6';
+    }
+    
+    FB.login(function(response) {
+      if (response.authResponse) {
+        console.log('Facebook login successful:', response);
+        handleFacebookAuth(response.authResponse);
+      } else {
+        console.log('Facebook login failed or cancelled');
+        if (statusDiv) {
+          statusDiv.innerHTML = '<div style="color: #ef4444;">❌ Facebook login cancelled or failed</div>';
+        }
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = '1';
+        }
+      }
+    }, {scope: 'public_profile,email'});
+  }
+  
+  async function handleFacebookAuth(authResponse) {
+    const statusDiv = document.getElementById('facebook-status');
+    const progressDiv = document.getElementById('facebook-progress');
+    const loginBtn = document.getElementById('facebook-login-btn');
+    
+    try {
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">✅ Connected! Getting your profile...</div>';
+      }
+      
+      // Get user profile
+      FB.api('/me', {fields: 'name,email'}, function(userProfile) {
+        console.log('Facebook profile:', userProfile);
+        
+        if (statusDiv) {
+          statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">👋 Hello ' + userProfile.name + '! Importing contacts...</div>';
+        }
+        
+        if (progressDiv) {
+          progressDiv.style.display = 'block';
+          progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #1877f2;">🔄 Processing Facebook data...</div>';
+        }
+        
+        // Send auth data to backend
+        importFacebookContacts(authResponse, userProfile);
+      });
+      
+    } catch (error) {
+      console.error('Facebook auth error:', error);
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #ef4444;">❌ Error: ' + error.message + '</div>';
+      }
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.style.opacity = '1';
+      }
+    }
+  }
+  
+  async function importFacebookContacts(authResponse, userProfile) {
+    const statusDiv = document.getElementById('facebook-status');
+    const progressDiv = document.getElementById('facebook-progress');
+    const loginBtn = document.getElementById('facebook-login-btn');
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/facebook/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          accessToken: authResponse.accessToken,
+          userID: authResponse.userID,
+          profile: userProfile
+        }),
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Import failed: ' + response.status);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        if (statusDiv) {
+          statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">✅ Success! Imported ' + (data.count || 0) + ' Facebook contacts</div>';
+        }
+        if (progressDiv) {
+          progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #10b981;">🎉 Import completed successfully!</div>';
+        }
+        
+        showMessage('Successfully imported ' + (data.count || 0) + ' contacts from Facebook!', 'success');
+      } else {
+        throw new Error(data.message || 'Import failed');
+      }
+      
+    } catch (error) {
+      console.error('Facebook import error:', error);
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #ef4444;">❌ Import failed: ' + error.message + '</div>';
+      }
+      if (progressDiv) {
+        progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #ef4444;">❌ Import failed</div>';
+      }
+      
+      showMessage('Facebook import failed: ' + error.message, 'error');
+    }
+    
+    // Re-enable login button
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.style.opacity = '1';
+      loginBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+        Import Again
+      `;
+    }
+  }
+  
+  // Initialize Facebook SDK when page loads
+  initFacebookSDK();
   
   async function performSearch() {
     const searchInput = document.getElementById('search-input');

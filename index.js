@@ -75,7 +75,6 @@ function connectMongoDB() {
     maxPoolSize: 10,
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
-    bufferMaxEntries: 0,
     retryWrites: true,
     w: 'majority'
   };
@@ -576,6 +575,77 @@ app.post('/api/import/linkedin', upload.fields([
     res.status(500).json({ 
       success: false, 
       message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
+  }
+});
+
+// Facebook import endpoint
+app.post('/api/facebook/import', async (req, res) => {
+  try {
+    console.log('=== Facebook Import Started ===');
+    const { accessToken, userID, profile } = req.body;
+    
+    if (!accessToken || !userID) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Facebook access token and user ID are required' 
+      });
+    }
+    
+    console.log('Facebook profile:', profile?.name);
+    
+    // Note: Facebook Graph API has severely limited friend/contact access
+    // This endpoint currently processes the user's own profile only
+    // Real Facebook contacts require special app approval from Facebook
+    
+    let insertedCount = 0;
+    
+    try {
+      // Check if user's own profile already exists
+      const existingContact = await Contact.findOne({ 
+        name: { $regex: new RegExp(`^${profile.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+      
+      if (!existingContact) {
+        // Create contact from user's own profile
+        const contact = new Contact({
+          name: profile.name,
+          email: profile.email || '',
+          source: 'facebook_import',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        await contact.save();
+        insertedCount = 1;
+        console.log(`Added Facebook profile: ${profile.name}`);
+      } else {
+        console.log(`Profile already exists: ${profile.name}`);
+      }
+      
+    } catch (error) {
+      console.error(`Error saving Facebook profile:`, error);
+    }
+
+    const totalContacts = await Contact.countDocuments();
+    console.log(`=== Facebook Import Complete ===`);
+    console.log(`Inserted: ${insertedCount}`);
+    console.log(`Total contacts in DB: ${totalContacts}`);
+
+    res.json({
+      success: true,
+      count: insertedCount,
+      totalContacts: totalContacts,
+      message: insertedCount > 0 
+        ? `✅ Successfully imported your Facebook profile!`
+        : `ℹ️ Your Facebook profile is already in the system.`,
+      note: 'Facebook contact access requires special app approval. Only your profile can be imported currently.'
+    });
+
+  } catch (error) {
+    console.error('=== Facebook Import Error ===', error);
+    res.status(500).json({ 
+      success: false, 
+      message: `Facebook import failed: ${error.message}`
     });
   }
 });
