@@ -380,23 +380,35 @@ window.addEventListener('load', function() {
     
     if (uploadStatus) {
       uploadStatus.style.display = 'block';
-      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem;">Uploading ' + type + ' file: ' + file.name + '</div>';
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem; color: #00A86B;">Uploading ' + type + ' file: ' + file.name + '</div>';
     }
     
     try {
+      console.log('Starting upload for file:', file.name, 'Type:', type);
+      
       const formData = new FormData();
       formData.append('linkedinCsv', file);
+      
+      console.log('Sending request to:', BACKEND_URL + '/api/import/linkedin');
       
       const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
         method: 'POST',
         body: formData,
+        mode: 'cors',
+        credentials: 'omit'
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        console.error('Upload failed with status:', response.status, 'Error:', errorText);
+        throw new Error('Upload failed with status: ' + response.status);
       }
       
       const data = await response.json();
+      console.log('Upload response data:', data);
       
       if (statusDiv) {
         statusDiv.textContent = '✓ ' + file.name;
@@ -404,24 +416,37 @@ window.addEventListener('load', function() {
       }
       
       var message = 'Successfully processed ' + type + ' file!';
-      if (data.count) {
-        message += ' Added ' + data.count + ' contacts.';
+      if (data.count && data.count > 0) {
+        message += ' Added ' + data.count + ' new contacts.';
       }
-      if (data.enhanced) {
+      if (data.enhanced && data.enhanced > 0) {
         message += ' Enhanced ' + data.enhanced + ' existing contacts.';
+      }
+      if (data.processed) {
+        message += ' Processed ' + data.processed + ' records total.';
       }
       
       showMessage(message, 'success');
       
     } catch (error) {
+      console.error('Upload error details:', error);
+      
       if (statusDiv) {
         statusDiv.textContent = '✗ Upload failed';
         statusDiv.style.color = '#ef4444';
       }
-      showMessage('Upload failed for ' + type + ' file. Please try again.', 'error');
+      
+      var errorMessage = 'Upload failed for ' + type + ' file: ' + error.message;
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage += ' (Network connection issue - please check your internet connection)';
+      }
+      
+      showMessage(errorMessage, 'error');
     } finally {
       if (uploadStatus) {
-        uploadStatus.style.display = 'none';
+        setTimeout(function() {
+          uploadStatus.style.display = 'none';
+        }, 2000);
       }
     }
   }
@@ -480,13 +505,17 @@ window.addEventListener('load', function() {
     
     const bgColor = type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
     const borderColor = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+    const textColor = '#00A86B';
     
-    messageContainer.innerHTML = '<div style="background: ' + bgColor + '; border: 1px solid ' + borderColor + '; border-radius: 8px; padding: 1rem; margin: 1rem 0; text-align: center;">' + message + '</div>';
+    messageContainer.innerHTML = '<div style="background: ' + bgColor + '; border: 1px solid ' + borderColor + '; border-radius: 8px; padding: 1rem; margin: 1rem 0; text-align: center; color: ' + textColor + '; font-weight: 500;">' + message + '</div>';
     messageContainer.style.display = 'block';
+    
+    // Scroll to message
+    messageContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     
     setTimeout(function() {
       messageContainer.style.display = 'none';
-    }, 5000);
+    }, 8000);
   }
 });
 </script>
