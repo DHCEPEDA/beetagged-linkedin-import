@@ -42,21 +42,21 @@ window.addEventListener('load', function() {
         max-width: 800px;
         margin: 0 auto;
         padding: 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #87CEEB;
         border-radius: 16px;
-        color: white;
+        color: #00A86B;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         box-shadow: 0 20px 40px rgba(0,0,0,0.1);
       ">
         
-        <div style="display: flex; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
-          <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s ease;">🔍 Search Contacts</button>
-          <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: white; cursor: pointer; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;">📁 Import LinkedIn</button>
+        <div style="display: flex; background: rgba(255,255,255,0.3); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
+          <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.5); color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s ease;">🔍 Search Contacts</button>
+          <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;">📁 Import LinkedIn</button>
         </div>
         
         <!-- Search Tab Content -->
         <div id="search-content" style="display: block;">
-          <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
+          <div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
             <input type="text" id="search-input" placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'" style="
               width: 100%;
               padding: 12px 16px;
@@ -76,21 +76,21 @@ window.addEventListener('load', function() {
               border-radius: 8px;
               font-weight: 600;
               cursor: pointer;
-              background: rgba(255,255,255,0.2);
-              color: white;
-              border: 2px solid rgba(255,255,255,0.3);
+              background: rgba(255,255,255,0.5);
+              color: #00A86B;
+              border: 2px solid rgba(255,255,255,0.5);
               transition: all 0.3s ease;
             ">Search Contacts</button>
             
             <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; justify-content: center;">
-              <span class="example-tag" data-query="Michael" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Find Michael</span>
-              <span class="example-tag" data-query="people who work at tech companies" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Tech workers</span>
-              <span class="example-tag" data-query="contacts in San Francisco" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">San Francisco</span>
+              <span class="example-tag" data-query="Michael" style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.5);">Find Michael</span>
+              <span class="example-tag" data-query="people who work at tech companies" style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.5);">Tech workers</span>
+              <span class="example-tag" data-query="contacts in San Francisco" style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.5);">San Francisco</span>
             </div>
           </div>
           
           <div id="search-results" style="
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.3);
             border-radius: 12px;
             padding: 1.5rem;
             margin-top: 1rem;
@@ -103,7 +103,7 @@ window.addEventListener('load', function() {
         
         <!-- Import Tab Content -->
         <div id="import-content" style="display: none;">
-          <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px;">
+          <div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px;">
             <h3 style="margin: 0 0 1.5rem 0; text-align: center;">📁 LinkedIn CSV Import</h3>
             
             <!-- Simplified Upload Instructions -->
@@ -115,32 +115,32 @@ window.addEventListener('load', function() {
             <!-- File Upload Areas -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
               <div id="contacts-zone" style="
-                border: 2px dashed rgba(255,255,255,0.3);
+                border: 2px dashed rgba(255,255,255,0.5);
                 border-radius: 12px;
                 padding: 1.5rem;
                 text-align: center;
                 cursor: pointer;
-                background: rgba(255,255,255,0.05);
+                background: rgba(255,255,255,0.3);
                 transition: all 0.3s ease;
               ">
-                <h4 style="margin: 0 0 0.5rem 0;">📋 Contacts CSV</h4>
-                <p style="font-size: 0.9rem; margin: 0 0 0.5rem 0;">Detailed contact info</p>
-                <div id="contacts-status" style="font-size: 0.8rem; opacity: 0.7;">Click to upload</div>
+                <h4 style="margin: 0 0 0.5rem 0; color: #00A86B;">📋 Contacts CSV</h4>
+                <p style="font-size: 0.9rem; margin: 0 0 0.5rem 0; color: #00A86B;">Detailed contact info</p>
+                <div id="contacts-status" style="font-size: 0.8rem; opacity: 0.7; color: #00A86B;">Click to upload</div>
                 <input type="file" id="contacts-input" accept=".csv" style="display: none;">
               </div>
               
               <div id="connections-zone" style="
-                border: 2px dashed rgba(255,255,255,0.3);
+                border: 2px dashed rgba(255,255,255,0.5);
                 border-radius: 12px;
                 padding: 1.5rem;
                 text-align: center;
                 cursor: pointer;
-                background: rgba(255,255,255,0.05);
+                background: rgba(255,255,255,0.3);
                 transition: all 0.3s ease;
               ">
-                <h4 style="margin: 0 0 0.5rem 0;">🔗 Connections CSV</h4>
-                <p style="font-size: 0.9rem; margin: 0 0 0.5rem 0;">Network connections</p>
-                <div id="connections-status" style="font-size: 0.8rem; opacity: 0.7;">Click to upload</div>
+                <h4 style="margin: 0 0 0.5rem 0; color: #00A86B;">🔗 Connections CSV</h4>
+                <p style="font-size: 0.9rem; margin: 0 0 0.5rem 0; color: #00A86B;">Network connections</p>
+                <div id="connections-status" style="font-size: 0.8rem; opacity: 0.7; color: #00A86B;">Click to upload</div>
                 <input type="file" id="connections-input" accept=".csv" style="display: none;">
               </div>
             </div>
@@ -180,9 +180,9 @@ window.addEventListener('load', function() {
       <div style="
         max-width: 500px;
         margin: 0 auto;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #87CEEB;
         border-radius: 20px;
-        color: white;
+        color: #00A86B;
         box-shadow: 0 30px 60px rgba(0,0,0,0.3);
         position: relative;
       ">
@@ -190,9 +190,9 @@ window.addEventListener('load', function() {
           position: absolute;
           top: 1rem;
           right: 1rem;
-          background: rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.5);
           border: none;
-          color: white;
+          color: #00A86B;
           width: 40px;
           height: 40px;
           border-radius: 50%;
@@ -228,7 +228,7 @@ window.addEventListener('load', function() {
     
     if (searchTab && importTab && searchContent && importContent) {
       searchTab.onclick = function() {
-        searchTab.style.background = 'rgba(255,255,255,0.2)';
+        searchTab.style.background = 'rgba(255,255,255,0.5)';
         searchTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
         importTab.style.background = 'transparent';
         importTab.style.boxShadow = 'none';
@@ -237,7 +237,7 @@ window.addEventListener('load', function() {
       };
       
       importTab.onclick = function() {
-        importTab.style.background = 'rgba(255,255,255,0.2)';
+        importTab.style.background = 'rgba(255,255,255,0.5)';
         importTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
         searchTab.style.background = 'transparent';
         searchTab.style.boxShadow = 'none';
@@ -303,7 +303,7 @@ window.addEventListener('load', function() {
           var resultsHTML = '';
           for (var i = 0; i < data.results.length; i++) {
             var contact = data.results[i];
-            resultsHTML += '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.3s ease;" onclick="showBaseballCard(' + JSON.stringify(contact).replace(/"/g, '&quot;') + ')">';
+            resultsHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.5); cursor: pointer; transition: all 0.3s ease;" onclick="showBaseballCard(' + JSON.stringify(contact).replace(/"/g, '&quot;') + ')">';
             resultsHTML += '<div style="font-weight: 600; margin-bottom: 0.5rem;">' + contact.name + '</div>';
             resultsHTML += '<div style="opacity: 0.8; font-size: 0.9rem;">';
             if (contact.company) resultsHTML += contact.company + ' • ';
@@ -313,7 +313,7 @@ window.addEventListener('load', function() {
             if (contact.tags && contact.tags.length > 0) {
               resultsHTML += '<div style="margin-top: 0.5rem;">';
               for (var j = 0; j < contact.tags.length; j++) {
-                resultsHTML += '<span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; margin-right: 4px;">' + contact.tags[j] + '</span>';
+                resultsHTML += '<span style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; margin-right: 4px;">' + contact.tags[j] + '</span>';
               }
               resultsHTML += '</div>';
             }
@@ -446,13 +446,13 @@ window.addEventListener('load', function() {
     
     var cardHTML = '<div style="padding: 2rem;">';
     cardHTML += '<div style="text-align: center; margin-bottom: 2rem;">';
-    cardHTML += '<div style="width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.2); margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 3rem;">';
+    cardHTML += '<div style="width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.5); margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #00A86B;">';
     cardHTML += contact.name ? contact.name.charAt(0).toUpperCase() : '👤';
     cardHTML += '</div>';
     cardHTML += '<h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">' + contact.name + '</h2>';
     cardHTML += '<p style="margin: 0; opacity: 0.8;">' + (contact.position || 'Professional Contact') + '</p>';
     cardHTML += '</div>';
-    cardHTML += '<div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem;">';
+    cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; padding: 1.5rem;">';
     if (contact.company) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Company:</strong> ' + contact.company + '</div>';
     if (contact.email) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Email:</strong> ' + contact.email + '</div>';
     if (contact.phone) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Phone:</strong> ' + contact.phone + '</div>';
@@ -463,7 +463,7 @@ window.addEventListener('load', function() {
       cardHTML += '<h4 style="margin: 0 0 0.5rem 0;">Tags:</h4>';
       cardHTML += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
       for (var i = 0; i < contact.tags.length; i++) {
-        cardHTML += '<span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 0.85rem;">' + contact.tags[i] + '</span>';
+        cardHTML += '<span style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 4px 8px; border-radius: 12px; font-size: 0.85rem;">' + contact.tags[i] + '</span>';
       }
       cardHTML += '</div>';
       cardHTML += '</div>';
