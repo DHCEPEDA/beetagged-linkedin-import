@@ -1,6 +1,5 @@
-// HEROKU DEPLOYMENT - COMPLETE FIXED BACKEND
-// This file contains the complete, working backend with all fixes applied
-// Ready for deployment to Heroku with MongoDB Atlas connection
+// COMPLETE BACKEND - BeeTagged with Duplicate Detection
+// Updated backend with CSV upload fixes and duplicate contact merging
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -38,12 +37,12 @@ app.use((req, res, next) => {
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Allow external scripts for frontend
+  contentSecurityPolicy: false,
 }));
 
-// CORS configuration - Allow ALL origins for Squarespace testing
+// CORS configuration
 app.use(cors({
-  origin: true, // Allow all origins for testing
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
   credentials: false
@@ -59,12 +58,12 @@ app.use(morgan('combined'));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000 // limit each IP to 1000 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 1000
 });
 app.use(limiter);
 
-// ===== MONGODB CONNECTION WITH TIMEOUT PROTECTION =====
+// ===== MONGODB CONNECTION =====
 
 function connectMongoDB() {
   if (!process.env.MONGODB_URI) {
@@ -72,14 +71,13 @@ function connectMongoDB() {
     process.exit(1);
   }
 
-  // Enhanced MongoDB connection options for production (Node.js Driver 4.0+)
   const mongoOptions = {
-    serverSelectionTimeoutMS: 5000,    // How long to try selecting a server
-    socketTimeoutMS: 10000,            // How long a send or receive on a socket can take
-    connectTimeoutMS: 10000,           // How long to wait for initial connection
-    maxPoolSize: 10,                   // Maximum number of connections
-    minPoolSize: 2,                    // Minimum number of connections
-    maxIdleTimeMS: 30000,              // Close connections after 30 seconds of inactivity
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    maxIdleTimeMS: 30000,
     retryWrites: true,
     w: 'majority'
   };
@@ -91,20 +89,7 @@ function connectMongoDB() {
     })
     .catch(err => {
       console.error('MongoDB connection error:', err);
-      console.error('Connection string prefix:', process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 20) + '...' : 'undefined');
     });
-
-  mongoose.connection.on('error', err => {
-    console.error('MongoDB runtime error:', err);
-  });
-
-  mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected');
-  });
-
-  mongoose.connection.on('reconnected', () => {
-    console.log('MongoDB reconnected');
-  });
 }
 
 connectMongoDB();
@@ -127,25 +112,6 @@ const contactSchema = new mongoose.Schema({
 
 const Contact = mongoose.model('Contact', contactSchema);
 
-// Clean up old problematic indexes on startup
-mongoose.connection.once('open', async () => {
-  try {
-    const indexes = await Contact.collection.indexes();
-    console.log('Current indexes:', indexes.map(i => i.name));
-    
-    // Drop the problematic id_1 index if it exists
-    for (const index of indexes) {
-      if (index.name === 'id_1') {
-        await Contact.collection.dropIndex('id_1');
-        console.log('Dropped problematic id_1 index');
-        break;
-      }
-    }
-  } catch (error) {
-    console.log('Index cleanup completed or not needed:', error.message);
-  }
-});
-
 // ===== FILE UPLOAD SETUP =====
 
 const storage = multer.memoryStorage();
@@ -156,175 +122,39 @@ const upload = multer({
   }
 });
 
-// ===== UTILITY FUNCTIONS =====
-
-// Smart tag generation
-function generateTags(contact) {
-  const tags = [];
-  
-  if (contact.company) {
-    tags.push(`company:${contact.company.toLowerCase()}`);
-    
-    // Industry classification
-    const techCompanies = ['google', 'microsoft', 'apple', 'amazon', 'meta', 'facebook', 'netflix', 'tesla', 'uber', 'airbnb', 'stripe'];
-    if (techCompanies.some(tech => contact.company.toLowerCase().includes(tech))) {
-      tags.push('industry:technology');
-    }
-  }
-
-  if (contact.position) {
-    tags.push(`role:${contact.position.toLowerCase()}`);
-    
-    // Function-based tags
-    const position = contact.position.toLowerCase();
-    if (position.includes('engineer') || position.includes('developer') || position.includes('programmer')) {
-      tags.push('function:engineering');
-    } else if (position.includes('manager') || position.includes('director') || position.includes('lead')) {
-      tags.push('function:management');
-    } else if (position.includes('designer') || position.includes('ux') || position.includes('ui')) {
-      tags.push('function:design');
-    }
-  }
-
-  if (contact.location) {
-    tags.push(`location:${contact.location.toLowerCase()}`);
-  }
-
-  return tags;
-}
-
-// Enhanced CSV parser for LinkedIn format
-function parseCSVLine(line) {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-  let i = 0;
-
-  while (i < line.length) {
-    const char = line[i];
-    
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        // Handle escaped quotes
-        current += '"';
-        i += 2;
-      } else {
-        // Toggle quote state
-        inQuotes = !inQuotes;
-        i++;
-      }
-    } else if (char === ',' && !inQuotes) {
-      // Field separator outside quotes
-      result.push(current.trim());
-      current = '';
-      i++;
-    } else {
-      // Regular character
-      current += char;
-      i++;
-    }
-  }
-
-  // Add the last field
-  result.push(current.trim());
-  return result;
-}
-
-// LinkedIn header mappings - expanded for better compatibility
-const LINKEDIN_HEADER_MAPPINGS = {
-  firstName: ['first name', 'firstname', 'given name', 'first', 'fname'],
-  lastName: ['last name', 'lastname', 'surname', 'family name', 'last', 'lname'],
-  name: ['name', 'full name', 'contact name', 'display name', 'person name'],
-  email: ['email address', 'email', 'e-mail', 'email addresses', 'primary email', 'contact email', 'mail'],
-  company: ['company', 'current company', 'organization', 'employer', 'workplace', 'work', 'corp', 'business'],
-  position: ['position', 'current position', 'title', 'job title', 'current title', 'role', 'job', 'occupation'],
-  location: ['location', 'current location', 'address', 'city', 'region', 'area', 'place', 'geographic area'],
-  connectedOn: ['connected on', 'connection date', 'date connected', 'connected', 'date', 'connection time'],
-  url: ['url', 'profile url', 'linkedin url', 'profile link', 'link', 'linkedin profile', 'profile']
-};
-
-function findHeaderIndex(headers, fieldMappings) {
-  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
-  
-  for (const mapping of fieldMappings) {
-    const index = normalizedHeaders.indexOf(mapping.toLowerCase());
-    if (index !== -1) {
-      return index;
-    }
-  }
-  return -1;
-}
-
 // ===== API ROUTES =====
 
-// Health check with timeout protection
-app.get('/health', async (req, res) => {
-  try {
-    const mongoState = mongoose.connection.readyState;
-    const stateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
-    
-    let contactCount = 0;
-    let mongoStatus = 'disconnected';
-    
-    if (mongoState === 1) {
-      try {
-        // Add timeout to database operations
-        const countPromise = Contact.countDocuments();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database timeout')), 5000)
-        );
-        
-        contactCount = await Promise.race([countPromise, timeoutPromise]);
-        mongoStatus = 'connected';
-      } catch (error) {
-        console.error('Health check database error:', error);
-        mongoStatus = 'timeout';
-        return res.status(503).json({
-          status: 'degraded',
-          server: 'BeeTagged',
-          contacts: 'timeout',
-          port: PORT,
-          uptime: process.uptime(),
-          mongodb: 'timeout',
-          mongoState: mongoState,
-          environment: process.env.NODE_ENV || 'development'
-        });
-      }
-    }
-
-    res.json({
-      status: mongoStatus === 'connected' ? 'healthy' : 'degraded',
-      server: 'BeeTagged',
-      contacts: contactCount,
-      port: PORT,
-      uptime: process.uptime(),
-      mongodb: mongoStatus,
-      mongoState: mongoState,
-      environment: process.env.NODE_ENV || 'production'
-    });
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({
-      status: 'error',
-      server: 'BeeTagged',
-      error: error.message,
-      port: PORT,
-      uptime: process.uptime()
-    });
-  }
+// Health check
+app.get('/', (req, res) => {
+  res.json({
+    status: 'BeeTagged Server running',
+    environment: process.env.NODE_ENV || 'development',
+    mongodb: 'configured'
+  });
 });
 
-// Get all contacts with timeout protection
-app.get('/api/contacts', async (req, res) => {
+// ===== SEARCH ENDPOINT =====
+
+app.get('/api/search', async (req, res) => {
   try {
-    const contactsPromise = Contact.find().sort({ createdAt: -1 });
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database timeout')), 5000)
-    );
+    const query = req.query.q;
+    console.log('Search request for:', query);
     
-    const contacts = await Promise.race([contactsPromise, timeoutPromise]);
-    console.log(`Returning ${contacts.length} contacts`);
-    res.json(contacts);
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter required' });
+    }
+
+    // Enhanced search with timeout protection
+    const searchPromise = performEnhancedSearch(query);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database timeout')), 10000);
+    });
+
+    const contacts = await Promise.race([searchPromise, timeoutPromise]);
+    
+    console.log(`Found ${contacts.length} contacts for query: "${query}"`);
+    res.json({ contacts });
+    
   } catch (error) {
     console.error('Error fetching contacts:', error);
     if (error.message === 'Database timeout') {
@@ -335,17 +165,20 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
-// LinkedIn CSV import with dual-file merge support
+// LinkedIn CSV import with dual-file support and duplicate detection
 app.post('/api/import/linkedin', upload.fields([
   { name: 'linkedinCsv', maxCount: 1 },
-  { name: 'contactsCsv', maxCount: 1 }
+  { name: 'contactsCsv', maxCount: 1 },
+  { name: 'csvFile', maxCount: 1 },
+  { name: 'contactsFile', maxCount: 1 },
+  { name: 'connectionsFile', maxCount: 1 }
 ]), async (req, res) => {
   try {
     console.log('=== LinkedIn CSV Import Started ===');
     console.log('Files received:', req.files);
     
-    const linkedinFile = req.files?.linkedinCsv?.[0];
-    const contactsFile = req.files?.contactsCsv?.[0];
+    const linkedinFile = req.files?.linkedinCsv?.[0] || req.files?.csvFile?.[0] || req.files?.connectionsFile?.[0];
+    const contactsFile = req.files?.contactsCsv?.[0] || req.files?.contactsFile?.[0];
     
     if (!linkedinFile && !contactsFile) {
       return res.status(400).json({ 
@@ -400,7 +233,7 @@ app.post('/api/import/linkedin', upload.fields([
         });
       }
       
-      // Process single file (existing logic)
+      // Process single file
       mergedContacts = processSingleCSV(lines);
     }
     
@@ -408,6 +241,33 @@ app.post('/api/import/linkedin', upload.fields([
       return res.status(400).json({ 
         success: false, 
         message: 'No valid contacts found in the uploaded files.' 
+      });
+    }
+
+    // Detect duplicates before saving
+    const duplicates = detectDuplicates(mergedContacts);
+    
+    if (duplicates.length > 0) {
+      console.log(`Found ${duplicates.length} potential duplicate groups`);
+      
+      // Store contacts temporarily for duplicate resolution
+      const sessionId = Date.now().toString();
+      global.pendingImports = global.pendingImports || {};
+      global.pendingImports[sessionId] = {
+        contacts: mergedContacts,
+        duplicates: duplicates,
+        timestamp: Date.now()
+      };
+      
+      // Return duplicates for user review
+      return res.json({
+        success: true,
+        duplicatesFound: true,
+        duplicates: duplicates,
+        sessionId: sessionId,
+        totalContacts: mergedContacts.length,
+        nonDuplicates: mergedContacts.length - duplicates.reduce((acc, group) => acc + group.length, 0),
+        message: `Found ${duplicates.length} potential duplicate groups requiring review`
       });
     }
 
@@ -478,16 +338,289 @@ app.post('/api/import/linkedin', upload.fields([
   }
 });
 
-// Add merge function at the top of the file
+// Handle duplicate resolution and final import
+app.post('/api/import/resolve-duplicates', express.json(), async (req, res) => {
+  try {
+    const { sessionId, resolutions } = req.body;
+    
+    if (!sessionId || !global.pendingImports?.[sessionId]) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid session or session expired' 
+      });
+    }
+    
+    const importData = global.pendingImports[sessionId];
+    const { contacts, duplicates } = importData;
+    
+    console.log('Resolving duplicates for session:', sessionId);
+    console.log('Resolutions received:', resolutions);
+    
+    let finalContacts = [...contacts];
+    let removedCount = 0;
+    let mergedCount = 0;
+    
+    // Process each duplicate group based on user choice
+    for (let i = 0; i < duplicates.length; i++) {
+      const group = duplicates[i];
+      const resolution = resolutions[i];
+      
+      if (resolution.action === 'merge') {
+        // Merge contacts in this group
+        const mergedContact = mergeContactInfo(group);
+        
+        // Remove original contacts from final list
+        finalContacts = finalContacts.filter(contact => 
+          !group.some(dup => 
+            dup.name === contact.name && 
+            dup.email === contact.email
+          )
+        );
+        
+        // Add merged contact
+        finalContacts.push(mergedContact);
+        mergedCount++;
+        removedCount += group.length - 1;
+        
+      } else if (resolution.action === 'skip') {
+        // Remove all contacts in this duplicate group
+        finalContacts = finalContacts.filter(contact => 
+          !group.some(dup => 
+            dup.name === contact.name && 
+            dup.email === contact.email
+          )
+        );
+        removedCount += group.length;
+        
+      } else if (resolution.action === 'keep_all') {
+        // Keep all duplicates as separate contacts - no action needed
+      } else if (resolution.action === 'keep_selected' && resolution.selectedIndex !== undefined) {
+        // Keep only the selected contact
+        const selectedContact = group[resolution.selectedIndex];
+        
+        // Remove all contacts in group
+        finalContacts = finalContacts.filter(contact => 
+          !group.some(dup => 
+            dup.name === contact.name && 
+            dup.email === contact.email
+          )
+        );
+        
+        // Add back only the selected one
+        finalContacts.push(selectedContact);
+        removedCount += group.length - 1;
+      }
+    }
+    
+    // Save final contacts to database
+    let insertedCount = 0;
+    let duplicateCount = 0;
+    let contactsWithCompany = 0;
+    let contactsWithEmail = 0;
+    
+    for (const contactData of finalContacts) {
+      if (contactData.company) contactsWithCompany++;
+      if (contactData.email) contactsWithEmail++;
+      
+      try {
+        const existingContact = await Contact.findOne({ 
+          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        });
+        
+        if (!existingContact) {
+          const contact = new Contact({
+            name: contactData.name,
+            email: contactData.email,
+            phone: contactData.phone,
+            company: contactData.company,
+            position: contactData.position,
+            location: contactData.location,
+            tags: generateTags(contactData),
+            source: 'linkedin_import_resolved',
+            connectedOn: contactData.connectedOn,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          await contact.save();
+          insertedCount++;
+        } else {
+          // Update existing contact with additional data
+          const updates = {};
+          if (contactData.email && !existingContact.email) updates.email = contactData.email;
+          if (contactData.company && !existingContact.company) updates.company = contactData.company;
+          if (contactData.position && !existingContact.position) updates.position = contactData.position;
+          if (contactData.phone && !existingContact.phone) updates.phone = contactData.phone;
+          
+          if (Object.keys(updates).length > 0) {
+            await Contact.findByIdAndUpdate(existingContact._id, updates);
+            console.log(`Enhanced existing contact: ${contactData.name}`);
+          }
+          duplicateCount++;
+        }
+      } catch (error) {
+        console.error(`Error saving contact ${contactData.name}:`, error);
+        duplicateCount++;
+      }
+    }
+    
+    // Clean up session data
+    delete global.pendingImports[sessionId];
+    
+    console.log('=== Final Import Statistics ===');
+    console.log(`Inserted: ${insertedCount}`);
+    console.log(`Duplicates skipped: ${duplicateCount}`);
+    console.log(`Merged: ${mergedCount}`);
+    console.log(`Removed: ${removedCount}`);
+    
+    res.json({
+      success: true,
+      count: insertedCount,
+      duplicates: duplicateCount,
+      merged: mergedCount,
+      removed: removedCount,
+      contactsWithCompany,
+      contactsWithEmail,
+      message: `Successfully imported ${insertedCount} contacts with ${mergedCount} merged and ${removedCount} duplicates resolved`
+    });
+    
+  } catch (error) {
+    console.error('Duplicate resolution error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
+// ===== HELPER FUNCTIONS =====
+
+async function performEnhancedSearch(query) {
+  const lowercaseQuery = query.toLowerCase().trim();
+  
+  // Handle empty or very short queries
+  if (lowercaseQuery.length < 2) {
+    return [];
+  }
+  
+  const searchConditions = [];
+  
+  // Basic text search using MongoDB text index
+  searchConditions.push({
+    $text: { $search: query }
+  });
+  
+  // Name-based search (partial matches)
+  searchConditions.push({
+    name: { $regex: new RegExp(lowercaseQuery.split(' ').join('|'), 'i') }
+  });
+  
+  // Company search
+  if (lowercaseQuery.includes('company') || lowercaseQuery.includes('work')) {
+    const companyTerms = extractCompanyNames(lowercaseQuery);
+    if (companyTerms.length > 0) {
+      searchConditions.push({
+        company: { $regex: new RegExp(companyTerms.join('|'), 'i') }
+      });
+    }
+  }
+  
+  // Location search
+  if (lowercaseQuery.includes('location') || hasLocationKeywords(lowercaseQuery)) {
+    const locationTerms = extractLocationNames(lowercaseQuery);
+    if (locationTerms.length > 0) {
+      searchConditions.push({
+        location: { $regex: new RegExp(locationTerms.join('|'), 'i') }
+      });
+    }
+  }
+  
+  // Position/title search
+  if (lowercaseQuery.includes('engineer') || lowercaseQuery.includes('manager') || lowercaseQuery.includes('director')) {
+    searchConditions.push({
+      position: { $regex: new RegExp(lowercaseQuery, 'i') }
+    });
+  }
+  
+  // Tag-based search
+  const queryTags = generateTagsFromQuery(lowercaseQuery);
+  if (queryTags.length > 0) {
+    searchConditions.push({
+      tags: { $in: queryTags }
+    });
+  }
+  
+  // Execute search with OR conditions
+  const contacts = await Contact.find({
+    $or: searchConditions
+  }).limit(50).lean();
+  
+  return contacts;
+}
+
+function extractCompanyNames(query) {
+  const companies = [];
+  const commonCompanies = ['google', 'apple', 'microsoft', 'amazon', 'facebook', 'meta', 'tesla', 'netflix', 'uber', 'airbnb', 'spotify', 'twitter', 'linkedin', 'salesforce', 'oracle', 'ibm', 'intel', 'nvidia'];
+  
+  for (const company of commonCompanies) {
+    if (query.includes(company)) {
+      companies.push(company);
+    }
+  }
+  
+  // Extract potential company names after "at" or "work"
+  const companyMatch = query.match(/(?:at|work.*?at|company.*?)\s+([a-zA-Z][a-zA-Z\s]{2,20})/i);
+  if (companyMatch && companyMatch[1]) {
+    companies.push(companyMatch[1].trim());
+  }
+  
+  return companies;
+}
+
+function extractLocationNames(query) {
+  const locations = [];
+  const commonLocations = ['san francisco', 'new york', 'los angeles', 'seattle', 'chicago', 'boston', 'austin', 'denver', 'portland', 'california', 'texas', 'florida'];
+  
+  for (const location of commonLocations) {
+    if (query.includes(location)) {
+      locations.push(location);
+    }
+  }
+  
+  return locations;
+}
+
+function hasLocationKeywords(query) {
+  const locationKeywords = ['in', 'from', 'area', 'city', 'state', 'country', 'lives', 'based'];
+  return locationKeywords.some(keyword => query.includes(keyword));
+}
+
+function generateTagsFromQuery(query) {
+  const tags = [];
+  
+  // Role-based tags
+  if (query.includes('engineer') || query.includes('developer')) tags.push('function:engineering');
+  if (query.includes('manager') || query.includes('director')) tags.push('function:management');
+  if (query.includes('designer')) tags.push('function:design');
+  if (query.includes('sales')) tags.push('function:sales');
+  if (query.includes('marketing')) tags.push('function:marketing');
+  
+  // Industry tags
+  if (query.includes('tech') || query.includes('technology')) tags.push('industry:technology');
+  if (query.includes('finance') || query.includes('banking')) tags.push('industry:finance');
+  if (query.includes('healthcare') || query.includes('medical')) tags.push('industry:healthcare');
+  
+  return tags;
+}
+
+// Merge LinkedIn data from both files
 function mergeLinkedInData(connectionsData, contactsData) {
   const mergedContacts = new Map();
   
-  // Process Connections CSV (usually: First Name, Last Name, Connected On)
+  // Process Connections CSV
   if (connectionsData) {
     const connectionsLines = connectionsData.split(/\r?\n/).filter(line => line.trim());
     if (connectionsLines.length > 1) {
       const connectionsHeaders = parseCSVLine(connectionsLines[0]);
-      console.log('Connections headers:', connectionsHeaders);
       
       for (let i = 1; i < connectionsLines.length; i++) {
         const fields = parseCSVLine(connectionsLines[i]);
@@ -508,63 +641,41 @@ function mergeLinkedInData(connectionsData, contactsData) {
             company: '',
             position: '',
             location: '',
-            url: '',
-            phone: '',
-            source: 'connections'
+            source: 'linkedin_connections'
           });
         }
       }
     }
   }
   
-  // Process Contacts CSV (usually: Name, URL, Email, Company, Position, etc.)
+  // Process Contacts CSV and merge with connections
   if (contactsData) {
     const contactsLines = contactsData.split(/\r?\n/).filter(line => line.trim());
     if (contactsLines.length > 1) {
       const contactsHeaders = parseCSVLine(contactsLines[0]);
-      console.log('Contacts headers:', contactsHeaders);
-      
-      // Find column indices in contacts CSV
-      const contactsIndices = {
-        name: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.name),
-        firstName: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.firstName),
-        lastName: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.lastName),
-        email: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.email),
-        company: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.company),
-        position: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.position),
-        url: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.url),
-        phone: findHeaderIndex(contactsHeaders, ['phone', 'phone number', 'mobile']),
-        location: findHeaderIndex(contactsHeaders, LINKEDIN_HEADER_MAPPINGS.location)
-      };
       
       for (let i = 1; i < contactsLines.length; i++) {
         const fields = parseCSVLine(contactsLines[i]);
+        const contact = parseContactFields(fields, contactsHeaders);
         
-        let fullName = '';
-        if (contactsIndices.name >= 0) {
-          fullName = fields[contactsIndices.name]?.trim() || '';
-        } else if (contactsIndices.firstName >= 0 || contactsIndices.lastName >= 0) {
-          const firstName = fields[contactsIndices.firstName]?.trim() || '';
-          const lastName = fields[contactsIndices.lastName]?.trim() || '';
-          fullName = `${firstName} ${lastName}`.trim();
-        }
-        
-        if (fullName) {
-          const key = fullName.toLowerCase();
-          const existing = mergedContacts.get(key) || {};
+        if (contact.name) {
+          const key = contact.name.toLowerCase();
           
-          // Merge data from contacts CSV
-          mergedContacts.set(key, {
-            ...existing,
-            name: fullName,
-            email: (fields[contactsIndices.email]?.trim() || existing.email || '').toLowerCase(),
-            company: fields[contactsIndices.company]?.trim() || existing.company || '',
-            position: fields[contactsIndices.position]?.trim() || existing.position || '',
-            url: fields[contactsIndices.url]?.trim() || existing.url || '',
-            phone: fields[contactsIndices.phone]?.trim() || existing.phone || '',
-            location: fields[contactsIndices.location]?.trim() || existing.location || '',
-            source: existing.source ? `${existing.source}+contacts` : 'contacts'
-          });
+          if (mergedContacts.has(key)) {
+            // Merge with existing connection
+            const existing = mergedContacts.get(key);
+            mergedContacts.set(key, {
+              ...existing,
+              ...contact,
+              source: 'linkedin_merged'
+            });
+          } else {
+            // New contact
+            mergedContacts.set(key, {
+              ...contact,
+              source: 'linkedin_contacts'
+            });
+          }
         }
       }
     }
@@ -573,488 +684,269 @@ function mergeLinkedInData(connectionsData, contactsData) {
   return Array.from(mergedContacts.values());
 }
 
-// Single CSV processing function
 function processSingleCSV(lines) {
   const contacts = [];
-  const errors = [];
+  if (lines.length < 2) return contacts;
   
-  // Parse headers
-    const headerLine = lines[0];
-    const headers = parseCSVLine(headerLine);
-    console.log('CSV Headers found:', headers);
-    console.log('Raw header line:', headerLine);
+  const headers = parseCSVLine(lines[0]);
+  console.log('CSV Headers:', headers);
+  
+  for (let i = 1; i < lines.length; i++) {
+    const fields = parseCSVLine(lines[i]);
     
-    // Enhanced header validation - accept minimal LinkedIn format
-    const hasValidHeaders = headers.some(header => 
-      header.toLowerCase().includes('name') || 
-      header.toLowerCase().includes('company') ||
-      header.toLowerCase().includes('position') ||
-      header.toLowerCase().includes('connected')
+    // Detect file type based on headers
+    const isConnectionsFile = headers.some(h => 
+      h.toLowerCase().includes('first name') && 
+      headers.some(h2 => h2.toLowerCase().includes('last name'))
     );
     
-    if (!hasValidHeaders) {
-      throw new Error('This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Last Name", etc.');
-    }
-    
-    // Find column indices with better mapping
-    const indices = {
-      firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
-      lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
-      name: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.name),
-      email: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.email),
-      company: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.company),
-      position: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.position),
-      location: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.location),
-      connectedOn: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.connectedOn),
-      url: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.url)
-    };
-
-    console.log('Field indices:', indices);
-    console.log('Available headers for mapping:', headers.map((h, i) => `${i}: "${h}"`));
-    
-    // Debug email field specifically
-    if (indices.email >= 0) {
-      console.log(`✅ Email field found at index ${indices.email}: "${headers[indices.email]}"`);
-    } else {
-      console.log('❌ No email field found in headers');
-    }
-
-    // Validate that we found at least name fields
-    if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
-      throw new Error('Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.');
-    }
-
-    // Check what data we can expect to extract
-    const availableFields = [];
-    if (indices.firstName >= 0 || indices.lastName >= 0) availableFields.push('Names');
-    if (indices.email >= 0) availableFields.push('Emails');
-    if (indices.company >= 0) availableFields.push('Companies');
-    if (indices.position >= 0) availableFields.push('Positions');
-    if (indices.location >= 0) availableFields.push('Locations');
-    
-    console.log('Will extract:', availableFields.join(', '));
-    
-    // Warn if only basic data is available
-    if (availableFields.length === 1 && availableFields[0] === 'Names') {
-      console.log('⚠️ LinkedIn export contains only names - no company/email data available');
-    }
-
-    let processed = 0;
-    let skipped = 0;
-
-    // Process data rows (skip header)
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) {
-        skipped++;
-        continue;
-      }
-
-      try {
-        const fields = parseCSVLine(line);
-        processed++;
-
-        // Extract name with priority: explicit name field > firstName + lastName
-        let name = '';
-        if (indices.name >= 0 && fields[indices.name]?.trim()) {
-          name = fields[indices.name].trim();
-        } else {
-          const firstName = indices.firstName >= 0 ? (fields[indices.firstName]?.trim() || '') : '';
-          const lastName = indices.lastName >= 0 ? (fields[indices.lastName]?.trim() || '') : '';
-          name = `${firstName} ${lastName}`.trim();
-        }
-
-        if (!name) {
-          errors.push(`Row ${i + 1}: No valid name found`);
-          continue;
-        }
-
-        // Extract field data with better error handling
-        const emailRaw = indices.email >= 0 && fields[indices.email] ? fields[indices.email].trim() : '';
-        const companyRaw = indices.company >= 0 && fields[indices.company] ? fields[indices.company].trim() : '';
-        const positionRaw = indices.position >= 0 && fields[indices.position] ? fields[indices.position].trim() : '';
-        
-        const contactData = {
-          name,
-          email: emailRaw.toLowerCase(),
-          company: companyRaw,
-          position: positionRaw,
-          location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : '',
-          connectedOn: indices.connectedOn >= 0 && fields[indices.connectedOn] ? fields[indices.connectedOn].trim() : '',
-          url: indices.url >= 0 && fields[indices.url] ? fields[indices.url].trim() : ''
-        };
-
-        // Log sample contact data for debugging
-        if (i <= 3) {
-          console.log(`Sample contact ${i}: ${JSON.stringify(contactData)}`);
-          console.log(`Raw fields for row ${i}:`, fields);
-        }
-
-        contacts.push(contactData);
-
-      } catch (error) {
-        console.error(`Error processing row ${i + 1}:`, error);
-        errors.push(`Row ${i + 1}: ${error.message}`);
-        skipped++;
-      }
-    }
-
-    console.log(`Processed ${processed} rows, ${contacts.length} valid contacts, ${skipped} skipped, ${errors.length} errors`);
-    
-    return contacts;
-}
-
-// LLM-powered duplicate detection endpoint
-app.post('/api/contacts/find-duplicates', async (req, res) => {
-  try {
-    const contacts = await Contact.find({});
-    
-    if (contacts.length < 2) {
-      return res.json({ duplicates: [], message: "Not enough contacts for duplicate detection" });
-    }
-
-    console.log(`🔍 Analyzing ${contacts.length} contacts for potential duplicates...`);
-
-    // Group contacts for LLM analysis
-    const contactSummaries = contacts.map(contact => ({
-      id: contact._id,
-      name: contact.name,
-      email: contact.email,
-      company: contact.company,
-      position: contact.position,
-      location: contact.location
-    }));
-
-    // Use OpenAI to identify potential duplicates
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    
-    const prompt = `Analyze these contacts and identify potential duplicates. Look for:
-1. Similar names (nicknames, full names, variations)
-2. Same email addresses
-3. Same company with similar names
-4. Same person with different data completeness
-
-Return JSON with this structure:
-{
-  "duplicate_groups": [
-    {
-      "contacts": [contact_id1, contact_id2],
-      "reason": "Same person - John Smith vs J. Smith, both at Google",
-      "confidence": 0.9,
-      "suggested_merge": {
-        "name": "preferred name",
-        "email": "best email",
-        "company": "best company"
-      }
-    }
-  ]
-}
-
-Contacts to analyze:
-${JSON.stringify(contactSummaries, null, 2)}`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 2000
-    });
-
-    const duplicateAnalysis = JSON.parse(response.choices[0].message.content);
-    
-    // Add contact details to the response
-    const enhancedDuplicates = duplicateAnalysis.duplicate_groups.map(group => ({
-      ...group,
-      contacts: group.contacts.map(id => contacts.find(c => c._id.toString() === id)).filter(Boolean)
-    }));
-
-    console.log(`✅ Found ${enhancedDuplicates.length} potential duplicate groups`);
-
-    res.json({
-      success: true,
-      duplicates: enhancedDuplicates,
-      total_groups: enhancedDuplicates.length,
-      message: enhancedDuplicates.length > 0 
-        ? `Found ${enhancedDuplicates.length} potential duplicate groups`
-        : "No duplicates detected"
-    });
-
-  } catch (error) {
-    console.error('❌ Duplicate detection error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Duplicate detection failed: ${error.message}`
-    });
-  }
-});
-
-// Merge duplicate contacts endpoint
-app.post('/api/contacts/merge', async (req, res) => {
-  try {
-    const { contactIds, mergedData } = req.body;
-
-    if (!contactIds || contactIds.length < 2) {
-      return res.status(400).json({ success: false, message: "Need at least 2 contacts to merge" });
-    }
-
-    console.log(`🔄 Merging ${contactIds.length} contacts...`);
-
-    // Get all contacts to merge
-    const contactsToMerge = await Contact.find({ _id: { $in: contactIds } });
-    
-    if (contactsToMerge.length !== contactIds.length) {
-      return res.status(400).json({ success: false, message: "Some contacts not found" });
-    }
-
-    // Create merged contact with best data from all sources
-    const mergedContact = {
-      name: mergedData.name || contactsToMerge.find(c => c.name)?.name,
-      email: mergedData.email || contactsToMerge.find(c => c.email)?.email,
-      company: mergedData.company || contactsToMerge.find(c => c.company)?.company,
-      position: mergedData.position || contactsToMerge.find(c => c.position)?.position,
-      location: mergedData.location || contactsToMerge.find(c => c.location)?.location,
-      phone: mergedData.phone || contactsToMerge.find(c => c.phone)?.phone,
-      profileUrl: mergedData.profileUrl || contactsToMerge.find(c => c.profileUrl)?.profileUrl,
-      connectedDate: contactsToMerge.find(c => c.connectedDate)?.connectedDate,
-      // Combine interests, skills, etc.
-      interests: [...new Set(contactsToMerge.flatMap(c => c.interests || []))],
-      skills: [...new Set(contactsToMerge.flatMap(c => c.skills || []))],
-      notes: contactsToMerge.map(c => c.notes).filter(Boolean).join('; '),
-      tags: [...new Set(contactsToMerge.flatMap(c => c.tags || []))],
-      importSource: contactsToMerge.map(c => c.importSource).filter(Boolean).join(', '),
-      lastUpdated: new Date()
-    };
-
-    // Save the merged contact
-    const newContact = new Contact(mergedContact);
-    await newContact.save();
-
-    // Delete the original contacts
-    await Contact.deleteMany({ _id: { $in: contactIds } });
-
-    console.log(`✅ Successfully merged ${contactIds.length} contacts into ${newContact._id}`);
-
-    res.json({
-      success: true,
-      mergedContact: newContact,
-      message: `Successfully merged ${contactIds.length} contacts`
-    });
-
-  } catch (error) {
-    console.error('❌ Contact merge error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Contact merge failed: ${error.message}`
-    });
-  }
-});
-
-// Get detailed contact "baseball card" view
-app.get('/api/contacts/:id/details', async (req, res) => {
-  try {
-    const contact = await Contact.findById(req.params.id);
-    
-    if (!contact) {
-      return res.status(404).json({ success: false, message: "Contact not found" });
-    }
-
-    // Format contact data for "baseball card" view
-    const contactCard = {
-      id: contact._id,
-      basicInfo: {
-        fullName: contact.name,
-        email: contact.email,
-        phone: contact.phone,
-        nickname: contact.nickname || contact.name?.split(' ')[0]
-      },
-      professional: {
-        company: contact.company,
-        position: contact.position,
-        industry: contact.industry,
-        profileUrl: contact.profileUrl
-      },
-      personal: {
-        location: contact.location,
-        interests: contact.interests || [],
-        skills: contact.skills || [],
-        bio: contact.bio
-      },
-      networking: {
-        connectedDate: contact.connectedDate,
-        connectionType: contact.connectionType,
-        lastContact: contact.lastContact,
-        meetingHistory: contact.meetingHistory || [],
-        mutualConnections: contact.mutualConnections || []
-      },
-      metadata: {
-        tags: contact.tags || [],
-        notes: contact.notes,
-        importSource: contact.importSource,
-        lastUpdated: contact.lastUpdated,
-        dateAdded: contact.dateAdded
-      },
-      searchableFields: [
-        contact.name,
-        contact.email,
-        contact.company,
-        contact.position,
-        contact.location,
-        ...(contact.interests || []),
-        ...(contact.skills || []),
-        ...(contact.tags || [])
-      ].filter(Boolean)
-    };
-
-    res.json({
-      success: true,
-      contact: contactCard
-    });
-
-  } catch (error) {
-    console.error('❌ Contact details error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Failed to get contact details: ${error.message}`
-    });
-  }
-});
-
-// Natural language search with timeout protection
-app.get('/api/search/natural', async (req, res) => {
-  try {
-    const query = req.query.q?.toLowerCase() || '';
-    console.log(`Search query: "${query}"`);
-    
-    if (!query) {
-      const allContactsPromise = Contact.find().sort({ createdAt: -1 });
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Search timeout')), 5000)
-      );
+    let contact;
+    if (isConnectionsFile) {
+      // Process as connections file
+      const firstName = fields[0]?.trim() || '';
+      const lastName = fields[1]?.trim() || '';
+      const connectedOn = fields[2]?.trim() || '';
       
-      const allContacts = await Promise.race([allContactsPromise, timeoutPromise]);
-      console.log(`Returning all ${allContacts.length} contacts`);
-      return res.json({ results: allContacts });
+      contact = {
+        name: `${firstName} ${lastName}`.trim(),
+        firstName,
+        lastName,
+        connectedOn,
+        email: '',
+        company: '',
+        position: '',
+        location: '',
+        source: 'linkedin_connections'
+      };
+    } else {
+      // Process as contacts file
+      contact = parseContactFields(fields, headers);
     }
-
-    // Enhanced search with broader patterns
-    const searchConditions = [];
-    const keywords = query.split(/\s+/);
     
-    // Build comprehensive search conditions
-    for (const keyword of keywords) {
-      if (keyword.length > 1) {
-        searchConditions.push({
-          $or: [
-            { name: { $regex: keyword, $options: 'i' } },
-            { company: { $regex: keyword, $options: 'i' } },
-            { position: { $regex: keyword, $options: 'i' } },
-            { location: { $regex: keyword, $options: 'i' } },
-            { email: { $regex: keyword, $options: 'i' } },
-            { tags: { $elemMatch: { $regex: keyword, $options: 'i' } } }
-          ]
-        });
+    if (contact && contact.name && contact.name.trim()) {
+      contacts.push(contact);
+    }
+  }
+  
+  return contacts;
+}
+
+function parseContactFields(fields, headers) {
+  const contact = {
+    name: '',
+    email: '',
+    company: '',
+    position: '',
+    location: '',
+    connectedOn: '',
+    source: 'linkedin_contacts'
+  };
+  
+  // Map headers to contact fields
+  const headerMapping = {};
+  headers.forEach((header, index) => {
+    const lowerHeader = header.toLowerCase();
+    if (lowerHeader.includes('name') && !lowerHeader.includes('first') && !lowerHeader.includes('last')) {
+      headerMapping.name = index;
+    } else if (lowerHeader.includes('email')) {
+      headerMapping.email = index;
+    } else if (lowerHeader.includes('company') || lowerHeader.includes('organization')) {
+      headerMapping.company = index;
+    } else if (lowerHeader.includes('position') || lowerHeader.includes('title')) {
+      headerMapping.position = index;
+    } else if (lowerHeader.includes('location')) {
+      headerMapping.location = index;
+    } else if (lowerHeader.includes('connected')) {
+      headerMapping.connectedOn = index;
+    }
+  });
+  
+  // Fill contact data
+  Object.keys(headerMapping).forEach(field => {
+    const index = headerMapping[field];
+    if (index < fields.length) {
+      contact[field] = fields[index]?.trim() || '';
+    }
+  });
+  
+  return contact;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 2;
+      } else {
+        inQuotes = !inQuotes;
+        i++;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+      i++;
+    } else {
+      current += char;
+      i++;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
+// Generate tags for contacts
+function generateTags(contact) {
+  const tags = [];
+  
+  if (contact.company) {
+    tags.push(`company:${contact.company.toLowerCase()}`);
+    
+    // Industry-based tags
+    const company = contact.company.toLowerCase();
+    if (company.includes('tech') || company.includes('software') || company.includes('google') || company.includes('microsoft')) {
+      tags.push('industry:technology');
+    }
+  }
+
+  if (contact.position) {
+    tags.push(`role:${contact.position.toLowerCase()}`);
+    
+    // Function-based tags
+    const position = contact.position.toLowerCase();
+    if (position.includes('engineer') || position.includes('developer') || position.includes('programmer')) {
+      tags.push('function:engineering');
+    } else if (position.includes('manager') || position.includes('director') || position.includes('lead')) {
+      tags.push('function:management');
+    } else if (position.includes('designer') || position.includes('ux') || position.includes('ui')) {
+      tags.push('function:design');
+    }
+  }
+
+  if (contact.location) {
+    tags.push(`location:${contact.location.toLowerCase()}`);
+  }
+
+  return tags;
+}
+
+// Duplicate detection functions
+function detectDuplicates(contacts) {
+  const duplicateGroups = [];
+  const processed = new Set();
+  
+  for (let i = 0; i < contacts.length; i++) {
+    if (processed.has(i)) continue;
+    
+    const currentContact = contacts[i];
+    const duplicateGroup = [currentContact];
+    
+    for (let j = i + 1; j < contacts.length; j++) {
+      if (processed.has(j)) continue;
+
+      const otherContact = contacts[j];
+      
+      if (isDuplicate(currentContact, otherContact)) {
+        duplicateGroup.push(otherContact);
+        processed.add(j);
       }
     }
 
-    // Tech companies search enhancement
-    if (query.includes('tech') || query.includes('google') || query.includes('microsoft') || query.includes('apple')) {
-      searchConditions.push({
-        $or: [
-          { company: { $regex: 'google|microsoft|apple|amazon|meta|facebook|tech', $options: 'i' } },
-          { tags: { $elemMatch: { $regex: 'technology|tech|google|microsoft|apple', $options: 'i' } } }
-        ]
-      });
-    }
-
-    const searchQuery = searchConditions.length > 0 ? { $and: searchConditions } : {};
-    console.log('Search query object:', JSON.stringify(searchQuery, null, 2));
-
-    const searchPromise = Contact.find(searchQuery).sort({ createdAt: -1 });
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Search timeout')), 5000)
-    );
-    
-    const results = await Promise.race([searchPromise, timeoutPromise]);
-    console.log(`Found ${results.length} results for "${query}"`);
-    
-    res.json({ results });
-  } catch (error) {
-    console.error('Search error:', error);
-    if (error.message === 'Search timeout') {
-      res.status(504).json({ error: 'Search timeout - please try again', results: [] });
-    } else {
-      res.status(500).json({ error: 'Search failed', results: [] });
+    if (duplicateGroup.length > 1) {
+      duplicateGroups.push(duplicateGroup);
+      processed.add(i);
     }
   }
-});
 
-// CSV template download
-app.get('/api/csv-template', (req, res) => {
-  const template = [
-    'First Name,Last Name,Email Address,Company,Position,Connected On',
-    'John,Doe,john.doe@google.com,Google,Software Engineer,10/15/2023',
-    'Jane,Smith,,Microsoft,Product Manager,09/22/2023',
-    'Bob,Johnson,bob@startup.com,"Startup, Inc.",Founder & CEO,08/30/2023'
-  ].join('\n');
+  return duplicateGroups;
+}
+
+function isDuplicate(contact1, contact2) {
+  // Exact name match
+  if (contact1.name && contact2.name && 
+      contact1.name.toLowerCase().trim() === contact2.name.toLowerCase().trim()) {
+    return true;
+  }
+
+  // Email match
+  if (contact1.email && contact2.email && 
+      contact1.email.toLowerCase().trim() === contact2.email.toLowerCase().trim()) {
+    return true;
+  }
+
+  // Name similarity with company match
+  if (contact1.name && contact2.name && contact1.company && contact2.company) {
+    const name1 = contact1.name.toLowerCase().trim();
+    const name2 = contact2.name.toLowerCase().trim();
+    const company1 = contact1.company.toLowerCase().trim();
+    const company2 = contact2.company.toLowerCase().trim();
+    
+    // Check if names are very similar
+    const nameSimilarity = calculateNameSimilarity(name1, name2);
+    if (nameSimilarity > 0.8 && company1 === company2) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function calculateNameSimilarity(name1, name2) {
+  const words1 = name1.split(' ').filter(w => w.length > 1);
+  const words2 = name2.split(' ').filter(w => w.length > 1);
   
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="linkedin-import-template.csv"');
-  res.send(template);
-});
-
-// Serve static files for basic frontend
-app.use(express.static('public'));
-
-// Default route
-app.get('/', (req, res) => {
-  res.json({
-    message: 'BeeTagged API Server',
-    version: '1.0.0',
-    endpoints: [
-      '/health',
-      '/api/contacts',
-      '/api/import/linkedin',
-      '/api/search/natural',
-      '/api/csv-template'
-    ]
-  });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Server error:', error);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not found',
-    message: `Route ${req.method} ${req.path} not found`
-  });
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  try {
-    await mongoose.connection.close();
-    console.log('MongoDB connection closed.');
-    process.exit(0);
-  } catch (error) {
-    console.error('Error closing MongoDB connection:', error);
-    process.exit(1);
+  let matches = 0;
+  const maxWords = Math.max(words1.length, words2.length);
+  
+  for (const word1 of words1) {
+    for (const word2 of words2) {
+      if (word1 === word2 || 
+          (word1.length > 2 && word2.length > 2 && 
+           (word1.includes(word2) || word2.includes(word1)))) {
+        matches++;
+        break;
+      }
+    }
   }
-});
+  
+  return matches / maxWords;
+}
 
-// Start server
+function mergeContactInfo(contacts) {
+  const merged = {
+    name: '',
+    email: '',
+    company: '',
+    position: '',
+    location: '',
+    phone: '',
+    connectedOn: '',
+    source: 'linkedin_merged'
+  };
+  
+  // Merge information from all contacts, preferring non-empty values
+  for (const contact of contacts) {
+    Object.keys(merged).forEach(field => {
+      if (!merged[field] && contact[field]) {
+        merged[field] = contact[field];
+      }
+    });
+  }
+  
+  return merged;
+}
+
+// Start the server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`BeeTagged Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('MongoDB: configured');
 });
-
-module.exports = app;
