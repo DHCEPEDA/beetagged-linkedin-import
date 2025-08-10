@@ -1,0 +1,181 @@
+Short answer first: Facebook won’t let any app pull “all publicly available info about all your contacts.” With the Graph API you can only get a user’s friends who also use your app (via the user_friends permission). You’ll get basic fields like id and name; you can fetch each friend’s profile picture URL, and you can build a link to their profile. You cannot fetch phone numbers/emails or data about non-app friends.
+
+Below is a minimal Node.js/Express example that:
+
+Implements Facebook Login (OAuth)
+
+Exchanges the code for an access token
+
+Calls /me/friends and enriches each friend with a profile picture URL
+
+Returns JSON you can pass through to your app
+
+1) Create a Facebook app
+Go to developers.facebook.com → Create App (use “Consumer”).
+
+Add “Facebook Login”.
+
+Add a Valid OAuth Redirect URI (e.g. http://localhost:3000/auth/facebook/callback).
+
+In Permissions, request user_friends (you’ll get data only for friends who also authorized the app; in development mode, only developer/tester accounts return data).
+
+Note your App ID and App Secret.
+
+2) Server code (Node.js)
+Install deps
+
+bash
+Copy
+Edit
+npm init -y
+npm i express axios express-session dotenv
+.env
+
+ini
+Copy
+Edit
+FB_APP_ID=YOUR_APP_ID
+FB_APP_SECRET=YOUR_APP_SECRET
+FB_REDIRECT_URI=http://localhost:3000/auth/facebook/callback
+SESSION_SECRET=replace_with_a_long_random_string
+FB_API_VERSION=v20.0
+server.js
+
+js
+Copy
+Edit
+const express = require("express");
+const session = require("express-session");
+const axios = require("axios");
+require("dotenv").config();
+
+const app = express();
+const {
+  FB_APP_ID,
+  FB_APP_SECRET,
+  FB_REDIRECT_URI,
+  FB_API_VERSION = "v20.0",
+  SESSION_SECRET
+} = process.env;
+
+const GRAPH = `https://graph.facebook.com/${FB_API_VERSION}`;
+
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+}));
+
+// Kick off Facebook OAuth
+app.get("/auth/facebook", (req, res) => {
+  const params = new URLSearchParams({
+    client_id: FB_APP_ID,
+    redirect_uri: FB_REDIRECT_URI,
+    scope: "user_friends",
+    response_type: "code",
+    state: "xyz" // You should generate/validate a real CSRF state value
+  });
+  res.redirect(`https://www.facebook.com/${FB_API_VERSION}/dialog/oauth?${params.toString()}`);
+});
+
+// OAuth callback: exchange code for token
+app.get("/auth/facebook/callback", async (req, res) => {
+  const { code, error, error_description } = req.query;
+  if (error) return res.status(400).send({ error, error_description });
+
+  try {
+    const tokenRes = await axios.get(`${GRAPH}/oauth/access_token`, {
+      params: {
+        client_id: FB_APP_ID,
+        client_secret: FB_APP_SECRET,
+        redirect_uri: FB_REDIRECT_URI,
+        code
+      }
+    });
+
+    req.session.fbToken = tokenRes.data.access_token;
+    res.send("Facebook connected. You can now hit /api/me and /api/friends");
+  } catch (e) {
+    console.error(e.response?.data || e.message);
+    res.status(500).send("Failed to exchange code for token");
+  }
+});
+
+// Current user basic info (you)
+app.get("/api/me", async (req, res) => {
+  const token = req.session.fbToken;
+  if (!token) return res.status(401).send("Not authenticated");
+
+  try {
+    const r = await axios.get(`${GRAPH}/me`, {
+      params: {
+        fields: "id,name,link",
+        access_token: token
+      }
+    });
+    res.json(r.data);
+  } catch (e) {
+    console.error(e.response?.data || e.message);
+    res.status(500).send("Failed to fetch /me");
+  }
+});
+
+// Friends who also use the app (with picture URLs)
+app.get("/api/friends", async (req, res) => {
+  const token = req.session.fbToken;
+  if (!token) return res.status(401).send("Not authenticated");
+
+  try {
+    // Fetch all pages of /me/friends (returns only friends who use the app)
+    const friends = [];
+    let url = `${GRAPH}/me/friends?fields=id,name&limit=5000&access_token=${encodeURIComponent(token)}`;
+
+    while (url) {
+      const { data } = await axios.get(url);
+      if (Array.isArray(data.data)) friends.push(...data.data);
+      url = data.paging?.next || null;
+    }
+
+    // Enrich each friend with a profile picture URL
+    const enriched = await Promise.all(
+      friends.map(async (f) => {
+        const picRes = await axios.get(`${GRAPH}/${f.id}/picture`, {
+          params: { type: "large", redirect: 0, access_token: token }
+        });
+        return {
+          id: f.id,
+          name: f.name,
+          pictureUrl: picRes.data?.data?.url,
+          profileUrl: `https://www.facebook.com/${f.id}`
+        };
+      })
+    );
+
+    res.json({ count: enriched.length, friends: enriched });
+  } catch (e) {
+    console.error(e.response?.data || e.message);
+    res.status(500).send("Failed to fetch friends");
+  }
+});
+
+app.listen(3000, () => {
+  console.log("Server listening on http://localhost:3000");
+});
+Run it
+
+bash
+Copy
+Edit
+node server.js
+# Visit http://localhost:3000/auth/facebook
+# Then call http://localhost:3000/api/me and http://localhost:3000/api/friends
+Notes & gotchas
+Scope reality: user_friends only returns friends who’ve also logged into your app. This is a Facebook platform limitation; there’s no endpoint for the full friend/“contacts” list.
+
+Fields: Facebook won’t provide friends’ emails/phones or sensitive data via Graph. The example above returns id, name, pictureUrl, and a profile link you can construct.
+
+App modes: In development mode, only developer/tester accounts will return data. To access real users, switch the app to Live and ensure your permission access is compliant with Facebook’s policies.
+
+Security: Never ship your App Secret to the client. Store tokens securely. Consider adding token refresh/long-lived tokens if you need durability.
+
+If you want this in Python (Flask/FastAPI) or want me to add a lightweight frontend that hits these endpoints, say the word and I’ll adapt it.
