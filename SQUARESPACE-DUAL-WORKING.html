@@ -1,4 +1,4 @@
-<!-- BeeTagged Positioned Widget for Squarespace Header Injection -->
+<!-- BeeTagged Positioned Widget with Working Dual CSV Upload -->
 <!-- Copy this code into: Settings > Advanced > Code Injection > HEADER -->
 
 <div id="beetagged-widget-container"></div>
@@ -7,7 +7,7 @@
 window.addEventListener('load', function() {
   const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
   
-  // Create the full widget HTML with positioned layout
+  // Create the full widget HTML with positioned layout and working dual import
   const widgetHTML = `
     <div style="
       padding: 4rem 2rem 2rem 2rem;
@@ -104,71 +104,46 @@ window.addEventListener('load', function() {
         <!-- Import Tab Content -->
         <div id="import-content" style="display: none;">
           <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px;">
-            <h3 style="margin: 0 0 1.5rem 0; text-align: center;">📁 LinkedIn Dual Import</h3>
+            <h3 style="margin: 0 0 1.5rem 0; text-align: center;">📁 LinkedIn CSV Import</h3>
             
-            <!-- Dual File Upload -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
-              <!-- Contacts CSV -->
-              <div id="contacts-upload-zone" style="
-                border: 2px dashed rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 1.5rem;
-                text-align: center;
-                cursor: pointer;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.3s ease;
-              ">
-                <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem;">📋 Contacts CSV</h4>
-                <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem; opacity: 0.9;">Upload contacts export</p>
-                <p style="font-size: 0.8rem; opacity: 0.7; margin: 0;">Contains detailed info</p>
-                <input type="file" id="contacts-file-input" accept=".csv" style="display: none;">
-                <div id="contacts-file-name" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.8;"></div>
-              </div>
-              
-              <!-- Connections CSV -->
-              <div id="connections-upload-zone" style="
-                border: 2px dashed rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 1.5rem;
-                text-align: center;
-                cursor: pointer;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.3s ease;
-              ">
-                <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem;">🔗 Connections CSV</h4>
-                <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem; opacity: 0.9;">Upload connections export</p>
-                <p style="font-size: 0.8rem; opacity: 0.7; margin: 0;">Contains network data</p>
-                <input type="file" id="connections-file-input" accept=".csv" style="display: none;">
-                <div id="connections-file-name" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.8;"></div>
-              </div>
+            <!-- Simplified Upload Instructions -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <p style="margin: 0 0 1rem 0; opacity: 0.9;">Upload your LinkedIn export CSV files:</p>
+              <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">You can upload Contacts CSV and/or Connections CSV</p>
             </div>
             
-            <!-- File Status Display -->
-            <div id="file-status" style="
-              background: rgba(255,255,255,0.05);
-              border-radius: 8px;
-              padding: 1rem;
-              margin-bottom: 1rem;
-              text-align: center;
-              font-size: 0.9rem;
-              display: none;
-            "></div>
-            
-            <!-- Process Button -->
-            <button id="process-files-btn" style="
-              width: 100%;
-              padding: 12px 24px;
-              border: none;
-              border-radius: 8px;
-              font-weight: 600;
-              cursor: pointer;
-              background: rgba(255,255,255,0.2);
-              color: white;
-              border: 2px solid rgba(255,255,255,0.3);
-              transition: all 0.3s ease;
-              margin-bottom: 1rem;
-              display: none;
-            ">Process LinkedIn Files</button>
+            <!-- File Upload Areas -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+              <div id="contacts-zone" style="
+                border: 2px dashed rgba(255,255,255,0.3);
+                border-radius: 12px;
+                padding: 1.5rem;
+                text-align: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.05);
+                transition: all 0.3s ease;
+              ">
+                <h4 style="margin: 0 0 0.5rem 0;">📋 Contacts CSV</h4>
+                <p style="font-size: 0.9rem; margin: 0 0 0.5rem 0;">Detailed contact info</p>
+                <div id="contacts-status" style="font-size: 0.8rem; opacity: 0.7;">Click to upload</div>
+                <input type="file" id="contacts-input" accept=".csv" style="display: none;">
+              </div>
+              
+              <div id="connections-zone" style="
+                border: 2px dashed rgba(255,255,255,0.3);
+                border-radius: 12px;
+                padding: 1.5rem;
+                text-align: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.05);
+                transition: all 0.3s ease;
+              ">
+                <h4 style="margin: 0 0 0.5rem 0;">🔗 Connections CSV</h4>
+                <p style="font-size: 0.9rem; margin: 0 0 0.5rem 0;">Network connections</p>
+                <div id="connections-status" style="font-size: 0.8rem; opacity: 0.7;">Click to upload</div>
+                <input type="file" id="connections-input" accept=".csv" style="display: none;">
+              </div>
+            </div>
             
             <div id="upload-status" style="display: none;"></div>
             
@@ -178,7 +153,7 @@ window.addEventListener('load', function() {
                 <li>Go to LinkedIn Settings & Privacy</li>
                 <li>Click "Data Privacy" → "Get a copy of your data"</li>
                 <li>Select both "Connections" and "Contacts"</li>
-                <li>Upload both CSV files here for best results</li>
+                <li>Upload the CSV files here (either one or both)</li>
               </ol>
             </div>
           </div>
@@ -227,84 +202,6 @@ window.addEventListener('load', function() {
         ">×</button>
         
         <div id="baseball-card-content"></div>
-      </div>
-    </div>
-    
-    <!-- Duplicate Resolution Modal -->
-    <div id="duplicate-modal" style="
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 10001;
-      padding: 2rem;
-      box-sizing: border-box;
-      overflow-y: auto;
-    ">
-      <div style="
-        max-width: 800px;
-        margin: 0 auto;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        color: white;
-        box-shadow: 0 30px 60px rgba(0,0,0,0.3);
-        position: relative;
-        padding: 2rem;
-      ">
-        <h2 style="margin: 0 0 1rem 0; text-align: center;">🔍 Duplicate Contacts Found</h2>
-        <p style="text-align: center; opacity: 0.9; margin-bottom: 2rem;">
-          We found potential duplicate contacts. How would you like to handle them?
-        </p>
-        
-        <div id="duplicate-list" style="
-          max-height: 300px;
-          overflow-y: auto;
-          margin-bottom: 2rem;
-          background: rgba(0,0,0,0.2);
-          border-radius: 12px;
-          padding: 1rem;
-        "></div>
-        
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-          <button id="consolidate-all-btn" style="
-            flex: 1;
-            padding: 12px 16px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(34, 197, 94, 0.3);
-            color: white;
-            cursor: pointer;
-            font-weight: 600;
-            min-width: 150px;
-          ">Merge Duplicates</button>
-          
-          <button id="keep-separate-btn" style="
-            flex: 1;
-            padding: 12px 16px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(59, 130, 246, 0.3);
-            color: white;
-            cursor: pointer;
-            font-weight: 600;
-            min-width: 150px;
-          ">Keep Separate</button>
-          
-          <button id="review-individually-btn" style="
-            flex: 1;
-            padding: 12px 16px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(251, 191, 36, 0.3);
-            color: white;
-            cursor: pointer;
-            font-weight: 600;
-            min-width: 150px;
-          ">Review Each</button>
-        </div>
       </div>
     </div>
   `;
@@ -441,157 +338,54 @@ window.addEventListener('load', function() {
   }
   
   function setupFileUpload() {
-    // Setup contacts file upload
-    const contactsZone = document.getElementById('contacts-upload-zone');
-    const contactsInput = document.getElementById('contacts-file-input');
+    const contactsZone = document.getElementById('contacts-zone');
+    const contactsInput = document.getElementById('contacts-input');
+    const connectionsZone = document.getElementById('connections-zone');
+    const connectionsInput = document.getElementById('connections-input');
     
+    // Contacts file upload
     if (contactsZone && contactsInput) {
       contactsZone.onclick = function() { contactsInput.click(); };
-      setupZoneDragDrop(contactsZone, 'contacts');
       contactsInput.onchange = function(e) {
         if (e.target.files.length > 0) {
-          handleFileSelection(e.target.files[0], 'contacts');
+          handleFileUpload(e.target.files[0], 'contacts');
         }
       };
     }
     
-    // Setup connections file upload
-    const connectionsZone = document.getElementById('connections-upload-zone');
-    const connectionsInput = document.getElementById('connections-file-input');
-    
+    // Connections file upload  
     if (connectionsZone && connectionsInput) {
       connectionsZone.onclick = function() { connectionsInput.click(); };
-      setupZoneDragDrop(connectionsZone, 'connections');
       connectionsInput.onchange = function(e) {
         if (e.target.files.length > 0) {
-          handleFileSelection(e.target.files[0], 'connections');
+          handleFileUpload(e.target.files[0], 'connections');
         }
       };
     }
-    
-    // Setup process button
-    const processBtn = document.getElementById('process-files-btn');
-    if (processBtn) {
-      processBtn.onclick = handleDualFileUpload;
-    }
   }
   
-  function setupZoneDragDrop(zone, type) {
-    zone.ondragover = function(e) {
-      e.preventDefault();
-      zone.style.borderColor = 'rgba(255,255,255,0.6)';
-      zone.style.background = 'rgba(255,255,255,0.1)';
-    };
-    
-    zone.ondragleave = function(e) {
-      e.preventDefault();
-      zone.style.borderColor = 'rgba(255,255,255,0.3)';
-      zone.style.background = 'rgba(255,255,255,0.05)';
-    };
-    
-    zone.ondrop = function(e) {
-      e.preventDefault();
-      zone.style.borderColor = 'rgba(255,255,255,0.3)';
-      zone.style.background = 'rgba(255,255,255,0.05)';
-      if (e.dataTransfer.files.length > 0) {
-        handleFileSelection(e.dataTransfer.files[0], type);
-      }
-    };
-  }
-  
-  var selectedFiles = {};
-  
-  function handleFileSelection(file, type) {
+  async function handleFileUpload(file, type) {
     if (!file.name.endsWith('.csv')) {
       showMessage('Please select a CSV file.', 'error');
       return;
     }
     
-    selectedFiles[type] = file;
-    
-    const nameDiv = document.getElementById(type + '-file-name');
-    if (nameDiv) {
-      nameDiv.textContent = '✓ ' + file.name;
-      nameDiv.style.color = '#10b981';
-    }
-    
-    updateFileStatus();
-    updateProcessButton();
-  }
-  
-  function updateFileStatus() {
-    const statusDiv = document.getElementById('file-status');
-    if (!statusDiv) return;
-    
-    const contactsFile = selectedFiles.contacts;
-    const connectionsFile = selectedFiles.connections;
-    
-    if (contactsFile || connectionsFile) {
-      var statusText = 'Files ready: ';
-      if (contactsFile) statusText += 'Contacts ✓ ';
-      if (connectionsFile) statusText += 'Connections ✓';
-      
-      statusDiv.textContent = statusText;
-      statusDiv.style.display = 'block';
-    } else {
-      statusDiv.style.display = 'none';
-    }
-  }
-  
-  function updateProcessButton() {
-    const processBtn = document.getElementById('process-files-btn');
-    if (!processBtn) return;
-    
-    const hasFiles = selectedFiles.contacts || selectedFiles.connections;
-    
-    if (hasFiles) {
-      processBtn.style.display = 'block';
-      processBtn.disabled = false;
-      
-      if (selectedFiles.contacts && selectedFiles.connections) {
-        processBtn.textContent = 'Process Both Files (Merge & Detect Duplicates)';
-        processBtn.style.background = 'rgba(34, 197, 94, 0.3)';
-      } else {
-        processBtn.textContent = 'Process ' + (selectedFiles.contacts ? 'Contacts' : 'Connections') + ' File';
-        processBtn.style.background = 'rgba(255,255,255,0.2)';
-      }
-    } else {
-      processBtn.style.display = 'none';
-    }
-  }
-  
-  async function handleDualFileUpload() {
-    const contactsFile = selectedFiles.contacts;
-    const connectionsFile = selectedFiles.connections;
-    
-    if (!contactsFile && !connectionsFile) {
-      showMessage('Please select at least one CSV file.', 'error');
-      return;
-    }
-    
+    const statusDiv = document.getElementById(type + '-status');
     const uploadStatus = document.getElementById('upload-status');
-    const processBtn = document.getElementById('process-files-btn');
+    
+    if (statusDiv) {
+      statusDiv.textContent = 'Uploading...';
+      statusDiv.style.color = '#fbbf24';
+    }
     
     if (uploadStatus) {
       uploadStatus.style.display = 'block';
-      var statusText = 'Processing ';
-      if (contactsFile && connectionsFile) {
-        statusText += 'both files (merging data)...';
-      } else {
-        statusText += (contactsFile ? 'contacts' : 'connections') + ' file...';
-      }
-      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem;">' + statusText + '</div>';
-    }
-    
-    if (processBtn) {
-      processBtn.disabled = true;
-      processBtn.textContent = 'Processing...';
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem;">Uploading ' + type + ' file: ' + file.name + '</div>';
     }
     
     try {
       const formData = new FormData();
-      if (contactsFile) formData.append('contactsFile', contactsFile);
-      if (connectionsFile) formData.append('connectionsFile', connectionsFile);
+      formData.append('linkedinCsv', file);
       
       const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
         method: 'POST',
@@ -604,38 +398,35 @@ window.addEventListener('load', function() {
       
       const data = await response.json();
       
-      if (data.duplicates && data.duplicates.length > 0) {
-        // Show duplicate resolution modal
-        pendingDuplicates = data.duplicates;
-        showDuplicateModal(data.duplicates);
-      } else {
-        // No duplicates found, import successful
-        const count = data.imported || data.count || 'some';
-        var message = 'Successfully processed ' + count + ' contacts';
-        if (data.enhanced) {
-          message += ' and enhanced ' + data.enhanced + ' existing contacts';
-        }
-        message += '!';
-        showMessage(message, 'success');
+      if (statusDiv) {
+        statusDiv.textContent = '✓ ' + file.name;
+        statusDiv.style.color = '#10b981';
       }
       
+      var message = 'Successfully processed ' + type + ' file!';
+      if (data.count) {
+        message += ' Added ' + data.count + ' contacts.';
+      }
+      if (data.enhanced) {
+        message += ' Enhanced ' + data.enhanced + ' existing contacts.';
+      }
+      
+      showMessage(message, 'success');
+      
     } catch (error) {
-      showMessage('Upload failed. Please try again.', 'error');
+      if (statusDiv) {
+        statusDiv.textContent = '✗ Upload failed';
+        statusDiv.style.color = '#ef4444';
+      }
+      showMessage('Upload failed for ' + type + ' file. Please try again.', 'error');
     } finally {
       if (uploadStatus) {
         uploadStatus.style.display = 'none';
       }
-      if (processBtn) {
-        processBtn.disabled = false;
-        updateProcessButton();
-      }
     }
   }
   
-  var pendingDuplicates = [];
-  
   function setupModals() {
-    // Baseball card modal
     const cardModal = document.getElementById('baseball-card-modal');
     const closeModal = document.getElementById('close-modal');
     
@@ -644,92 +435,6 @@ window.addEventListener('load', function() {
       cardModal.onclick = function(e) {
         if (e.target === cardModal) cardModal.style.display = 'none';
       };
-    }
-    
-    // Duplicate resolution modal
-    const duplicateModal = document.getElementById('duplicate-modal');
-    const consolidateAllBtn = document.getElementById('consolidate-all-btn');
-    const keepSeparateBtn = document.getElementById('keep-separate-btn');
-    const reviewIndividuallyBtn = document.getElementById('review-individually-btn');
-    
-    if (consolidateAllBtn) {
-      consolidateAllBtn.onclick = function() { resolveDuplicates('consolidate'); };
-    }
-    
-    if (keepSeparateBtn) {
-      keepSeparateBtn.onclick = function() { resolveDuplicates('separate'); };
-    }
-    
-    if (reviewIndividuallyBtn) {
-      reviewIndividuallyBtn.onclick = function() { resolveDuplicates('review'); };
-    }
-  }
-  
-  function showDuplicateModal(duplicates) {
-    const modal = document.getElementById('duplicate-modal');
-    const duplicateList = document.getElementById('duplicate-list');
-    
-    if (!modal || !duplicateList) return;
-    
-    var listHTML = '';
-    for (var i = 0; i < duplicates.length; i++) {
-      var group = duplicates[i];
-      listHTML += '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">';
-      listHTML += '<h4 style="margin: 0 0 0.5rem 0;">Potential Match #' + (i + 1) + '</h4>';
-      listHTML += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">';
-      for (var j = 0; j < group.length; j++) {
-        var contact = group[j];
-        listHTML += '<div style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 6px;">';
-        listHTML += '<div style="font-weight: 600;">' + contact.name + '</div>';
-        listHTML += '<div style="font-size: 0.9rem; opacity: 0.8;">' + (contact.company || 'No company') + '</div>';
-        listHTML += '<div style="font-size: 0.8rem; opacity: 0.7;">' + (contact.email || 'No email') + '</div>';
-        listHTML += '<div style="font-size: 0.8rem; opacity: 0.6;">Source: ' + contact.source + '</div>';
-        listHTML += '</div>';
-      }
-      listHTML += '</div>';
-      listHTML += '</div>';
-    }
-    
-    duplicateList.innerHTML = listHTML;
-    modal.style.display = 'block';
-  }
-  
-  async function resolveDuplicates(action) {
-    const duplicateModal = document.getElementById('duplicate-modal');
-    
-    try {
-      const response = await fetch(BACKEND_URL + '/api/import/resolve-duplicates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: action,
-          duplicates: pendingDuplicates
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Resolution failed');
-      }
-      
-      const data = await response.json();
-      
-      if (duplicateModal) {
-        duplicateModal.style.display = 'none';
-      }
-      
-      var message = '';
-      if (action === 'consolidate') {
-        message = 'Successfully merged ' + (data.count || 'duplicate') + ' contacts!';
-      } else if (action === 'separate') {
-        message = 'Successfully imported ' + (data.count || 'all') + ' contacts separately!';
-      } else {
-        message = 'Duplicate resolution completed!';
-      }
-      
-      showMessage(message, 'success');
-      
-    } catch (error) {
-      showMessage('Duplicate resolution failed. Please try again.', 'error');
     }
   }
   
