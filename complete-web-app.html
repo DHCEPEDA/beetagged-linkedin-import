@@ -1,0 +1,743 @@
+<!-- BeeTagged Complete Web App with Duplicate Detection -->
+<!-- This is the complete updated Squarespace widget code -->
+
+<div id="beetagged-widget-container"></div>
+
+<script>
+window.addEventListener('load', function() {
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
+  // Create the full widget HTML with positioned layout and working dual import
+  const widgetHTML = `
+    <div style="
+      padding: 4rem 2rem 2rem 2rem;
+      box-sizing: border-box;
+    ">
+      <!-- Header Section -->
+      <div style="
+        text-align: center;
+        margin-bottom: 4rem;
+      ">
+        <h1 style="
+          font-size: 3rem; 
+          font-weight: 700; 
+          margin: 0 0 1rem 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">🏷️ BeeTagged</h1>
+        <p style="
+          font-size: 1.2rem; 
+          color: #6b7280; 
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">AI-Powered Contact Intelligence & Professional Network Search</p>
+      </div>
+      
+      <!-- Main Widget Container -->
+      <div style="
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: #87CEEB;
+        border-radius: 16px;
+        color: #00A86B;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      ">
+        
+        <div style="display: flex; background: rgba(255,255,255,0.3); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
+          <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.5); color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s ease;">🔍 Search Contacts</button>
+          <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: #00A86B; cursor: pointer; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;">📁 Import LinkedIn</button>
+        </div>
+        
+        <!-- Search Tab Content -->
+        <div id="search-content" style="display: block;">
+          <div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
+            <input type="text" id="search-input" placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'" style="
+              width: 100%;
+              padding: 12px 16px;
+              border: none;
+              border-radius: 8px;
+              font-size: 1rem;
+              margin-bottom: 1rem;
+              background: rgba(255,255,255,0.9);
+              color: #333;
+              box-sizing: border-box;
+            ">
+            
+            <button id="search-btn" style="
+              width: 100%;
+              padding: 12px 24px;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              background: rgba(255,255,255,0.5);
+              color: #00A86B;
+              border: 2px solid rgba(255,255,255,0.5);
+              transition: all 0.3s ease;
+            ">Search Contacts</button>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; justify-content: center;">
+              <span class="example-tag" data-query="Michael" style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.5);">Find Michael</span>
+              <span class="example-tag" data-query="people who work at tech companies" style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.5);">Tech workers</span>
+              <span class="example-tag" data-query="contacts in San Francisco" style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.5);">San Francisco</span>
+            </div>
+          </div>
+          
+          <div id="search-results" style="
+            background: rgba(255,255,255,0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+          ">
+            <h3 style="margin: 0 0 1rem 0; text-align: center;">Search Results</h3>
+            <div id="results-list"></div>
+          </div>
+        </div>
+        
+        <!-- Import Tab Content -->
+        <div id="import-content" style="display: none;">
+          <div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 1.5rem 0; text-align: center;">📁 LinkedIn CSV Import</h3>
+            
+            <!-- Simplified Upload Instructions -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <p style="margin: 0 0 1rem 0; opacity: 0.9;">Upload your LinkedIn export CSV files:</p>
+              <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">You can upload Contacts CSV and/or Connections CSV</p>
+            </div>
+            
+            <!-- File Upload Areas -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+              <div id="contacts-zone" style="
+                border: 2px dashed rgba(255,255,255,0.5);
+                border-radius: 12px;
+                padding: 1.5rem;
+                text-align: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.3);
+                transition: all 0.3s ease;
+              ">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📧</div>
+                <div style="font-weight: 500; margin-bottom: 0.5rem;">LinkedIn Contacts</div>
+                <div style="font-size: 0.85rem; opacity: 0.8;">contacts.csv file</div>
+                <input type="file" id="contacts-file" accept=".csv" style="display: none;">
+              </div>
+              
+              <div id="connections-zone" style="
+                border: 2px dashed rgba(255,255,255,0.5);
+                border-radius: 12px;
+                padding: 1.5rem;
+                text-align: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.3);
+                transition: all 0.3s ease;
+              ">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔗</div>
+                <div style="font-weight: 500; margin-bottom: 0.5rem;">LinkedIn Connections</div>
+                <div style="font-size: 0.85rem; opacity: 0.8;">connections.csv file</div>
+                <input type="file" id="connections-file" accept=".csv" style="display: none;">
+              </div>
+            </div>
+            
+            <!-- Upload Status -->
+            <div id="upload-status" style="display: none; margin-top: 1rem;"></div>
+            
+            <!-- Import Button -->
+            <button id="import-btn" style="
+              width: 100%;
+              padding: 12px 24px;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              background: rgba(255,255,255,0.5);
+              color: #00A86B;
+              margin-top: 1rem;
+              opacity: 0.5;
+              pointer-events: none;
+              transition: all 0.3s ease;
+            ">Select Files to Import</button>
+            
+            <!-- Quick Help Section -->
+            <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+              <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; opacity: 0.9;">📋 How to Export from LinkedIn:</h4>
+              <div style="font-size: 0.8rem; opacity: 0.8; line-height: 1.4;">
+                1. Go to LinkedIn → Settings & Privacy → Data Privacy<br>
+                2. Click "Get a copy of your data"<br>
+                3. Select "Connections" and/or "Contacts"<br>
+                4. Download and upload the CSV files here
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Global Message Container -->
+        <div id="global-message" style="display: none;"></div>
+      </div>
+    </div>
+  `;
+  
+  // Insert the widget into the container
+  const container = document.getElementById('beetagged-widget-container');
+  if (container) {
+    container.innerHTML = widgetHTML;
+    
+    // Initialize all event listeners after DOM is ready
+    initializeEventListeners();
+  }
+
+  function initializeEventListeners() {
+    // Tab switching
+    const searchTab = document.getElementById('search-tab');
+    const importTab = document.getElementById('import-tab');
+    const searchContent = document.getElementById('search-content');
+    const importContent = document.getElementById('import-content');
+    
+    if (searchTab && importTab && searchContent && importContent) {
+      searchTab.addEventListener('click', function() {
+        // Update tab styles
+        searchTab.style.background = 'rgba(255,255,255,0.5)';
+        searchTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        importTab.style.background = 'transparent';
+        importTab.style.boxShadow = 'none';
+        
+        // Show/hide content
+        searchContent.style.display = 'block';
+        importContent.style.display = 'none';
+      });
+      
+      importTab.addEventListener('click', function() {
+        // Update tab styles
+        importTab.style.background = 'rgba(255,255,255,0.5)';
+        importTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        searchTab.style.background = 'transparent';
+        searchTab.style.boxShadow = 'none';
+        
+        // Show/hide content
+        importContent.style.display = 'block';
+        searchContent.style.display = 'none';
+      });
+    }
+    
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const searchResults = document.getElementById('search-results');
+    
+    if (searchBtn && searchInput) {
+      searchBtn.addEventListener('click', performSearch);
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      });
+    }
+    
+    // Example tag clicks
+    const exampleTags = document.querySelectorAll('.example-tag');
+    exampleTags.forEach(function(tag) {
+      tag.addEventListener('click', function() {
+        if (searchInput) {
+          searchInput.value = tag.dataset.query;
+          performSearch();
+        }
+      });
+    });
+    
+    // File upload functionality
+    const contactsZone = document.getElementById('contacts-zone');
+    const connectionsZone = document.getElementById('connections-zone');
+    const contactsFile = document.getElementById('contacts-file');
+    const connectionsFile = document.getElementById('connections-file');
+    const importBtn = document.getElementById('import-btn');
+    
+    let selectedFiles = {
+      contacts: null,
+      connections: null
+    };
+    
+    // Drag and drop for contacts
+    if (contactsZone && contactsFile) {
+      contactsZone.addEventListener('click', function() {
+        contactsFile.click();
+      });
+      
+      contactsFile.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          selectedFiles.contacts = file;
+          updateUploadZone(contactsZone, file, 'contacts');
+          updateImportButton();
+        }
+      });
+    }
+    
+    // Drag and drop for connections
+    if (connectionsZone && connectionsFile) {
+      connectionsZone.addEventListener('click', function() {
+        connectionsFile.click();
+      });
+      
+      connectionsFile.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          selectedFiles.connections = file;
+          updateUploadZone(connectionsZone, file, 'connections');
+          updateImportButton();
+        }
+      });
+    }
+    
+    // Import button
+    if (importBtn) {
+      importBtn.addEventListener('click', function() {
+        if (selectedFiles.contacts || selectedFiles.connections) {
+          handleFileUploads();
+        }
+      });
+    }
+    
+    function updateUploadZone(zone, file, type) {
+      zone.innerHTML = '<div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div><div style="font-weight: 500; color: #10b981;">' + file.name + '</div><div style="font-size: 0.85rem; opacity: 0.8;">Ready to import</div>';
+      zone.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      zone.style.background = 'rgba(16, 185, 129, 0.1)';
+    }
+    
+    function updateImportButton() {
+      if (importBtn) {
+        const hasFiles = selectedFiles.contacts || selectedFiles.connections;
+        if (hasFiles) {
+          importBtn.style.opacity = '1';
+          importBtn.style.pointerEvents = 'auto';
+          importBtn.style.background = 'rgba(255,255,255,0.7)';
+          
+          const fileCount = (selectedFiles.contacts ? 1 : 0) + (selectedFiles.connections ? 1 : 0);
+          importBtn.textContent = 'Import ' + fileCount + ' File' + (fileCount > 1 ? 's' : '');
+        }
+      }
+    }
+  }
+  
+  async function performSearch() {
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    const resultsList = document.getElementById('results-list');
+    
+    if (!searchInput || !searchResults || !resultsList) return;
+    
+    const query = searchInput.value.trim();
+    if (!query) return;
+    
+    // Show loading
+    searchResults.style.display = 'block';
+    resultsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #00A86B;">🔍 Searching contacts...</div>';
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/search?q=' + encodeURIComponent(query), {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      
+      const data = await response.json();
+      displaySearchResults(data.contacts || [], query);
+      
+    } catch (error) {
+      console.error('Search error:', error);
+      resultsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Search failed. Please try again.</div>';
+    }
+  }
+  
+  function displaySearchResults(contacts, query) {
+    const resultsList = document.getElementById('results-list');
+    if (!resultsList) return;
+    
+    if (contacts.length === 0) {
+      resultsList.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.8;">No contacts found for "' + query + '"</div>';
+      return;
+    }
+    
+    let resultsHTML = '';
+    contacts.forEach(function(contact, index) {
+      resultsHTML += '<div class="contact-card" data-index="' + index + '" style="background: rgba(255,255,255,0.2); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; cursor: pointer; transition: all 0.3s ease;">';
+      
+      // Row 1: Name and Company
+      resultsHTML += '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">';
+      resultsHTML += '<div>';
+      resultsHTML += '<h4 style="margin: 0 0 0.25rem 0; font-size: 1.1rem; font-weight: 600;">' + (contact.name || 'Unknown') + '</h4>';
+      if (contact.company) {
+        resultsHTML += '<div style="font-size: 0.9rem; opacity: 0.8;">🏢 ' + contact.company + '</div>';
+      }
+      resultsHTML += '</div>';
+      
+      if (contact.position) {
+        resultsHTML += '<div style="background: rgba(255,255,255,0.3); padding: 0.25rem 0.75rem; border-radius: 16px; font-size: 0.8rem; font-weight: 500;">💼 ' + contact.position + '</div>';
+      }
+      resultsHTML += '</div>';
+      
+      // Row 2: Previous Employer, Years Worked, Managed Teams
+      resultsHTML += '<div id="contact-' + index + '-details" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.2); border-radius: 8px;">';
+      
+      resultsHTML += '<div>';
+      resultsHTML += '<div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">PREVIOUS EMPLOYER</div>';
+      resultsHTML += '<div style="font-size: 0.85rem;">' + (contact.previousEmployer || 'Not specified') + '</div>';
+      resultsHTML += '</div>';
+      
+      resultsHTML += '<div>';
+      resultsHTML += '<div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">YEARS WORKED</div>';
+      resultsHTML += '<div style="font-size: 0.85rem;">' + (contact.yearsWorked || 'Not specified') + '</div>';
+      resultsHTML += '</div>';
+      
+      resultsHTML += '<div>';
+      resultsHTML += '<div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">MANAGED TEAMS</div>';
+      resultsHTML += '<div style="font-size: 0.85rem;">' + (contact.managedTeams || 'Not specified') + '</div>';
+      resultsHTML += '</div>';
+      
+      resultsHTML += '</div>';
+      
+      // Toggle button and basic info
+      resultsHTML += '<div onclick="toggleSection(\'contact-' + index + '\')" style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.2); cursor: pointer;">';
+      resultsHTML += '<div style="display: flex; gap: 1rem; flex: 1;">';
+      
+      if (contact.email) {
+        resultsHTML += '<div style="font-size: 0.8rem; opacity: 0.8;">📧 ' + contact.email + '</div>';
+      }
+      if (contact.location) {
+        resultsHTML += '<div style="font-size: 0.8rem; opacity: 0.8;">📍 ' + contact.location + '</div>';
+      }
+      
+      resultsHTML += '</div>';
+      resultsHTML += '<div style="font-size: 1.2rem; font-weight: bold; cursor: pointer;">+</div>';
+      resultsHTML += '</div>';
+      
+      resultsHTML += '</div>';
+    });
+    
+    resultsList.innerHTML = resultsHTML;
+    
+    // Add hover effects
+    const contactCards = document.querySelectorAll('.contact-card');
+    contactCards.forEach(function(card) {
+      card.addEventListener('mouseenter', function() {
+        this.style.background = 'rgba(255,255,255,0.3)';
+        this.style.transform = 'translateY(-2px)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.background = 'rgba(255,255,255,0.2)';
+        this.style.transform = 'translateY(0)';
+      });
+    });
+  }
+  
+  async function handleFileUploads() {
+    const uploadStatus = document.getElementById('upload-status');
+    const importBtn = document.getElementById('import-btn');
+    
+    if (!uploadStatus) return;
+    
+    // Show upload status
+    uploadStatus.style.display = 'block';
+    uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem; color: #00A86B;">Processing files...</div>';
+    
+    if (importBtn) {
+      importBtn.disabled = true;
+      importBtn.style.opacity = '0.5';
+    }
+    
+    let uploadPromises = [];
+    
+    const selectedFiles = {
+      contacts: document.getElementById('contacts-file')?.files[0],
+      connections: document.getElementById('connections-file')?.files[0]
+    };
+    
+    // Upload contacts file if selected
+    if (selectedFiles.contacts) {
+      uploadPromises.push(uploadSingleFile(selectedFiles.contacts, 'Contacts'));
+    }
+    
+    // Upload connections file if selected
+    if (selectedFiles.connections) {
+      uploadPromises.push(uploadSingleFile(selectedFiles.connections, 'Connections'));
+    }
+    
+    try {
+      const results = await Promise.all(uploadPromises);
+      const totalUploaded = results.reduce((sum, result) => sum + (result.count || 0), 0);
+      
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem; color: #10b981;">✅ Successfully imported ' + totalUploaded + ' contacts!</div>';
+      
+      setTimeout(function() {
+        uploadStatus.style.display = 'none';
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem; color: #ef4444;">❌ Upload failed: ' + error.message + '</div>';
+    }
+    
+    // Re-enable import button
+    if (importBtn) {
+      importBtn.disabled = false;
+      importBtn.style.opacity = '1';
+    }
+  }
+  
+  async function uploadSingleFile(file, type) {
+    const uploadStatus = document.getElementById('upload-status');
+    let statusDiv = null;
+    
+    if (uploadStatus) {
+      uploadStatus.style.display = 'block';
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem; color: #00A86B;">Uploading ' + type + ' file: ' + file.name + '</div>';
+    }
+    
+    try {
+      console.log('Starting upload for file:', file.name, 'Type:', type);
+      
+      const formData = new FormData();
+      formData.append('linkedinCsv', file);
+      
+      console.log('Sending request to:', BACKEND_URL + '/api/import/linkedin');
+      
+      const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
+        method: 'POST',
+        body: formData,
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed with status:', response.status, 'Error:', errorText);
+        throw new Error('Upload failed with status: ' + response.status);
+      }
+      
+      const data = await response.json();
+      console.log('Upload response data:', data);
+      
+      // Check if duplicates were found
+      if (data.duplicatesFound) {
+        if (statusDiv) {
+          statusDiv.textContent = '⚠ ' + file.name + ' (duplicates found)';
+          statusDiv.style.color = '#f59e0b';
+        }
+        
+        // Show duplicate resolution interface
+        showDuplicateResolution(data, type);
+        return;
+      }
+      
+      if (statusDiv) {
+        statusDiv.textContent = '✓ ' + file.name;
+        statusDiv.style.color = '#10b981';
+      }
+      
+      var message = 'Successfully processed ' + type + ' file!';
+      if (data.count && data.count > 0) {
+        message += ' Added ' + data.count + ' new contacts.';
+      }
+      if (data.enhanced && data.enhanced > 0) {
+        message += ' Enhanced ' + data.enhanced + ' existing contacts.';
+      }
+      if (data.processed) {
+        message += ' Processed ' + data.processed + ' records total.';
+      }
+      
+      showMessage(message, 'success');
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      if (statusDiv) {
+        statusDiv.textContent = '❌ ' + file.name + ' (failed)';
+        statusDiv.style.color = '#ef4444';
+      }
+      
+      showMessage('Upload failed for ' + type + ' file: ' + error.message, 'error');
+      throw error;
+    }
+  }
+  
+  function toggleSection(sectionId) {
+    const details = document.getElementById(sectionId + '-details');
+    const section = details.parentElement;
+    const toggles = section.querySelectorAll('div[onclick]')[0].querySelectorAll('div > div:last-child');
+    
+    if (details.style.display === 'none' || details.style.display === '') {
+      details.style.display = 'grid';
+      toggles.forEach(function(toggle) {
+        toggle.textContent = '−';
+      });
+    } else {
+      details.style.display = 'none';
+      toggles.forEach(function(toggle) {
+        toggle.textContent = '+';
+      });
+    }
+  }
+  
+  function showMessage(message, type) {
+    const messageContainer = document.getElementById('global-message');
+    if (!messageContainer) return;
+    
+    const bgColor = type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+    const borderColor = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+    const textColor = '#00A86B';
+    
+    messageContainer.innerHTML = '<div style="background: ' + bgColor + '; border: 1px solid ' + borderColor + '; border-radius: 8px; padding: 1rem; margin: 1rem 0; text-align: center; color: ' + textColor + '; font-weight: 500;">' + message + '</div>';
+    messageContainer.style.display = 'block';
+    
+    // Scroll to message
+    messageContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    setTimeout(function() {
+      messageContainer.style.display = 'none';
+    }, 8000);
+  }
+  
+  function showDuplicateResolution(data, fileType) {
+    const uploadStatus = document.getElementById('upload-status');
+    if (!uploadStatus) return;
+    
+    let resolutionHTML = '<div style="background: rgba(255,255,255,0.3); padding: 2rem; border-radius: 12px; margin-top: 1rem;">';
+    resolutionHTML += '<h3 style="margin: 0 0 1rem 0; text-align: center; color: #f59e0b;">⚠ Duplicate Contacts Found</h3>';
+    resolutionHTML += '<p style="text-align: center; margin-bottom: 2rem; color: #00A86B;">Found ' + data.duplicates.length + ' groups of potentially duplicate contacts. Choose how to handle each group:</p>';
+    
+    // Create resolution form
+    resolutionHTML += '<div id="duplicate-groups">';
+    
+    for (let i = 0; i < data.duplicates.length; i++) {
+      const group = data.duplicates[i];
+      resolutionHTML += '<div style="background: rgba(255,255,255,0.2); padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">';
+      resolutionHTML += '<h4 style="margin: 0 0 1rem 0; color: #00A86B;">Group ' + (i + 1) + ': Potential Duplicates</h4>';
+      
+      // Show contacts in group
+      for (let j = 0; j < group.length; j++) {
+        const contact = group[j];
+        resolutionHTML += '<div style="background: rgba(255,255,255,0.3); padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;">';
+        resolutionHTML += '<div style="font-weight: bold;">' + contact.name + '</div>';
+        resolutionHTML += '<div style="font-size: 0.9rem; opacity: 0.8;">';
+        if (contact.email) resolutionHTML += '📧 ' + contact.email + ' ';
+        if (contact.company) resolutionHTML += '🏢 ' + contact.company + ' ';
+        if (contact.position) resolutionHTML += '💼 ' + contact.position;
+        resolutionHTML += '</div>';
+        resolutionHTML += '</div>';
+      }
+      
+      // Resolution options
+      resolutionHTML += '<div style="margin-top: 1rem;">';
+      resolutionHTML += '<label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #00A86B;">Choose action:</label>';
+      resolutionHTML += '<select class="duplicate-resolution" data-group="' + i + '" style="width: 100%; padding: 8px; border: none; border-radius: 6px; background: rgba(255,255,255,0.9); color: #333;">';
+      resolutionHTML += '<option value="merge">Merge all contacts into one</option>';
+      resolutionHTML += '<option value="keep_all">Keep all as separate contacts</option>';
+      resolutionHTML += '<option value="skip">Skip this group (don\'t import)</option>';
+      resolutionHTML += '</select>';
+      resolutionHTML += '</div>';
+      
+      resolutionHTML += '</div>';
+    }
+    
+    resolutionHTML += '</div>';
+    
+    // Action buttons
+    resolutionHTML += '<div style="display: flex; gap: 1rem; margin-top: 2rem;">';
+    resolutionHTML += '<button id="resolve-duplicates-btn" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: rgba(255,255,255,0.5); color: #00A86B; font-weight: bold; cursor: pointer;">Apply Choices & Import</button>';
+    resolutionHTML += '<button id="cancel-import-btn" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: rgba(255,255,255,0.3); color: #ef4444; font-weight: bold; cursor: pointer;">Cancel Import</button>';
+    resolutionHTML += '</div>';
+    
+    resolutionHTML += '</div>';
+    
+    uploadStatus.innerHTML = resolutionHTML;
+    uploadStatus.style.display = 'block';
+    
+    // Add event listeners
+    document.getElementById('resolve-duplicates-btn').onclick = async function() {
+      await resolveDuplicates(data);
+    };
+    
+    document.getElementById('cancel-import-btn').onclick = function() {
+      uploadStatus.style.display = 'none';
+      showMessage('Import cancelled', 'info');
+    };
+  }
+  
+  async function resolveDuplicates(data) {
+    const resolutionSelects = document.querySelectorAll('.duplicate-resolution');
+    const resolutions = [];
+    
+    resolutionSelects.forEach(function(select) {
+      const groupIndex = parseInt(select.dataset.group);
+      resolutions[groupIndex] = {
+        action: select.value
+      };
+    });
+    
+    console.log('Sending resolutions:', resolutions);
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/import/resolve-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionId: data.sessionId,
+          resolutions: resolutions
+        }),
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('upload-status').style.display = 'none';
+        
+        let message = 'Successfully resolved duplicates! ';
+        if (result.count) message += 'Imported ' + result.count + ' contacts. ';
+        if (result.merged) message += 'Merged ' + result.merged + ' duplicate groups. ';
+        if (result.removed) message += 'Removed ' + result.removed + ' duplicates.';
+        
+        showMessage(message, 'success');
+      } else {
+        showMessage('Error resolving duplicates: ' + result.message, 'error');
+      }
+      
+    } catch (error) {
+      console.error('Error resolving duplicates:', error);
+      showMessage('Failed to resolve duplicates: ' + error.message, 'error');
+    }
+  }
+});
+</script>
+
+<style>
+/* Additional styling for better mobile experience */
+@media (max-width: 768px) {
+  #beetagged-widget-container > div {
+    padding: 2rem 1rem !important;
+  }
+  
+  #beetagged-widget-container h1 {
+    font-size: 2rem !important;
+  }
+  
+  #beetagged-widget-container .upload-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
