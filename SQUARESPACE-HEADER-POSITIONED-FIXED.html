@@ -364,9 +364,9 @@ window.addEventListener('load', function() {
     
     try {
       const formData = new FormData();
-      formData.append('csvFile', file);
+      formData.append('linkedinCsv', file);
       
-      const response = await fetch(BACKEND_URL + '/api/linkedin/import', {
+      const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
         method: 'POST',
         body: formData,
       });

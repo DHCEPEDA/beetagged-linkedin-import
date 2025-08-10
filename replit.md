@@ -23,10 +23,13 @@ Preferred communication style: Simple, everyday language.
   - **NEW**: Dual CSV import with intelligent duplicate consolidation prompts
   - Other versions: Footer injection (blocked), Code block (plan restrictions)
 - **Search**: Natural language AI-powered search **CONFIRMED WORKING** in production
-- **Import**: **ENHANCED** LinkedIn CSV processing with dual file support and duplicate detection
+- **Import**: **FULLY FUNCTIONAL** LinkedIn CSV processing with working Squarespace integration
+  - Fixed API endpoint mismatch issue (/api/import/linkedin)
+  - Fixed field name mismatch (linkedinCsv vs csvFile)  
   - Supports both contacts.csv and connections.csv files simultaneously
   - Intelligent duplicate detection using name, email, and company matching
   - User choice prompts for consolidation vs separate import
+  - **TESTED AND WORKING**: CSV upload confirmed functional via CURL test
 - **Build System**: All workflows operational
   - ViteDev - Frontend development server running on port 3000
   - Backend - Express API server running on port 5000
