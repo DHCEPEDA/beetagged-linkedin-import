@@ -477,26 +477,93 @@ window.addEventListener('load', function() {
     cardHTML += '<h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">' + contact.name + '</h2>';
     cardHTML += '<p style="margin: 0; opacity: 0.8;">' + (contact.position || 'Professional Contact') + '</p>';
     cardHTML += '</div>';
-    cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; padding: 1.5rem;">';
-    if (contact.company) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Company:</strong> ' + contact.company + '</div>';
-    if (contact.email) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Email:</strong> ' + contact.email + '</div>';
-    if (contact.phone) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Phone:</strong> ' + contact.phone + '</div>';
-    if (contact.location) cardHTML += '<div style="margin-bottom: 1rem;"><strong>Location:</strong> ' + contact.location + '</div>';
+    
+    // Primary Info Row - Always visible
+    cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; margin-bottom: 1rem;">';
+    cardHTML += '<div onclick="toggleSection(\'primary\')" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; padding: 1rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2);">';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Employer</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Position</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Location</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
     cardHTML += '</div>';
-    if (contact.tags && contact.tags.length > 0) {
-      cardHTML += '<div style="margin-top: 1.5rem;">';
-      cardHTML += '<h4 style="margin: 0 0 0.5rem 0;">Tags:</h4>';
-      cardHTML += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
-      for (var i = 0; i < contact.tags.length; i++) {
-        cardHTML += '<span style="background: rgba(255,255,255,0.5); color: #00A86B; padding: 4px 8px; border-radius: 12px; font-size: 0.85rem;">' + contact.tags[i] + '</span>';
+    cardHTML += '<div id="primary-details" style="display: none; padding: 1rem; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px;">' + (contact.company || 'Not specified') + '</div>';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px;">' + (contact.position || contact.jobTitle || 'Not specified') + '</div>';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px;">' + (contact.location || 'Not specified') + '</div>';
+    cardHTML += '</div>';
+    cardHTML += '</div>';
+    
+    // Contact Info Row
+    cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; margin-bottom: 1rem;">';
+    cardHTML += '<div onclick="toggleSection(\'contact\')" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; padding: 1rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2);">';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Email</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Phone</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">LinkedIn</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+    cardHTML += '</div>';
+    cardHTML += '<div id="contact-details" style="display: none; padding: 1rem; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem; word-break: break-all;">' + (contact.email || 'Not available') + '</div>';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.phone || contact.phoneNumber || 'Not available') + '</div>';
+    cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.linkedinUrl ? 'Available' : 'Not available') + '</div>';
+    cardHTML += '</div>';
+    cardHTML += '</div>';
+    
+    // Additional Info Row
+    if (contact.tags || contact.industry || contact.notes) {
+      cardHTML += '<div style="background: rgba(255,255,255,0.3); border-radius: 12px; margin-bottom: 1rem;">';
+      cardHTML += '<div onclick="toggleSection(\'additional\')" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; padding: 1rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.2);">';
+      cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Tags</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+      cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Industry</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+      cardHTML += '<div style="text-align: center;"><div style="font-weight: bold; margin-bottom: 0.25rem;">Notes</div><div style="font-size: 0.9rem; opacity: 0.8;">+</div></div>';
+      cardHTML += '</div>';
+      cardHTML += '<div id="additional-details" style="display: none; padding: 1rem; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">';
+      
+      // Tags column
+      cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">';
+      if (contact.tags && contact.tags.length > 0) {
+        cardHTML += '<div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;">';
+        for (var i = 0; i < Math.min(contact.tags.length, 3); i++) {
+          cardHTML += '<span style="background: rgba(0,168,107,0.2); color: #00A86B; padding: 2px 6px; border-radius: 8px; font-size: 0.75rem;">' + contact.tags[i] + '</span>';
+        }
+        if (contact.tags.length > 3) {
+          cardHTML += '<span style="font-size: 0.75rem; opacity: 0.7;">+' + (contact.tags.length - 3) + ' more</span>';
+        }
+        cardHTML += '</div>';
+      } else {
+        cardHTML += 'No tags';
       }
+      cardHTML += '</div>';
+      
+      // Industry column
+      cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.industry || 'Not specified') + '</div>';
+      
+      // Notes column
+      cardHTML += '<div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem;">' + (contact.notes ? contact.notes.substring(0, 50) + (contact.notes.length > 50 ? '...' : '') : 'No notes') + '</div>';
+      
       cardHTML += '</div>';
       cardHTML += '</div>';
     }
+    
     cardHTML += '</div>';
     
     content.innerHTML = cardHTML;
     modal.style.display = 'block';
+  }
+  
+  function toggleSection(sectionId) {
+    const details = document.getElementById(sectionId + '-details');
+    const section = details.parentElement;
+    const toggles = section.querySelectorAll('div[onclick]')[0].querySelectorAll('div > div:last-child');
+    
+    if (details.style.display === 'none' || details.style.display === '') {
+      details.style.display = 'grid';
+      toggles.forEach(function(toggle) {
+        toggle.textContent = '−';
+      });
+    } else {
+      details.style.display = 'none';
+      toggles.forEach(function(toggle) {
+        toggle.textContent = '+';
+      });
+    }
   }
   
   function showMessage(message, type) {
