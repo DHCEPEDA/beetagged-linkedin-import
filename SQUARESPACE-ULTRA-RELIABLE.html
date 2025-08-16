@@ -152,7 +152,56 @@
         .beetagged-facebook-btn {
             background: linear-gradient(45deg, #1877f2, #42a5f5);
             width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .beetagged-linkedin-btn {
+            background: linear-gradient(45deg, #0077b5, #4a9eff);
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .beetagged-gmail-btn {
+            background: linear-gradient(45deg, #dd4b39, #ff6b57);
+            width: 100%;
             margin-bottom: 1.5rem;
+        }
+
+        .auth-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .auth-section h3 {
+            margin: 0 0 1rem 0;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .auth-status.connected {
+            background: rgba(46, 204, 113, 0.1);
+            color: #27ae60;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .auth-status.disconnected {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
         }
 
         .beetagged-search-btn:hover, .import-btn:hover:not(:disabled) {
@@ -163,6 +212,16 @@
         .beetagged-facebook-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(24, 119, 242, 0.4);
+        }
+
+        .beetagged-linkedin-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 119, 181, 0.4);
+        }
+
+        .beetagged-gmail-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(221, 75, 57, 0.4);
         }
 
         .beetagged-search-btn:disabled, .beetagged-facebook-btn:disabled, .import-btn:disabled {
@@ -435,14 +494,34 @@
         <!-- Enhanced Facebook Tab -->
         <div id="facebook-content" class="beetagged-content hidden">
             <div style="text-align: center; margin-bottom: 2rem;">
-                <h2 style="color: #00A86B; margin-bottom: 1rem;">Connect Your Facebook Account</h2>
-                <p style="margin-bottom: 2rem; opacity: 0.8;">Import your Facebook profile and friends who also use this app</p>
+                <h2 style="color: #00A86B; margin-bottom: 1rem;">Connect Your Social Accounts</h2>
+                <p style="margin-bottom: 2rem; opacity: 0.8;">Import contacts from Facebook and Gmail with OAuth authentication</p>
+            </div>
+
+            <!-- Authentication Section -->
+            <div class="auth-section">
+                <h3>🔐 Social Media Authentication</h3>
                 
+                <!-- Facebook Authentication -->
+                <div class="auth-status disconnected" id="facebook-auth-status">
+                    <span>⭕</span> Facebook: Not Connected
+                </div>
                 <button id="facebook-login-btn" class="beetagged-facebook-btn" onclick="handleFacebookLogin()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                     </svg>
-                    Connect with Facebook
+                    Connect Facebook
+                </button>
+
+                <!-- Gmail Authentication -->
+                <div class="auth-status disconnected" id="gmail-auth-status">
+                    <span>⭕</span> Gmail: Not Connected
+                </div>
+                <button class="beetagged-gmail-btn" onclick="connectGmail()" id="gmail-connect-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636C.732 21.002 0 20.27 0 19.366V5.457c0-.887.722-1.618 1.636-1.618.233 0 .445.053.637.137L12 10.71l9.727-6.734c.192-.084.404-.137.637-.137.887 0 1.636.731 1.636 1.618z"/>
+                    </svg>
+                    Connect Gmail
                 </button>
             </div>
             
@@ -468,7 +547,21 @@
         <div id="linkedin-content" class="beetagged-content hidden">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h2 style="color: #00A86B; margin-bottom: 1rem;">Import LinkedIn Contacts</h2>
-                <p style="margin-bottom: 2rem; opacity: 0.8;">Upload your LinkedIn CSV exports for instant contact import with duplicate detection</p>
+                <p style="margin-bottom: 2rem; opacity: 0.8;">Connect your LinkedIn account or upload CSV exports for instant contact import</p>
+            </div>
+
+            <!-- LinkedIn Authentication Section -->
+            <div class="auth-section">
+                <h3>🔐 LinkedIn Authentication</h3>
+                <div class="auth-status disconnected" id="linkedin-auth-status">
+                    <span>⭕</span> LinkedIn: Not Connected
+                </div>
+                <button class="beetagged-linkedin-btn" onclick="connectLinkedIn()" id="linkedin-connect-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    Connect LinkedIn (OAuth)
+                </button>
             </div>
 
             <div class="file-upload-section">
@@ -522,6 +615,87 @@
         let connectionRetries = 0;
         let selectedFiles = { contacts: null, connections: null };
         let serviceStatus = 'connected';
+        let authStatus = {
+            linkedin: false,
+            gmail: false,
+            facebook: false
+        };
+
+        // Authentication Functions
+        async function connectLinkedIn() {
+            try {
+                updateAuthStatus('linkedin', 'connecting');
+                showMessage('Redirecting to LinkedIn for authentication...', 'info');
+                
+                // LinkedIn OAuth flow
+                const clientId = '86kchs3lw5f7ls'; // Replace with your LinkedIn app client ID
+                const redirectUri = encodeURIComponent(window.location.href);
+                const scope = 'r_liteprofile r_emailaddress w_member_social';
+                const state = 'linkedin_' + Math.random().toString(36).substring(7);
+                
+                const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+                
+                window.location.href = linkedinAuthUrl;
+                
+            } catch (error) {
+                console.error('LinkedIn connection error:', error);
+                updateAuthStatus('linkedin', 'error');
+                showMessage('LinkedIn connection failed: ' + error.message, 'error');
+            }
+        }
+
+        async function connectGmail() {
+            try {
+                updateAuthStatus('gmail', 'connecting');
+                showMessage('Redirecting to Google for authentication...', 'info');
+                
+                // Google OAuth flow
+                const clientId = '1084785301012-n7igtqj3b92tg2qe8nf5md81k9cr8osc.apps.googleusercontent.com'; // Replace with your Google app client ID
+                const redirectUri = encodeURIComponent(window.location.href);
+                const scope = 'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/userinfo.email';
+                const state = 'gmail_' + Math.random().toString(36).substring(7);
+                
+                const googleAuthUrl = `https://accounts.google.com/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}&access_type=offline`;
+                
+                window.location.href = googleAuthUrl;
+                
+            } catch (error) {
+                console.error('Gmail connection error:', error);
+                updateAuthStatus('gmail', 'error');
+                showMessage('Gmail connection failed: ' + error.message, 'error');
+            }
+        }
+
+        function updateAuthStatus(service, status) {
+            const statusElement = document.getElementById(`${service}-auth-status`);
+            const buttonElement = document.getElementById(`${service}-connect-btn`) || document.getElementById(`${service}-auth-btn`);
+            
+            if (statusElement && buttonElement) {
+                switch (status) {
+                    case 'connecting':
+                        statusElement.className = 'auth-status disconnected';
+                        statusElement.innerHTML = '<span>🔄</span> ' + service.charAt(0).toUpperCase() + service.slice(1) + ': Connecting...';
+                        buttonElement.disabled = true;
+                        break;
+                    case 'connected':
+                        statusElement.className = 'auth-status connected';
+                        statusElement.innerHTML = '<span>✅</span> ' + service.charAt(0).toUpperCase() + service.slice(1) + ': Connected';
+                        buttonElement.textContent = 'Import ' + service.charAt(0).toUpperCase() + service.slice(1) + ' Contacts';
+                        buttonElement.disabled = false;
+                        authStatus[service] = true;
+                        break;
+                    case 'error':
+                        statusElement.className = 'auth-status disconnected';
+                        statusElement.innerHTML = '<span>❌</span> ' + service.charAt(0).toUpperCase() + service.slice(1) + ': Connection Failed';
+                        buttonElement.disabled = false;
+                        break;
+                    default:
+                        statusElement.className = 'auth-status disconnected';
+                        statusElement.innerHTML = '<span>⭕</span> ' + service.charAt(0).toUpperCase() + service.slice(1) + ': Not Connected';
+                        buttonElement.disabled = false;
+                }
+            }
+        }
 
         // Error boundary and recovery system
         window.onerror = function(msg, url, lineNo, columnNo, error) {

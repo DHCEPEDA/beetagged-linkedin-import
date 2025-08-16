@@ -964,6 +964,183 @@ async function importFacebookData(accessToken, userProfile) {
   }
 }
 
+// OAuth Authentication Endpoints for LinkedIn, Gmail, and Facebook
+
+// LinkedIn OAuth callback endpoint  
+app.post('/api/auth/linkedin/callback', async (req, res) => {
+  try {
+    const { code, state } = req.body;
+    const clientId = process.env.LINKEDIN_CLIENT_ID || '86kchs3lw5f7ls';
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    
+    if (!clientSecret) {
+      return res.status(500).json({ error: 'LinkedIn client secret not configured' });
+    }
+    
+    // Exchange code for access token
+    const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', {
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: req.body.redirect_uri,
+      client_id: clientId,
+      client_secret: clientSecret
+    });
+    
+    const accessToken = tokenResponse.data.access_token;
+    
+    // Get user profile
+    const profileResponse = await axios.get('https://api.linkedin.com/v2/people/~', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    
+    res.json({
+      success: true,
+      access_token: accessToken,
+      profile: profileResponse.data
+    });
+    
+  } catch (error) {
+    console.error('LinkedIn callback error:', error);
+    res.status(500).json({ error: 'LinkedIn authentication failed' });
+  }
+});
+
+// Gmail/Google OAuth callback endpoint
+app.post('/api/auth/gmail/callback', async (req, res) => {
+  try {
+    const { code, state } = req.body;
+    const clientId = process.env.GOOGLE_CLIENT_ID || '1084785301012-n7igtqj3b92tg2qe8nf5md81k9cr8osc.apps.googleusercontent.com';
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    
+    if (!clientSecret) {
+      return res.status(500).json({ error: 'Google client secret not configured' });
+    }
+    
+    // Exchange code for access token
+    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: req.body.redirect_uri,
+      grant_type: 'authorization_code'
+    });
+    
+    const accessToken = tokenResponse.data.access_token;
+    
+    // Get user profile
+    const profileResponse = await axios.get('https://www.googleapis.com/oauth2/v1/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    
+    res.json({
+      success: true,
+      access_token: accessToken,
+      profile: profileResponse.data
+    });
+    
+  } catch (error) {
+    console.error('Gmail callback error:', error);
+    res.status(500).json({ error: 'Gmail authentication failed' });
+  }
+});
+
+// Import contacts from authenticated OAuth services
+app.post('/api/import/oauth-contacts', async (req, res) => {
+  try {
+    const { service, access_token, userId } = req.body;
+    
+    if (!access_token) {
+      return res.status(400).json({ error: 'Access token required' });
+    }
+    
+    let contacts = [];
+    
+    if (service === 'linkedin') {
+      // Import LinkedIn profile (connections require special permissions)
+      const connectionsResponse = await axios.get('https://api.linkedin.com/v2/people/~', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      
+      contacts = [{
+        name: `${connectionsResponse.data.firstName?.localized?.en_US || ''} ${connectionsResponse.data.lastName?.localized?.en_US || ''}`,
+        company: '',
+        jobTitle: '',
+        location: '',
+        email: '',
+        linkedinId: connectionsResponse.data.id,
+        source: 'linkedin_oauth'
+      }];
+      
+    } else if (service === 'gmail') {
+      // Import Google contacts
+      const contactsResponse = await axios.get('https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,organizations', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      
+      contacts = contactsResponse.data.connections?.map(contact => ({
+        name: contact.names?.[0]?.displayName || '',
+        company: contact.organizations?.[0]?.name || '',
+        jobTitle: contact.organizations?.[0]?.title || '',
+        location: '',
+        email: contact.emailAddresses?.[0]?.value || '',
+        source: 'gmail_oauth'
+      })) || [];
+    }
+    
+    // Save contacts to database with ultra-reliable error handling
+    const result = await safeDbOperation(async () => {
+      let inserted = 0, updated = 0, skipped = 0;
+      
+      for (const contactData of contacts) {
+        try {
+          const existingContact = await Contact.findOne({
+            $or: [
+              { email: contactData.email },
+              { name: contactData.name, company: contactData.company }
+            ]
+          });
+          
+          if (existingContact) {
+            // Update existing contact
+            Object.assign(existingContact, contactData);
+            await existingContact.save();
+            updated++;
+          } else {
+            // Create new contact
+            await Contact.create({
+              ...contactData,
+              userId: userId || 'default',
+              tags: []
+            });
+            inserted++;
+          }
+        } catch (error) {
+          console.error(`Error processing contact ${contactData.name}:`, error);
+          skipped++;
+        }
+      }
+      
+      return { inserted, updated, skipped };
+    }, { inserted: 0, updated: 0, skipped: contacts.length });
+    
+    res.json({
+      success: true,
+      message: `${service} import completed`,
+      inserted: result.inserted,
+      updated: result.updated,
+      skipped: result.skipped,
+      total: contacts.length
+    });
+    
+  } catch (error) {
+    console.error('OAuth contacts import error:', error);
+    res.status(500).json({ 
+      error: 'Failed to import contacts',
+      message: error.message 
+    });
+  }
+});
+
 // Graceful shutdown handlers
 process.on('SIGTERM', () => {
   console.log('🔄 SIGTERM received, shutting down gracefully');
