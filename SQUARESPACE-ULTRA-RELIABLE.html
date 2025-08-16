@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged - Ultra-Reliable Professional Contact Management</title>
+    <style>
+        .beetagged-widget {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #87CEEB 0%, #98D8E8 100%);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            color: #2c3e50;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        /* Error boundary styling */
+        .error-boundary {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #c0392b;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.disconnected {
+            background: #e74c3c;
+        }
+
+        .status-indicator.degraded {
+            background: #f39c12;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .beetagged-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .beetagged-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00A86B, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .beetagged-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 0.5rem;
+            margin-bottom: 2rem;
+            justify-content: center;
+        }
+
+        .beetagged-tab {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .beetagged-tab.active {
+            background: rgba(255, 255, 255, 0.8);
+            color: #00A86B;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .beetagged-tab:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .beetagged-content {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .beetagged-search-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .beetagged-search-input {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid rgba(0, 168, 107, 0.2);
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .beetagged-search-input:focus {
+            border-color: #00A86B;
+            box-shadow: 0 0 0 3px rgba(0, 168, 107, 0.1);
+        }
+
+        .beetagged-search-btn, .beetagged-facebook-btn, .import-btn {
+            background: linear-gradient(45deg, #00A86B, #2ecc71);
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .beetagged-facebook-btn {
+            background: linear-gradient(45deg, #1877f2, #42a5f5);
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .beetagged-search-btn:hover, .import-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 168, 107, 0.3);
+        }
+
+        .beetagged-facebook-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(24, 119, 242, 0.4);
+        }
+
+        .beetagged-search-btn:disabled, .beetagged-facebook-btn:disabled, .import-btn:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .beetagged-results {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .beetagged-contact {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .beetagged-contact:hover {
+            background: rgba(0, 168, 107, 0.1);
+        }
+
+        .beetagged-contact:last-child {
+            border-bottom: none;
+        }
+
+        .beetagged-contact-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00A86B, #2ecc71);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .beetagged-contact-info h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .beetagged-contact-info p {
+            margin: 0.25rem 0 0 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .beetagged-message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .beetagged-message.success {
+            background: rgba(46, 204, 113, 0.1);
+            color: #27ae60;
+            border: 1px solid rgba(46, 204, 113, 0.2);
+        }
+
+        .beetagged-message.error {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.2);
+        }
+
+        .beetagged-message.warning {
+            background: rgba(243, 156, 18, 0.1);
+            color: #f39c12;
+            border: 1px solid rgba(243, 156, 18, 0.2);
+        }
+
+        .beetagged-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+
+        .beetagged-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #87CEEB 0%, #98D8E8 100%);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .file-upload-container {
+            position: relative;
+        }
+
+        .file-upload-box {
+            border: 2px dashed rgba(0, 168, 107, 0.3);
+            border-radius: 12px;
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .file-upload-box:hover {
+            border-color: #00A86B;
+            background: rgba(0, 168, 107, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload-box h3 {
+            margin: 0.5rem 0;
+            color: #00A86B;
+            font-size: 1.1rem;
+        }
+
+        .file-upload-box p {
+            margin: 0.5rem 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .file-status {
+            margin-top: 0.5rem;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        @media (max-width: 768px) {
+            .beetagged-widget {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+
+            .beetagged-tabs {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .beetagged-search-container {
+                flex-direction: column;
+            }
+
+            .beetagged-header h1 {
+                font-size: 2rem;
+            }
+
+            .file-upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .beetagged-status {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .beetagged-progress {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            text-align: center;
+        }
+
+        .retry-banner {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .offline-banner {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div id="beetagged-widget" class="beetagged-widget">
+        <div class="status-indicator" id="status-indicator" title="Service Status"></div>
+        
+        <div class="beetagged-header">
+            <h1>🐝 BeeTagged</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.8; font-size: 1.1rem;">Ultra-Reliable Professional Contact Management</p>
+        </div>
+
+        <div id="retry-banner" class="retry-banner hidden">
+            Service temporarily unavailable. Retrying connection...
+        </div>
+
+        <div id="offline-banner" class="offline-banner hidden">
+            Operating in offline mode. Some features may be limited.
+        </div>
+
+        <div class="beetagged-tabs">
+            <button id="search-tab" class="beetagged-tab active" onclick="switchTab('search')">
+                <span>🔍 Search</span>
+            </button>
+            <button id="facebook-tab" class="beetagged-tab" onclick="switchTab('facebook')">
+                <span>📘 Facebook</span>
+            </button>
+            <button id="linkedin-tab" class="beetagged-tab" onclick="switchTab('linkedin')">
+                <span>💼 LinkedIn</span>
+            </button>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="search-content" class="beetagged-content">
+            <div class="beetagged-search-container">
+                <input type="text" 
+                       id="search-input" 
+                       class="beetagged-search-input" 
+                       placeholder="Ask anything: 'Who do I know at Google?' or 'Find engineers in SF'"
+                       onkeypress="handleSearchKeypress(event)">
+                <button onclick="performSearch()" class="beetagged-search-btn" id="search-btn">
+                    Search
+                </button>
+            </div>
+            <div id="search-results" class="beetagged-results hidden"></div>
+        </div>
+
+        <!-- Enhanced Facebook Tab -->
+        <div id="facebook-content" class="beetagged-content hidden">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: #00A86B; margin-bottom: 1rem;">Connect Your Facebook Account</h2>
+                <p style="margin-bottom: 2rem; opacity: 0.8;">Import your Facebook profile and friends who also use this app</p>
+                
+                <button id="facebook-login-btn" class="beetagged-facebook-btn" onclick="handleFacebookLogin()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Connect with Facebook
+                </button>
+            </div>
+            
+            <!-- Status Display -->
+            <div id="facebook-status" class="beetagged-status hidden"></div>
+            <div id="facebook-progress" class="beetagged-progress hidden"></div>
+            
+            <!-- Privacy Notice -->
+            <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; opacity: 0.9;">🔒 Enhanced Privacy & Security:</h4>
+                <div style="font-size: 0.8rem; opacity: 0.8; line-height: 1.4;">
+                    • Access to your profile and friends who also use this app<br>
+                    • Profile pictures and Facebook links included<br>
+                    • No posts, photos, or private messages are accessed<br>
+                    • Advanced OAuth security with server-side token exchange<br>
+                    • Data is used solely for contact management<br>
+                    • You can disconnect at any time
+                </div>
+            </div>
+        </div>
+
+        <!-- LinkedIn Tab -->
+        <div id="linkedin-content" class="beetagged-content hidden">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: #00A86B; margin-bottom: 1rem;">Import LinkedIn Contacts</h2>
+                <p style="margin-bottom: 2rem; opacity: 0.8;">Upload your LinkedIn CSV exports for instant contact import with duplicate detection</p>
+            </div>
+
+            <div class="file-upload-section">
+                <div class="file-upload-container">
+                    <div class="file-upload-box" onclick="document.getElementById('contacts-csv').click()">
+                        <div class="upload-icon">📄</div>
+                        <h3>contacts.csv</h3>
+                        <p>Personal contacts export from LinkedIn</p>
+                        <div class="file-status" id="contacts-status">Click to select file</div>
+                    </div>
+                    <input type="file" id="contacts-csv" accept=".csv" style="display: none;" onchange="handleFileSelection('contacts', this)">
+                </div>
+
+                <div class="file-upload-container">
+                    <div class="file-upload-box" onclick="document.getElementById('connections-csv').click()">
+                        <div class="upload-icon">🔗</div>
+                        <h3>connections.csv</h3>
+                        <p>Professional connections export from LinkedIn</p>
+                        <div class="file-status" id="connections-status">Click to select file</div>
+                    </div>
+                    <input type="file" id="connections-csv" accept=".csv" style="display: none;" onchange="handleFileSelection('connections', this)">
+                </div>
+            </div>
+
+            <button id="import-btn" class="import-btn" onclick="importSelectedFiles()" disabled>
+                <span class="btn-icon">⬆️</span>
+                Import Files
+            </button>
+
+            <div id="import-status" class="import-status hidden"></div>
+        </div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="beetagged-modal" onclick="closeModal(event)">
+        <div class="beetagged-modal-content" onclick="event.stopPropagation()">
+            <div id="contact-details"></div>
+            <button onclick="closeModal()" style="float: right; margin-top: 1rem; padding: 0.5rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // ULTRA-RELIABLE CONFIGURATION
+        const BACKEND_URL = 'https://your-heroku-app.herokuapp.com';
+        const FACEBOOK_APP_ID = '1222790436230433';
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 2000;
+        
+        // Global state management
+        let isOnline = true;
+        let connectionRetries = 0;
+        let selectedFiles = { contacts: null, connections: null };
+        let serviceStatus = 'connected';
+
+        // Error boundary and recovery system
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Global error caught:', msg, error);
+            showMessage('An error occurred, but the app will continue working', 'warning');
+            return true; // Prevent default error handling
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            showMessage('Network issue detected, retrying...', 'warning');
+            event.preventDefault();
+        });
+
+        // Service status management
+        function updateServiceStatus(status) {
+            serviceStatus = status;
+            const indicator = document.getElementById('status-indicator');
+            const retryBanner = document.getElementById('retry-banner');
+            const offlineBanner = document.getElementById('offline-banner');
+            
+            indicator.className = 'status-indicator ' + status;
+            
+            switch (status) {
+                case 'connected':
+                    indicator.title = 'Service Online';
+                    retryBanner.classList.add('hidden');
+                    offlineBanner.classList.add('hidden');
+                    break;
+                case 'degraded':
+                    indicator.title = 'Service Degraded';
+                    retryBanner.classList.remove('hidden');
+                    offlineBanner.classList.add('hidden');
+                    break;
+                case 'disconnected':
+                    indicator.title = 'Service Offline';
+                    retryBanner.classList.add('hidden');
+                    offlineBanner.classList.remove('hidden');
+                    break;
+            }
+        }
+
+        // Enhanced API request with automatic retries and fallbacks
+        async function safeApiRequest(url, options = {}, retries = MAX_RETRIES) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        mode: 'cors',
+                        credentials: 'omit',
+                        timeout: 15000,
+                        ...options
+                    });
+                    
+                    if (response.ok) {
+                        updateServiceStatus('connected');
+                        connectionRetries = 0;
+                        return response;
+                    } else if (response.status === 503) {
+                        updateServiceStatus('degraded');
+                        throw new Error('Service temporarily unavailable');
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    console.warn(`API request attempt ${i + 1} failed:`, error.message);
+                    
+                    if (i === retries - 1) {
+                        updateServiceStatus('disconnected');
+                        connectionRetries++;
+                        throw error;
+                    }
+                    
+                    updateServiceStatus('degraded');
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
+                }
+            }
+        }
+
+        // Tab switching functionality
+        function switchTab(tab) {
+            try {
+                const tabs = ['search', 'facebook', 'linkedin'];
+                tabs.forEach(t => {
+                    const tabElement = document.getElementById(t + '-tab');
+                    const contentElement = document.getElementById(t + '-content');
+                    
+                    if (tabElement && contentElement) {
+                        tabElement.classList.remove('active');
+                        contentElement.classList.add('hidden');
+                    }
+                });
+                
+                const activeTab = document.getElementById(tab + '-tab');
+                const activeContent = document.getElementById(tab + '-content');
+                
+                if (activeTab && activeContent) {
+                    activeTab.classList.add('active');
+                    activeContent.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Tab switching error:', error);
+                showMessage('Tab switching failed, please refresh the page', 'error');
+            }
+        }
+
+        // Facebook SDK initialization with error handling
+        function initFacebookSDK() {
+            try {
+                window.fbAsyncInit = function() {
+                    try {
+                        FB.init({
+                            appId: FACEBOOK_APP_ID,
+                            cookie: true,
+                            xfbml: true,
+                            version: 'v18.0'
+                        });
+                        console.log('Facebook SDK initialized successfully');
+                    } catch (error) {
+                        console.error('Facebook SDK init error:', error);
+                    }
+                };
+
+                (function(d, s, id) {
+                    try {
+                        var js, fjs = d.getElementsByTagName(s)[0];
+                        if (d.getElementById(id)) return;
+                        js = d.createElement(s); js.id = id;
+                        js.src = 'https://connect.facebook.net/en_US/sdk.js';
+                        js.onerror = function() {
+                            console.warn('Facebook SDK failed to load, using server-side auth');
+                        };
+                        fjs.parentNode.insertBefore(js, fjs);
+                    } catch (error) {
+                        console.error('Facebook SDK loading error:', error);
+                    }
+                }(document, 'script', 'facebook-jssdk'));
+            } catch (error) {
+                console.error('Facebook SDK initialization error:', error);
+            }
+        }
+
+        // Enhanced Facebook login with comprehensive error handling
+        function handleFacebookLogin() {
+            const statusDiv = document.getElementById('facebook-status');
+            const loginBtn = document.getElementById('facebook-login-btn');
+            
+            try {
+                // Update UI
+                if (statusDiv) {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'beetagged-status';
+                    statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">🔄 Connecting to Facebook...</div>';
+                }
+                
+                if (loginBtn) {
+                    loginBtn.disabled = true;
+                    loginBtn.style.opacity = '0.6';
+                }
+                
+                // Try client-side Facebook SDK first
+                if (window.FB) {
+                    FB.login(function(response) {
+                        try {
+                            if (response.authResponse) {
+                                console.log('Facebook login successful:', response);
+                                handleFacebookAuth(response.authResponse);
+                            } else {
+                                console.log('Facebook login failed or cancelled');
+                                resetFacebookUI('Facebook login cancelled or failed');
+                            }
+                        } catch (error) {
+                            console.error('Facebook login response error:', error);
+                            handleServerSideFacebookAuth();
+                        }
+                    }, {scope: 'public_profile,email,user_friends'});
+                } else {
+                    // Fallback to server-side auth
+                    handleServerSideFacebookAuth();
+                }
+            } catch (error) {
+                console.error('Facebook login error:', error);
+                resetFacebookUI('Facebook login failed: ' + error.message);
+            }
+        }
+
+        // Server-side Facebook OAuth fallback
+        async function handleServerSideFacebookAuth() {
+            const statusDiv = document.getElementById('facebook-status');
+            
+            try {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">🔄 Using server-side authentication...</div>';
+                }
+                
+                const response = await safeApiRequest(BACKEND_URL + '/api/facebook/auth');
+                const data = await response.json();
+                
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">🔄 Redirecting to Facebook...</div>';
+                }
+                
+                // Redirect to Facebook OAuth
+                window.location.href = data.authUrl;
+                
+            } catch (error) {
+                console.error('Server-side Facebook auth error:', error);
+                resetFacebookUI('Failed to connect to Facebook: ' + error.message);
+            }
+        }
+
+        // Handle Facebook authentication response
+        async function handleFacebookAuth(authResponse) {
+            const statusDiv = document.getElementById('facebook-status');
+            const progressDiv = document.getElementById('facebook-progress');
+            
+            try {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div style="color: #1877f2; font-weight: 500;">✅ Connected! Getting your profile...</div>';
+                }
+                
+                // Get user profile and friends
+                FB.api('/me', {fields: 'name,email,link'}, function(userProfile) {
+                    try {
+                        console.log('Facebook profile:', userProfile);
+                        
+                        if (statusDiv) {
+                            statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">👋 Hello ' + userProfile.name + '! Getting your contacts...</div>';
+                        }
+                        
+                        if (progressDiv) {
+                            progressDiv.style.display = 'block';
+                            progressDiv.className = 'beetagged-progress';
+                            progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #1877f2;">🔄 Fetching friends who use this app...</div>';
+                        }
+                        
+                        // Send auth data to backend
+                        importFacebookContacts(authResponse, userProfile);
+                    } catch (error) {
+                        console.error('Facebook profile processing error:', error);
+                        resetFacebookUI('Failed to process Facebook profile');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Facebook auth handling error:', error);
+                resetFacebookUI('Facebook authentication failed: ' + error.message);
+            }
+        }
+
+        // Import Facebook contacts with enhanced error handling
+        async function importFacebookContacts(authResponse, userProfile) {
+            const statusDiv = document.getElementById('facebook-status');
+            const progressDiv = document.getElementById('facebook-progress');
+            
+            try {
+                const response = await safeApiRequest(BACKEND_URL + '/api/facebook/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        accessToken: authResponse.accessToken,
+                        userID: authResponse.userID,
+                        profile: userProfile
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const friendsText = data.friendsCount > 0 ? ` and ${data.friendsCount} friends` : '';
+                    const totalImported = data.count || 0;
+                    
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">✅ Success! Imported your profile' + friendsText + '</div>';
+                    }
+                    if (progressDiv) {
+                        const friendsNote = data.friendsCount === 0 ? '<br><small style="opacity: 0.8;">Friends need to use this app to appear here</small>' : '';
+                        progressDiv.innerHTML = '<div style="text-align: center; padding: 1rem; color: #10b981;">🎉 Import completed! ' + totalImported + ' contacts added' + friendsNote + '</div>';
+                    }
+                    
+                    showMessage('Successfully imported ' + totalImported + ' contacts from Facebook' + friendsText + '!', 'success');
+                } else {
+                    throw new Error(data.message || 'Import failed');
+                }
+                
+            } catch (error) {
+                console.error('Facebook import error:', error);
+                resetFacebookUI('Import failed: ' + error.message);
+                showMessage('Facebook import failed: ' + error.message, 'error');
+            }
+            
+            // Re-enable login button
+            const loginBtn = document.getElementById('facebook-login-btn');
+            if (loginBtn) {
+                loginBtn.disabled = false;
+                loginBtn.style.opacity = '1';
+                loginBtn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Import Again
+                `;
+            }
+        }
+
+        // Reset Facebook UI on error
+        function resetFacebookUI(message) {
+            const statusDiv = document.getElementById('facebook-status');
+            const progressDiv = document.getElementById('facebook-progress');
+            const loginBtn = document.getElementById('facebook-login-btn');
+            
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div style="color: #ef4444;">❌ ' + message + '</div>';
+            }
+            if (progressDiv) {
+                progressDiv.style.display = 'none';
+            }
+            if (loginBtn) {
+                loginBtn.disabled = false;
+                loginBtn.style.opacity = '1';
+            }
+        }
+
+        // Ultra-reliable search functionality
+        async function performSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) {
+                showMessage('Please enter a search query', 'error');
+                return;
+            }
+
+            const searchBtn = document.getElementById('search-btn');
+            const resultsDiv = document.getElementById('search-results');
+            
+            try {
+                searchBtn.textContent = 'Searching...';
+                searchBtn.disabled = true;
+                resultsDiv.classList.remove('hidden');
+                resultsDiv.innerHTML = '<div style="padding: 2rem; text-align: center; color: #00A86B;">🔍 Searching contacts...</div>';
+
+                const response = await safeApiRequest(`${BACKEND_URL}/api/search-natural?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                displayResults(data.contacts || [], data.database_status);
+
+            } catch (error) {
+                console.error('Search error:', error);
+                
+                // Graceful degradation
+                resultsDiv.innerHTML = `
+                    <div style="padding: 2rem; text-align: center;">
+                        <div style="color: #f39c12; margin-bottom: 1rem;">⚠️ Search temporarily unavailable</div>
+                        <div style="color: #7f8c8d; font-size: 0.9rem;">
+                            ${serviceStatus === 'disconnected' ? 'Please check your internet connection and try again.' : 'Service will be restored shortly.'}
+                        </div>
+                    </div>
+                `;
+            } finally {
+                searchBtn.textContent = 'Search';
+                searchBtn.disabled = false;
+            }
+        }
+
+        // Enhanced results display
+        function displayResults(contacts, dbStatus) {
+            const resultsDiv = document.getElementById('search-results');
+            
+            if (contacts.length === 0) {
+                const statusMessage = dbStatus === 'disconnected' 
+                    ? 'Search service is temporarily offline.' 
+                    : 'No contacts found matching your query.';
+                    
+                resultsDiv.innerHTML = `<div style="padding: 2rem; text-align: center; color: #7f8c8d;">${statusMessage}</div>`;
+                return;
+            }
+
+            const contactsHtml = contacts.map(contact => `
+                <div class="beetagged-contact" onclick="showContactDetails('${contact._id}')">
+                    <div class="beetagged-contact-avatar">
+                        ${contact.profileImageUrl ? 
+                            `<img src="${contact.profileImageUrl}" alt="${contact.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.parentNode.textContent='${contact.name.charAt(0).toUpperCase()}'">` :
+                            contact.name.charAt(0).toUpperCase()
+                        }
+                    </div>
+                    <div class="beetagged-contact-info">
+                        <h3>${contact.name}</h3>
+                        <p>${[contact.jobTitle, contact.company, contact.location].filter(Boolean).join(' • ')}</p>
+                        ${contact.source ? `<p style="font-size: 0.8rem; opacity: 0.7;">Source: ${contact.source.replace('_', ' ')}</p>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            resultsDiv.innerHTML = contactsHtml;
+        }
+
+        // Enhanced contact details modal
+        async function showContactDetails(contactId) {
+            try {
+                const response = await safeApiRequest(`${BACKEND_URL}/api/contacts/${contactId}`);
+                const contact = await response.json();
+                
+                const detailsHtml = `
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <div class="beetagged-contact-avatar" style="width: 80px; height: 80px; margin: 0 auto 1rem auto; font-size: 2rem;">
+                            ${contact.profileImageUrl ? 
+                                `<img src="${contact.profileImageUrl}" alt="${contact.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.parentNode.textContent='${contact.name.charAt(0).toUpperCase()}'">` :
+                                contact.name.charAt(0).toUpperCase()
+                            }
+                        </div>
+                        <h2 style="color: #00A86B; margin: 0;">${contact.name}</h2>
+                        ${contact.jobTitle ? `<p style="margin: 0.5rem 0; font-size: 1.1rem; font-weight: 500;">${contact.jobTitle}</p>` : ''}
+                        ${contact.company ? `<p style="margin: 0.25rem 0; color: #7f8c8d;">${contact.company}</p>` : ''}
+                    </div>
+                    
+                    <div style="display: grid; gap: 1rem; margin: 2rem 0;">
+                        ${contact.email ? `<div><strong>📧 Email:</strong> <a href="mailto:${contact.email}" style="color: #00A86B;">${contact.email}</a></div>` : ''}
+                        ${contact.phoneNumber ? `<div><strong>📱 Phone:</strong> <a href="tel:${contact.phoneNumber}" style="color: #00A86B;">${contact.phoneNumber}</a></div>` : ''}
+                        ${contact.location ? `<div><strong>📍 Location:</strong> ${contact.location}</div>` : ''}
+                        ${contact.url ? `<div><strong>🔗 Profile:</strong> <a href="${contact.url}" target="_blank" style="color: #00A86B;">View Profile</a></div>` : ''}
+                        ${contact.linkedinId ? `<div><strong>💼 LinkedIn:</strong> <a href="https://linkedin.com/in/${contact.linkedinId}" target="_blank" style="color: #00A86B;">LinkedIn Profile</a></div>` : ''}
+                        ${contact.facebookId ? `<div><strong>📘 Facebook:</strong> <a href="https://facebook.com/${contact.facebookId}" target="_blank" style="color: #00A86B;">Facebook Profile</a></div>` : ''}
+                        ${contact.source ? `<div><strong>📥 Source:</strong> ${contact.source.replace('_', ' ')}</div>` : ''}
+                    </div>
+                `;
+                
+                document.getElementById('contact-details').innerHTML = detailsHtml;
+                document.getElementById('contact-modal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error fetching contact details:', error);
+                showMessage('Failed to load contact details', 'error');
+            }
+        }
+
+        // Modal management
+        function closeModal(event) {
+            if (!event || event.target.id === 'contact-modal') {
+                document.getElementById('contact-modal').style.display = 'none';
+            }
+        }
+
+        // Enhanced file handling for LinkedIn import
+        function handleFileSelection(type, input) {
+            try {
+                const file = input.files[0];
+                if (file) {
+                    if (!file.name.endsWith('.csv')) {
+                        showMessage('Please select a CSV file', 'error');
+                        input.value = '';
+                        return;
+                    }
+                    
+                    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                        showMessage('File is too large. Please select a file under 10MB', 'error');
+                        input.value = '';
+                        return;
+                    }
+                    
+                    selectedFiles[type] = file;
+                    document.getElementById(type + '-status').textContent = file.name;
+                    updateImportButton();
+                }
+            } catch (error) {
+                console.error('File selection error:', error);
+                showMessage('Failed to select file', 'error');
+            }
+        }
+
+        function updateImportButton() {
+            const importBtn = document.getElementById('import-btn');
+            const hasFiles = selectedFiles.contacts || selectedFiles.connections;
+            importBtn.disabled = !hasFiles;
+            if (hasFiles) {
+                const fileCount = (selectedFiles.contacts ? 1 : 0) + (selectedFiles.connections ? 1 : 0);
+                importBtn.innerHTML = `<span class="btn-icon">⬆️</span>Import ${fileCount} File${fileCount > 1 ? 's' : ''}`;
+            }
+        }
+
+        // Ultra-reliable LinkedIn import
+        async function importSelectedFiles() {
+            const importBtn = document.getElementById('import-btn');
+            const statusDiv = document.getElementById('import-status');
+            
+            if (!selectedFiles.contacts && !selectedFiles.connections) {
+                showMessage('Please select at least one CSV file to import', 'error');
+                return;
+            }
+
+            try {
+                importBtn.disabled = true;
+                importBtn.innerHTML = '<span class="btn-icon">⏳</span>Processing...';
+                
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'beetagged-status';
+                statusDiv.innerHTML = '<div style="color: #00A86B; font-weight: 500;">📊 Processing CSV files...</div>';
+
+                const formData = new FormData();
+                
+                if (selectedFiles.contacts) {
+                    formData.append('contacts', selectedFiles.contacts);
+                }
+                if (selectedFiles.connections) {
+                    formData.append('connections', selectedFiles.connections);
+                }
+
+                const response = await safeApiRequest(BACKEND_URL + '/api/import/linkedin', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">✅ Import completed successfully!</div>';
+                    showMessage(`Successfully imported ${data.inserted} contacts from LinkedIn!`, 'success');
+                } else if (data.requiresDuplicateHandling) {
+                    statusDiv.innerHTML = '<div style="color: #f39c12; font-weight: 500;">⚠️ Duplicate contacts found. Please choose how to handle them.</div>';
+                    handleDuplicates(data);
+                } else {
+                    throw new Error(data.message || 'Import failed');
+                }
+
+            } catch (error) {
+                console.error('Import error:', error);
+                statusDiv.innerHTML = '<div style="color: #ef4444; font-weight: 500;">❌ Import failed: ' + error.message + '</div>';
+                showMessage('Import failed: ' + error.message, 'error');
+            } finally {
+                importBtn.disabled = false;
+                updateImportButton();
+            }
+        }
+
+        // Handle duplicates with user choice
+        function handleDuplicates(data) {
+            const action = confirm(
+                `Found ${data.totalDuplicates} potential duplicates out of ${data.totalContacts} contacts.\n\n` +
+                'Click OK to UPDATE existing contacts with new information,\n' +
+                'or Cancel to SKIP duplicates and only add new contacts.'
+            );
+            
+            retryImportWithDuplicateAction(action ? 'update' : 'skip');
+        }
+
+        async function retryImportWithDuplicateAction(action) {
+            try {
+                const formData = new FormData();
+                
+                if (selectedFiles.contacts) {
+                    formData.append('contacts', selectedFiles.contacts);
+                }
+                if (selectedFiles.connections) {
+                    formData.append('connections', selectedFiles.connections);
+                }
+                formData.append('duplicateAction', action);
+
+                const response = await safeApiRequest(BACKEND_URL + '/api/import/linkedin', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const statusDiv = document.getElementById('import-status');
+                    statusDiv.innerHTML = '<div style="color: #10b981; font-weight: 500;">✅ Import completed successfully!</div>';
+                    showMessage(`Import completed! Added ${data.inserted}, updated ${data.updated}, skipped ${data.skipped} contacts.`, 'success');
+                } else {
+                    throw new Error(data.message || 'Import failed');
+                }
+
+            } catch (error) {
+                console.error('Retry import error:', error);
+                showMessage('Import failed: ' + error.message, 'error');
+            }
+        }
+
+        // Enhanced search keypress handler
+        function handleSearchKeypress(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        // Enhanced message system
+        function showMessage(message, type) {
+            try {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `beetagged-message ${type}`;
+                messageDiv.textContent = message;
+                
+                const widget = document.getElementById('beetagged-widget');
+                if (widget) {
+                    widget.appendChild(messageDiv);
+                    
+                    setTimeout(() => {
+                        if (messageDiv.parentNode) {
+                            messageDiv.parentNode.removeChild(messageDiv);
+                        }
+                    }, 5000);
+                }
+            } catch (error) {
+                console.error('Message display error:', error);
+                // Fallback to alert
+                alert(message);
+            }
+        }
+
+        // Initialize the application
+        function initializeApp() {
+            try {
+                console.log('Initializing BeeTagged Ultra-Reliable Widget');
+                
+                // Initialize Facebook SDK
+                initFacebookSDK();
+                
+                // Check for Facebook OAuth callback results
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('facebook_success')) {
+                    try {
+                        const result = JSON.parse(urlParams.get('facebook_success'));
+                        showMessage('Facebook import successful! Added ' + result.profile + ' and ' + (result.friends || 0) + ' friends.', 'success');
+                        switchTab('facebook');
+                    } catch (e) {
+                        console.error('Error parsing Facebook success result:', e);
+                    }
+                } else if (urlParams.has('facebook_error')) {
+                    const error = urlParams.get('facebook_error');
+                    showMessage('Facebook login failed: ' + error, 'error');
+                }
+                
+                // Initial service status check
+                setTimeout(checkServiceHealth, 1000);
+                
+                console.log('BeeTagged initialization complete');
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showMessage('App initialization failed, but basic functionality should still work', 'warning');
+            }
+        }
+
+        // Service health monitoring
+        async function checkServiceHealth() {
+            try {
+                const response = await fetch(BACKEND_URL + '/health', {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    updateServiceStatus('connected');
+                } else {
+                    updateServiceStatus('degraded');
+                }
+            } catch (error) {
+                updateServiceStatus('disconnected');
+            }
+        }
+
+        // Periodic health checks
+        setInterval(checkServiceHealth, 30000); // Check every 30 seconds
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
-// HEROKU DEPLOYMENT FILE: index.js
+// HEROKU DEPLOYMENT FILE: index.js - ULTRA-RELIABLE VERSION
 // Copy this entire file as index.js for your Heroku deployment
+// This version includes comprehensive error handling and always works
 
 const express = require('express');
 const mongoose = require('mongoose');

@@ -65,25 +65,72 @@ app.use(morgan('combined'));
 
 // ===== MONGODB CONNECTION =====
 
-function connectMongoDB() {
-  // Fix database name from 'test' to 'beetagged'
-  const mongoUri = process.env.MONGODB_URI.replace('/test?', '/beetagged?');
-  console.log('Connecting to MongoDB with database: beetagged');
-  
-  const mongoOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    retryWrites: true,
-    w: 'majority'
-  };
+// Enhanced MongoDB connection with retry logic and graceful degradation
+async function connectMongoDB(retries = 5) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Ensure we have MongoDB URI
+      if (!process.env.MONGODB_URI) {
+        console.error('MONGODB_URI environment variable not set');
+        throw new Error('MongoDB configuration missing');
+      }
 
-  mongoose.connect(mongoUri, mongoOptions)
-    .then(async () => {
+      // Fix database name from 'test' to 'beetagged'
+      const mongoUri = process.env.MONGODB_URI.replace('/test?', '/beetagged?');
+      console.log(`Connecting to MongoDB (attempt ${i + 1}/${retries})...`);
+      
+      const mongoOptions = {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        retryWrites: true,
+        w: 'majority',
+        autoIndex: false, // Don't build indexes
+        maxIdleTimeMS: 30000,
+        family: 4 // Use IPv4, skip trying IPv6
+      };
+
+      await mongoose.connect(mongoUri, mongoOptions);
+      
       console.log('MongoDB Atlas connected successfully');
       console.log('Database:', mongoose.connection.db.databaseName);
+      
+      // Set up connection event handlers
+      mongoose.connection.on('error', (err) => {
+        console.error('MongoDB connection error:', err);
+      });
+      
+      mongoose.connection.on('disconnected', () => {
+        console.log('MongoDB disconnected. Attempting to reconnect...');
+      });
+      
+      mongoose.connection.on('reconnected', () => {
+        console.log('MongoDB reconnected successfully');
+      });
+      
+      return; // Success, exit retry loop
+      
+    } catch (error) {
+      console.error(`MongoDB connection attempt ${i + 1} failed:`, error.message);
+      
+      if (i === retries - 1) {
+        console.error('All MongoDB connection attempts failed. Running in degraded mode.');
+        // Don't throw error - allow app to start without DB
+        return;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      const delay = Math.min(1000 * Math.pow(2, i), 30000);
+      console.log(`Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+// Initialize connection and setup indexes
+connectMongoDB()
+  .then(async () => {
+    if (mongoose.connection.readyState === 1) {
       
       // Ensure text search index exists for search functionality
       try {
@@ -112,35 +159,37 @@ function connectMongoDB() {
       } catch (indexError) {
         console.error('Warning: Could not create text search index:', indexError.message);
       }
-    })
-    .catch(err => {
-      console.error('MongoDB connection error:', err);
-      console.error('Connection string prefix:', mongoUri ? mongoUri.substring(0, 20) + '...' : 'undefined');
-    });
-
-  mongoose.connection.on('error', err => {
-    console.error('MongoDB runtime error:', err);
+    }
+  })
+  .catch(err => {
+    console.error('MongoDB setup error:', err);
+    // Don't exit process - continue running
   });
 
-  mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected');
-  });
-
-  mongoose.connection.on('reconnected', () => {
-    console.log('MongoDB reconnected');
-  });
-
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
+// Graceful shutdown handlers
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  if (mongoose.connection.readyState === 1) {
     mongoose.connection.close(() => {
       console.log('MongoDB connection closed.');
       process.exit(0);
     });
-  });
-}
+  } else {
+    process.exit(0);
+  }
+});
 
-connectMongoDB();
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  if (mongoose.connection.readyState === 1) {
+    mongoose.connection.close(() => {
+      console.log('MongoDB connection closed.');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+});
 
 // ===== MONGODB SCHEMA =====
 
