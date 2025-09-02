@@ -129,7 +129,7 @@ contactSchema.index({ userId: 1, createdAt: -1 });
 
 const Contact = mongoose.model('Contact', contactSchema);
 
-// Ultra-reliable MongoDB connection function
+// Ultra-reliable MongoDB connection function with enhanced Heroku support
 async function connectMongoDB() {
   if (isDbConnected) return true;
   
@@ -139,37 +139,66 @@ async function connectMongoDB() {
       return false;
     }
 
-    // Clean and prepare the MongoDB URI
+    // Clean and prepare the MongoDB URI for production
     let mongoUri = process.env.MONGODB_URI;
+    
+    // Handle different URI formats
     if (mongoUri.includes('/test?')) {
       mongoUri = mongoUri.replace('/test?', '/beetagged?');
     }
-    if (!mongoUri.includes('beetagged')) {
+    if (!mongoUri.includes('beetagged') && !mongoUri.includes('cluster0')) {
       mongoUri = mongoUri.replace(/\/[^?]*\?/, '/beetagged?');
     }
-
+    
+    // Ensure SSL and retry writes for production
+    if (!mongoUri.includes('retryWrites')) {
+      const separator = mongoUri.includes('?') ? '&' : '?';
+      mongoUri += `${separator}retryWrites=true&w=majority`;
+    }
+    
     console.log(`🔄 Connecting to MongoDB (attempt ${dbConnectionAttempts + 1}/${MAX_DB_ATTEMPTS})...`);
+    console.log(`🔗 Database host: ${mongoUri.split('@')[1]?.split('/')[0] || 'unknown'}`);
     
     const mongoOptions = {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 15000, // Reduced for faster failures
+      socketTimeoutMS: 30000,
+      connectTimeoutMS: 15000,
       retryWrites: true,
       w: 'majority',
       maxIdleTimeMS: 30000,
-      family: 4, // Use IPv4
-      bufferCommands: false, // Disable mongoose buffering
-      bufferMaxEntries: 0 // Disable mongoose buffering
+      family: 4, // Use IPv4 for better Heroku compatibility
+      bufferCommands: false,
+      bufferMaxEntries: 0,
+      // Additional Heroku-friendly options
+      useNewUrlParser: true,
+      useUnifiedTopology: true
     };
 
     await mongoose.connect(mongoUri, mongoOptions);
     
-    // Verify connection
-    await mongoose.connection.db.admin().ping();
+    // Verify connection with timeout
+    const pingPromise = mongoose.connection.db.admin().ping();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Ping timeout')), 10000)
+    );
+    
+    await Promise.race([pingPromise, timeoutPromise]);
     
     isDbConnected = true;
+    const dbName = mongoose.connection.db.databaseName;
     console.log('✅ MongoDB Atlas connected successfully');
-    console.log('📊 Database:', mongoose.connection.db.databaseName);
+    console.log('📊 Database:', dbName);
+    console.log('🌐 Connection state:', mongoose.connection.readyState);
+    
+    // Get collection stats for verification
+    try {
+      const collection = mongoose.connection.db.collection('contacts');
+      const count = await collection.estimatedDocumentCount();
+      console.log(`📈 Contacts collection: ${count} documents`);
+    } catch (statsError) {
+      console.warn('⚠️ Could not get collection stats:', statsError.message);
+    }
     
     // Setup indexes in background
     setupIndexes().catch(err => {
@@ -196,7 +225,22 @@ async function connectMongoDB() {
     
   } catch (error) {
     dbConnectionAttempts++;
-    console.error(`❌ MongoDB connection failed (${dbConnectionAttempts}/${MAX_DB_ATTEMPTS}):`, error.message);
+    console.error(`❌ MongoDB connection failed (${dbConnectionAttempts}/${MAX_DB_ATTEMPTS}):`);
+    console.error(`   Error name: ${error.name}`);
+    console.error(`   Error message: ${error.message}`);
+    console.error(`   Error code: ${error.code || 'N/A'}`);
+    
+    // Log specific connection issues
+    if (error.message.includes('ENOTFOUND')) {
+      console.error('   🔍 DNS resolution issue - check MongoDB cluster hostname');
+    } else if (error.message.includes('ECONNREFUSED')) {
+      console.error('   🔍 Connection refused - check network settings and IP whitelist');
+    } else if (error.message.includes('Authentication failed')) {
+      console.error('   🔍 Authentication issue - check username/password in MONGODB_URI');
+    } else if (error.message.includes('timeout')) {
+      console.error('   🔍 Connection timeout - check network connectivity and cluster status');
+    }
+    
     isDbConnected = false;
     
     if (dbConnectionAttempts < MAX_DB_ATTEMPTS) {
@@ -206,6 +250,11 @@ async function connectMongoDB() {
       setTimeout(() => connectMongoDB(), delay);
     } else {
       console.error('🔴 All MongoDB connection attempts failed. Running in degraded mode.');
+      console.error('🔧 Troubleshooting steps:');
+      console.error('   1. Check MongoDB Atlas cluster is running');
+      console.error('   2. Verify MONGODB_URI is correct');
+      console.error('   3. Check IP whitelist includes 0.0.0.0/0 or Heroku IPs');
+      console.error('   4. Verify database user has correct permissions');
     }
     
     return false;
@@ -292,12 +341,41 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
   const dbHealth = await checkDatabaseHealth();
   
-  res.status(dbHealth ? 200 : 503).json({ 
+  const healthInfo = { 
     status: dbHealth ? 'healthy' : 'degraded',
     database: dbHealth ? 'connected' : 'disconnected',
     version: '2.1.0',
     timestamp: new Date().toISOString()
-  });
+  };
+
+  // Add detailed diagnostics if requested
+  if (req.query.detailed === 'true') {
+    healthInfo.diagnostics = {
+      mongodb_uri_configured: !!process.env.MONGODB_URI,
+      connection_attempts: dbConnectionAttempts,
+      max_attempts: MAX_DB_ATTEMPTS,
+      mongoose_state: mongoose.connection.readyState,
+      mongoose_states: {
+        0: 'disconnected',
+        1: 'connected', 
+        2: 'connecting',
+        3: 'disconnecting'
+      }
+    };
+
+    if (dbHealth && mongoose.connection.db) {
+      try {
+        const collection = mongoose.connection.db.collection('contacts');
+        const count = await collection.estimatedDocumentCount();
+        healthInfo.diagnostics.contacts_count = count;
+        healthInfo.diagnostics.database_name = mongoose.connection.db.databaseName;
+      } catch (dbError) {
+        healthInfo.diagnostics.db_error = dbError.message;
+      }
+    }
+  }
+  
+  res.status(dbHealth ? 200 : 503).json(healthInfo);
 });
 
 // Ultra-reliable search endpoint with multiple fallbacks
