@@ -602,30 +602,21 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// LinkedIn CSV import
-app.post('/api/import/linkedin', upload.fields([
-  { name: 'linkedinCsv', maxCount: 1 },
-  { name: 'csvFile', maxCount: 1 },
-  { name: 'connectionsFile', maxCount: 1 },
-  { name: 'contactsCsv', maxCount: 1 },
-  { name: 'contactsFile', maxCount: 1 }
-]), async (req, res) => {
+// LinkedIn CSV import - accept any file field
+app.post('/api/import/linkedin', upload.any(), async (req, res) => {
   try {
     console.log('=== LinkedIn CSV Import Started ===');
     console.log('Files received:', req.files);
     
-    console.log('Checking for files with these field names:', Object.keys(req.files || {}));
+    console.log('Files array:', req.files);
     
-    const linkedinFile = req.files?.linkedinCsv?.[0] || 
-                        req.files?.csvFile?.[0] || 
-                        req.files?.connectionsFile?.[0] ||
-                        req.files?.contactsCsv?.[0] ||
-                        req.files?.contactsFile?.[0];
+    // Get the first uploaded file (upload.any() provides an array)
+    const linkedinFile = req.files && req.files.length > 0 ? req.files[0] : null;
     
     if (!linkedinFile) {
       return res.status(400).json({ 
         success: false, 
-        message: `At least one CSV file (contacts or connections) is required. Received field names: ${Object.keys(req.files || {}).join(', ')}`
+        message: `At least one CSV file is required. Received ${req.files ? req.files.length : 0} files.`
       });
     }
     
