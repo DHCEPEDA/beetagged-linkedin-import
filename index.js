@@ -7,9 +7,16 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const axios = require('axios');
+const OpenAI = require('openai');
+const similarity = require('compute-cosine-similarity');
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Initialize OpenAI for semantic search
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 // ===== SECURITY & MIDDLEWARE =====
 app.use(helmet({
@@ -145,20 +152,298 @@ connectMongoDB();
 // ===== MONGODB SCHEMA =====
 
 const contactSchema = new mongoose.Schema({
+  // Basic contact information
   name: String,
-  email: String,
+  email: { type: String, default: '', index: true },
   phone: String,
-  company: String,
-  position: String,
-  location: String,
+  phoneNumber: { type: String, default: '', index: true },
+  company: { type: String, default: '', index: true },
+  position: { type: String, default: '' },
+  jobTitle: { type: String, default: '' },
+  location: { type: String, default: '', index: true },
+  
+  // Social media profiles
+  linkedinId: { type: String, default: '' },
+  linkedinUrl: { type: String, default: '' },
+  linkedinProfile: { type: String, default: '' },
+  facebookId: { type: String, default: '' },
+  profilePicture: { type: String, default: '' },
+  
+  // Enhanced LinkedIn fields
+  currentPosition: {
+    title: String,
+    company: String,
+    startDate: String,
+    description: String
+  },
+  
+  // Professional history
+  experience: [{
+    company: String,
+    title: String,
+    startDate: String,
+    endDate: String,
+    description: String,
+    location: String
+  }],
+  
+  // Education background
+  education: [{
+    school: String,
+    degree: String,
+    startYear: String,
+    endYear: String,
+    activities: String,
+    notes: String
+  }],
+  
+  // Skills and insights extracted from LinkedIn
+  skills: [String],
+  interests: [String],
+  industries: [String],
+  expertise_areas: [String],
+  
+  // AI-generated fields for semantic search
+  embedding: [Number], // Vector embedding for semantic search
+  personality_traits: [String],
+  career_stage: String, // junior, mid, senior, executive
+  
+  // Search and metadata
   tags: [String],
+  searchableText: { type: String, default: '' },
   source: String,
   connectedOn: String,
+  lastEmbeddingUpdate: { type: Date, default: Date.now },
+  userId: { type: String, default: null, index: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
+// Create indexes for enhanced search
+contactSchema.index({ embedding: 1 });
+contactSchema.index({ skills: 1 });
+contactSchema.index({ expertise_areas: 1 });
+contactSchema.index({ industries: 1 });
+
 const Contact = mongoose.model('Contact', contactSchema);
+
+// ===== AI & SEMANTIC SEARCH FUNCTIONS =====
+
+// LinkedIn Data Processor Class
+class LinkedInDataProcessor {
+  
+  // Extract skills from job descriptions using NLP patterns
+  extractSkills(text) {
+    const skillPatterns = [
+      /\b(JavaScript|Python|React|Node\.js|TypeScript|SQL|MongoDB|AWS|Azure|Docker|Kubernetes|Java|C\+\+|C#|PHP|Ruby|Go|Swift|Kotlin)\b/gi,
+      /\b(Marketing|Sales|Analytics|Strategy|Operations|Finance|HR|Legal|Consulting|Management)\b/gi,
+      /\b(Machine Learning|AI|Data Science|Analytics|Business Intelligence|DevOps|Cloud Computing)\b/gi,
+      /\b(Leadership|Management|Team Building|Cross-functional|Project Management|Agile|Scrum)\b/gi
+    ];
+    
+    const skills = new Set();
+    skillPatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      matches.forEach(match => skills.add(match.toLowerCase()));
+    });
+    
+    return Array.from(skills);
+  }
+
+  // Extract interests and personality traits
+  extractInterests(text) {
+    const interestPatterns = [
+      /\b(chess|soccer|basketball|hiking|photography|music|travel|cooking|gaming|reading)\b/gi,
+      /\b(entrepreneurship|startups|innovation|technology|sustainability|blockchain|crypto)\b/gi,
+      /\b(volunteer|community|nonprofit|social impact|mentoring|education|teaching)\b/gi
+    ];
+    
+    const interests = new Set();
+    interestPatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      matches.forEach(match => interests.add(match.toLowerCase()));
+    });
+    
+    return Array.from(interests);
+  }
+
+  // Determine expertise areas based on experience
+  determineExpertiseAreas(text) {
+    const expertiseMap = {
+      'Product Marketing': ['marketing', 'product', 'go-to-market', 'positioning', 'messaging', 'brand'],
+      'Data Analytics': ['analytics', 'data', 'metrics', 'reporting', 'business intelligence', 'statistics'],
+      'Sales Strategy': ['sales', 'revenue', 'pipeline', 'forecasting', 'account management', 'business development'],
+      'Entrepreneurship': ['founder', 'startup', 'entrepreneur', 'venture', 'innovation', 'business development'],
+      'Technology': ['software', 'platform', 'cloud', 'AI', 'automation', 'digital', 'engineering', 'development'],
+      'Leadership': ['director', 'manager', 'team', 'leadership', 'strategy', 'executive', 'ceo', 'cto', 'cmo']
+    };
+
+    const expertise = new Set();
+    const allText = text.toLowerCase();
+
+    Object.entries(expertiseMap).forEach(([area, keywords]) => {
+      if (keywords.some(keyword => allText.includes(keyword))) {
+        expertise.add(area);
+      }
+    });
+
+    return Array.from(expertise);
+  }
+
+  // Determine career stage based on title and experience
+  determineCareerStage(currentPosition, experienceCount) {
+    if (!currentPosition || !currentPosition.title) return 'mid';
+    
+    const title = currentPosition.title.toLowerCase();
+    
+    if (title.includes('intern') || title.includes('junior') || title.includes('associate') || experienceCount <= 2) {
+      return 'junior';
+    } else if (title.includes('senior') || title.includes('lead') || title.includes('principal') || experienceCount >= 8) {
+      return 'senior';
+    } else if (title.includes('director') || title.includes('vp') || title.includes('ceo') || title.includes('cto') || title.includes('cmo') || title.includes('head of')) {
+      return 'executive';
+    } else {
+      return 'mid';
+    }
+  }
+
+  // Enhanced contact enrichment
+  enhanceContact(contact) {
+    const allText = [
+      contact.company || '',
+      contact.position || '',
+      contact.jobTitle || '',
+      contact.location || '',
+      ...(contact.experience || []).map(exp => `${exp.company} ${exp.title} ${exp.description || ''}`),
+      ...(contact.education || []).map(edu => `${edu.school} ${edu.degree || ''} ${edu.notes || ''}`)
+    ].join(' ');
+
+    const enriched = {
+      ...contact,
+      skills: this.extractSkills(allText),
+      interests: this.extractInterests(allText),
+      expertise_areas: this.determineExpertiseAreas(allText),
+      career_stage: this.determineCareerStage(contact.currentPosition, (contact.experience || []).length),
+      searchableText: allText,
+      lastEmbeddingUpdate: new Date()
+    };
+
+    return enriched;
+  }
+}
+
+// Generate embeddings using OpenAI
+async function generateEmbedding(text) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('OpenAI API key not configured, skipping embedding generation');
+      return null;
+    }
+
+    if (!text || text.trim().length === 0) {
+      return null;
+    }
+
+    const response = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: text.substring(0, 8000), // Limit text length for API
+    });
+
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error('Error generating embedding:', error.message);
+    return null;
+  }
+}
+
+// Enhanced semantic search function
+async function semanticSearch(query, userId = null, limit = 20) {
+  try {
+    // Generate embedding for the search query
+    const queryEmbedding = await generateEmbedding(query);
+    
+    if (!queryEmbedding) {
+      // Fallback to text search
+      console.log('No query embedding available, falling back to text search');
+      return await textSearch(query, userId, limit);
+    }
+
+    // Get all contacts with embeddings
+    const searchQuery = { embedding: { $exists: true, $ne: [] } };
+    if (userId) searchQuery.userId = userId;
+    
+    const contacts = await Contact.find(searchQuery).lean();
+
+    if (contacts.length === 0) {
+      console.log('No contacts with embeddings found, falling back to text search');
+      return await textSearch(query, userId, limit);
+    }
+
+    // Calculate similarity scores
+    const results = contacts.map(contact => {
+      try {
+        const sim = similarity(queryEmbedding, contact.embedding);
+        return {
+          ...contact,
+          similarity: sim || 0
+        };
+      } catch (err) {
+        console.error('Similarity calculation error:', err.message);
+        return {
+          ...contact,
+          similarity: 0
+        };
+      }
+    })
+    .filter(contact => contact.similarity > 0.6) // Threshold for relevance
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+
+    console.log(`Semantic search found ${results.length} results for "${query}"`);
+    return results;
+  } catch (error) {
+    console.error('Semantic search error:', error.message);
+    return await textSearch(query, userId, limit);
+  }
+}
+
+// Fallback text search
+async function textSearch(query, userId = null, limit = 20) {
+  try {
+    const searchQuery = { $text: { $search: query } };
+    if (userId) searchQuery.userId = userId;
+    
+    const results = await Contact.find(searchQuery)
+      .limit(limit)
+      .sort({ score: { $meta: "textScore" } })
+      .lean();
+      
+    console.log(`Text search found ${results.length} results for "${query}"`);
+    return results;
+  } catch (error) {
+    console.error('Text search error:', error.message);
+    
+    // Final fallback to regex search
+    const regexQuery = {
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { company: { $regex: query, $options: 'i' } },
+        { position: { $regex: query, $options: 'i' } },
+        { location: { $regex: query, $options: 'i' } },
+        { skills: { $in: [new RegExp(query, 'i')] } },
+        { expertise_areas: { $in: [new RegExp(query, 'i')] } }
+      ]
+    };
+    
+    if (userId) regexQuery.userId = userId;
+    
+    const results = await Contact.find(regexQuery).limit(limit).lean();
+    console.log(`Regex search found ${results.length} results for "${query}"`);
+    return results;
+  }
+}
+
+const linkedinProcessor = new LinkedInDataProcessor();
 
 // ===== FILE UPLOAD SETUP =====
 
@@ -558,47 +843,135 @@ app.get('/', (req, res) => {
   });
 });
 
-// Search contacts
+// Enhanced search with semantic capabilities
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
-    console.log('Search request for:', query);
+    const userId = req.query.userId;
+    const useSemanticSearch = req.query.semantic === 'true';
+    
+    console.log('Search request for:', query, useSemanticSearch ? '(semantic)' : '(traditional)');
 
     if (!query) {
       return res.status(400).json({ error: 'Query parameter q is required' });
     }
 
-    // Try text search first (requires text index)
     let contacts = [];
-    try {
-      contacts = await Contact.find({ 
-        $text: { $search: query } 
-      }, { 
-        score: { $meta: "textScore" } 
-      }).sort({ 
-        score: { $meta: "textScore" } 
-      }).limit(50).lean();
-    } catch (textSearchError) {
-      console.log('Text search failed, using regex fallback:', textSearchError.message);
-      
-      // Fallback to regex search
-      contacts = await Contact.find({
-        $or: [
-          { name: { $regex: query, $options: 'i' } },
-          { company: { $regex: query, $options: 'i' } },
-          { position: { $regex: query, $options: 'i' } },
-          { location: { $regex: query, $options: 'i' } },
-          { email: { $regex: query, $options: 'i' } }
-        ]
-      }).limit(50).lean();
+    let searchType = 'traditional';
+
+    // Use semantic search if requested and OpenAI is available
+    if (useSemanticSearch && process.env.OPENAI_API_KEY) {
+      try {
+        contacts = await semanticSearch(query, userId, 50);
+        console.log(`Semantic search found ${contacts.length} contacts`);
+        if (contacts.length > 0) {
+          searchType = 'semantic';
+        }
+      } catch (semanticError) {
+        console.error('Semantic search failed, falling back to text search:', semanticError.message);
+      }
+    }
+
+    // Fallback to traditional search if semantic search didn't work or wasn't requested
+    if (contacts.length === 0) {
+      try {
+        contacts = await Contact.find({ 
+          $text: { $search: query } 
+        }, { 
+          score: { $meta: "textScore" } 
+        }).sort({ 
+          score: { $meta: "textScore" } 
+        }).limit(50).lean();
+        console.log(`Text search found ${contacts.length} contacts`);
+      } catch (textSearchError) {
+        console.log('Text search failed, using regex fallback:', textSearchError.message);
+        
+        // Final fallback to regex search
+        contacts = await Contact.find({
+          $or: [
+            { name: { $regex: query, $options: 'i' } },
+            { company: { $regex: query, $options: 'i' } },
+            { position: { $regex: query, $options: 'i' } },
+            { location: { $regex: query, $options: 'i' } },
+            { email: { $regex: query, $options: 'i' } },
+            { skills: { $in: [new RegExp(query, 'i')] } },
+            { expertise_areas: { $in: [new RegExp(query, 'i')] } }
+          ]
+        }).limit(50).lean();
+        console.log(`Regex search found ${contacts.length} contacts`);
+        searchType = 'regex';
+      }
     }
 
     console.log(`Found ${contacts.length} contacts for query: ${query}`);
-    res.json({ contacts });
+    res.json({ 
+      contacts,
+      query,
+      search_type: searchType,
+      count: contacts.length,
+      openai_enabled: !!process.env.OPENAI_API_KEY,
+      semantic_requested: useSemanticSearch
+    });
     
   } catch (error) {
     console.error('Error fetching contacts:', error);
     res.status(500).json({ error: 'Failed to fetch contacts' });
+  }
+});
+
+// Dedicated semantic search endpoint with AI analytics
+app.get('/api/search-semantic', async (req, res) => {
+  try {
+    const { q: query, userId, limit = 20 } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ 
+        error: 'Query parameter q is required',
+        contacts: [],
+        count: 0
+      });
+    }
+
+    console.log('Semantic search query:', query);
+    
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({
+        error: 'OpenAI API key not configured',
+        message: 'Semantic search requires OpenAI integration',
+        contacts: [],
+        count: 0
+      });
+    }
+    
+    // Use enhanced semantic search
+    const results = await semanticSearch(query, userId, parseInt(limit));
+    
+    // Add analytics about search quality
+    const analytics = {
+      total_contacts_with_embeddings: results.filter(r => r.embedding && r.embedding.length > 0).length,
+      avg_similarity: results.length > 0 ? (results.reduce((sum, r) => sum + (r.similarity || 0), 0) / results.length).toFixed(3) : 0,
+      skills_found: [...new Set(results.flatMap(r => r.skills || []))].slice(0, 10),
+      companies_found: [...new Set(results.map(r => r.company).filter(Boolean))].slice(0, 5),
+      career_stages: [...new Set(results.map(r => r.career_stage).filter(Boolean))]
+    };
+    
+    res.json({
+      query: query,
+      count: results.length,
+      contacts: results,
+      search_type: 'semantic',
+      analytics: analytics,
+      openai_enabled: true
+    });
+
+  } catch (error) {
+    console.error('Semantic search error:', error);
+    res.status(500).json({ 
+      error: 'Search failed',
+      message: error.message,
+      contacts: [],
+      count: 0
+    });
   }
 });
 
@@ -652,25 +1025,43 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
       });
     }
 
-    // Save to database
+    // Enhanced processing with AI-powered insights
     let insertedCount = 0;
     let duplicateCount = 0;
     let contactsWithCompany = 0;
     let contactsWithEmail = 0;
+    let embeddingCount = 0;
     
     for (const contactData of mergedContacts) {
       if (contactData.company) contactsWithCompany++;
       if (contactData.email) contactsWithEmail++;
       
       try {
+        // Enhance contact with AI-powered insights
+        const enhancedContact = linkedinProcessor.enhanceContact(contactData);
+        
+        // Generate embedding for semantic search (if OpenAI available)
+        if (process.env.OPENAI_API_KEY && enhancedContact.searchableText) {
+          try {
+            const embedding = await generateEmbedding(enhancedContact.searchableText);
+            if (embedding) {
+              enhancedContact.embedding = embedding;
+              embeddingCount++;
+            }
+          } catch (embeddingError) {
+            console.log(`Skipping embedding for ${enhancedContact.name}: ${embeddingError.message}`);
+          }
+        }
+        
         // Check for existing contact by name
         const existingContact = await Contact.findOne({ 
           name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
         });
         
         if (!existingContact) {
-          // Create new contact
+          // Create new enhanced contact
           const contact = new Contact({
+            ...enhancedContact,
             name: contactData.name,
             email: contactData.email,
             phone: contactData.phone,
@@ -685,8 +1076,11 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
           await contact.save();
           insertedCount++;
         } else {
-          // Update existing contact with additional data if available
-          const updates = {};
+          // Update existing contact with enhanced data
+          const updates = {
+            ...enhancedContact,
+            updatedAt: new Date()
+          };
           if (contactData.email && !existingContact.email) updates.email = contactData.email;
           if (contactData.company && !existingContact.company) updates.company = contactData.company;
           if (contactData.position && !existingContact.position) updates.position = contactData.position;
@@ -695,12 +1089,12 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
           
           if (Object.keys(updates).length > 0) {
             await Contact.findByIdAndUpdate(existingContact._id, updates);
-            console.log(`Enhanced existing contact: ${contactData.name}`);
+            console.log(`Enhanced existing contact: ${contactData.name} with AI insights`);
           }
           duplicateCount++;
         }
       } catch (error) {
-        console.error(`Error saving contact ${contactData.name}:`, error);
+        console.error(`Error saving enhanced contact ${contactData.name}:`, error);
       }
     }
 
@@ -717,10 +1111,12 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
       processed: mergedContacts.length,
       enhanced: duplicateCount,
       totalContacts: totalContacts,
+      embeddings: embeddingCount,
+      ai_features: process.env.OPENAI_API_KEY ? 'enabled' : 'disabled',
       message: insertedCount > 0 
-        ? `✅ Successfully imported ${insertedCount} new contacts! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}profile links, and connection dates.`
+        ? `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}${embeddingCount > 0 ? `Generated ${embeddingCount} semantic embeddings. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`
         : duplicateCount > 0
-          ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with additional data from your files.`
+          ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`
           : `❌ No valid contacts found in the uploaded files.`
     });
 
