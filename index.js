@@ -614,12 +614,18 @@ app.post('/api/import/linkedin', upload.fields([
     console.log('=== LinkedIn CSV Import Started ===');
     console.log('Files received:', req.files);
     
-    const linkedinFile = req.files?.linkedinCsv?.[0] || req.files?.csvFile?.[0] || req.files?.connectionsFile?.[0];
+    console.log('Checking for files with these field names:', Object.keys(req.files || {}));
+    
+    const linkedinFile = req.files?.linkedinCsv?.[0] || 
+                        req.files?.csvFile?.[0] || 
+                        req.files?.connectionsFile?.[0] ||
+                        req.files?.contactsCsv?.[0] ||
+                        req.files?.contactsFile?.[0];
     
     if (!linkedinFile) {
       return res.status(400).json({ 
         success: false, 
-        message: 'No files uploaded. Please select a CSV file from LinkedIn export.' 
+        message: `At least one CSV file (contacts or connections) is required. Received field names: ${Object.keys(req.files || {}).join(', ')}`
       });
     }
     

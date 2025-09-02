@@ -597,11 +597,9 @@ window.addEventListener('load', function() {
     uploadStatus.style.display = 'block';
     
     try {
-      // Create FormData with multiple field names for backend compatibility
+      // Create FormData with the exact field name the backend expects
       const formData = new FormData();
-      formData.append('linkedinCsv', file);  // Primary field name
-      formData.append('csvFile', file);      // Alternative field name
-      formData.append('contactsFile', file); // Another alternative
+      formData.append('linkedinCsv', file);  // This matches the backend multer field name
       
       console.log('Sending request to:', `${BACKEND_URL}/api/import/linkedin`);
       console.log('FormData created with file:', file.name, 'size:', file.size);
