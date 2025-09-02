@@ -1,5 +1,5 @@
-// BeeTagged Heroku Deployment Package
-// This is the production-ready backend for Heroku deployment
+// BeeTagged Production Backend for Heroku
+// Save this file as: index.js
 
 const express = require('express');
 const mongoose = require('mongoose');
