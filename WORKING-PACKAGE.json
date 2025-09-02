@@ -1,0 +1,24 @@
+{
+  "name": "beetagged-backend",
+  "version": "2.1.0",
+  "description": "BeeTagged Professional Contact Management Backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "4.18.2",
+    "mongoose": "7.6.3",
+    "cors": "2.8.5",
+    "express-rate-limit": "6.10.0",
+    "helmet": "7.0.0",
+    "compression": "1.7.4",
+    "morgan": "1.10.0",
+    "axios": "1.5.1",
+    "csv-parser": "3.0.0",
+    "busboy": "1.6.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
