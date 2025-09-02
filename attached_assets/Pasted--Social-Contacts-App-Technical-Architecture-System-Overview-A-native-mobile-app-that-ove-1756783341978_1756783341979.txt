@@ -1,0 +1,238 @@
+# Social Contacts App - Technical Architecture
+
+## System Overview
+
+A native mobile app that overlays the native phone app with social media integrations and AI-powered semantic search across contacts' Facebook and LinkedIn data.
+
+## Core Components
+
+### 1. Mobile App Layer (React Native)
+
+**Main Components:**
+- **Contact Overlay UI** - Transparent overlay on native phone app
+- **Search Interface** - AI-powered natural language search bar
+- **Results Display** - Rich contact cards with social data
+- **Permissions Manager** - Handle contacts, camera, microphone access
+
+**Key Libraries:**
+- React Native Contacts (contacts access)
+- React Native Overlay (system overlay)
+- React Native Permissions
+- React Native Vector Icons
+
+### 2. Authentication & API Integration
+
+#### Facebook Integration
+- **Facebook Login SDK** - User authentication
+- **Graph API Client** - Limited friend data access
+- **Available Data:**
+  - Basic profile info (name, profile pic)
+  - Mutual friends
+  - Public posts/check-ins (very limited)
+  - Events attended (if public)
+
+#### LinkedIn Integration  
+- **LinkedIn OAuth 2.0** - Professional network access
+- **LinkedIn API Client** - Professional data
+- **Available Data:**
+  - Professional profile (company, title, skills)
+  - Connections (limited to 500)
+  - Education history
+  - Professional interests
+
+#### Native Contacts API
+- **Android:** ContactsContract API
+- **iOS:** Contacts Framework
+- **Data Access:**
+  - Phone numbers, emails
+  - Names, photos
+  - Company, job titles
+  - Notes, relationships
+
+### 3. Data Processing Pipeline
+
+#### Data Ingestion Service
+```
+Native Contacts → Data Processor ← Social APIs
+                       ↓
+                 Contact Matching
+                       ↓
+                 Data Enrichment
+                       ↓
+                 Vector Embedding
+                       ↓
+                 Vector Database
+```
+
+#### Contact Matching Algorithm
+- **Phone/Email matching** - Primary identifiers
+- **Name similarity** - Fuzzy matching with confidence scores  
+- **Profile photo comparison** - Computer vision matching
+- **Mutual connections** - Social graph analysis
+
+### 4. AI/LLM Layer
+
+#### Query Processing
+- **Intent Recognition** - Parse natural language queries
+- **Entity Extraction** - Identify location, job titles, interests
+- **Query Translation** - Convert to vector search + filters
+
+#### LLM Integration Options
+- **OpenAI GPT-4** - Query understanding and response generation
+- **Claude 3** - Alternative with good reasoning
+- **Local LLM** - Privacy-focused option (Llama, Mistral)
+
+#### Example Query Flow:
+```
+"Find friends in Round Rock who play poker"
+    ↓
+LLM Parser: {
+  location: "Round Rock, TX",
+  interests: ["poker", "gambling", "card games"],
+  relationship: "friends"
+}
+    ↓
+Vector Search + Geo Filter + Social Filter
+    ↓
+Ranked Results with Explanations
+```
+
+### 5. Data Storage & Search
+
+#### Vector Database (Pinecone/Weaviate)
+- **Contact embeddings** - Semantic representation of all contact data
+- **Multi-modal search** - Text, location, interests, professional data
+- **Real-time updates** - Sync with social API changes
+
+#### Local Storage (SQLite)
+- **Contact cache** - Offline access to basic data
+- **Search history** - Query suggestions and improvements
+- **User preferences** - Privacy settings, favorite searches
+
+#### Data Schema Example:
+```json
+{
+  "contactId": "uuid",
+  "basicInfo": {
+    "name": "John Doe",
+    "phone": "+1234567890",
+    "email": "john@example.com"
+  },
+  "socialProfiles": {
+    "facebook": {
+      "id": "fb_id",
+      "mutualFriends": 15,
+      "lastSeen": "2024-01-15",
+      "interests": ["poker", "photography"]
+    },
+    "linkedin": {
+      "id": "li_id", 
+      "company": "Google",
+      "title": "Software Engineer",
+      "location": "Austin, TX",
+      "skills": ["JavaScript", "React", "Node.js"]
+    }
+  },
+  "embedding": [0.1, 0.2, ...], // 1536-dim vector
+  "lastUpdated": "2024-01-15T10:00:00Z"
+}
+```
+
+### 6. Backend Services (Node.js/Express)
+
+#### API Gateway
+- **Rate limiting** - Manage social API quotas
+- **Authentication** - JWT tokens, OAuth refresh
+- **Data validation** - Sanitize and validate all inputs
+
+#### Sync Service
+- **Scheduled jobs** - Regular social data updates
+- **Webhook handlers** - Real-time updates from social platforms
+- **Conflict resolution** - Handle data inconsistencies
+
+#### Privacy Service
+- **Data encryption** - Encrypt sensitive social data
+- **Audit logging** - Track all data access
+- **Consent management** - User privacy preferences
+
+### 7. System Architecture Diagram
+
+```
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│   Mobile App    │    │   Backend    │    │  External APIs  │
+│                 │    │   Services   │    │                 │
+│ ┌─────────────┐ │    │              │    │ ┌─────────────┐ │
+│ │ Overlay UI  │ │◄───┤ API Gateway  │◄───┤ │ Facebook    │ │
+│ └─────────────┘ │    │              │    │ │ Graph API   │ │
+│ ┌─────────────┐ │    │ ┌──────────┐ │    │ └─────────────┘ │
+│ │ Search Bar  │ │◄───┤ │ LLM      │ │    │ ┌─────────────┐ │
+│ └─────────────┘ │    │ │ Service  │ │    │ │ LinkedIn    │ │
+│ ┌─────────────┐ │    │ └──────────┘ │    │ │ API         │ │
+│ │ Contact     │ │    │ ┌──────────┐ │    │ └─────────────┘ │
+│ │ Manager     │ │◄───┤ │ Sync     │ │    │                 │
+│ └─────────────┘ │    │ │ Service  │ │    │                 │
+└─────────────────┘    │ └──────────┘ │    └─────────────────┘
+                       │              │    
+                       │ ┌──────────┐ │    ┌─────────────────┐
+                       │ │ Vector   │ │    │   Vector DB     │
+                       │ │ Search   │ │◄───┤   (Pinecone)    │
+                       │ └──────────┘ │    └─────────────────┘
+                       └──────────────┘    
+```
+
+## Major Technical Challenges
+
+### 1. API Limitations
+- **Facebook:** Severely restricted friend data post-2018
+- **LinkedIn:** 500 connection limit, rate limiting
+- **Privacy:** GDPR/CCPA compliance requirements
+
+### 2. Native Integration
+- **System overlay** - Android/iOS differences
+- **Performance** - Real-time search without lag
+- **Battery life** - Efficient background sync
+
+### 3. Data Quality
+- **Matching accuracy** - Avoiding false positives
+- **Stale data** - Social profiles change frequently  
+- **Privacy boundaries** - Respecting user consent
+
+### 4. Scalability
+- **Vector search** - Sub-second response times
+- **Sync frequency** - Balance freshness vs API limits
+- **Storage costs** - Embeddings for millions of contacts
+
+## Implementation Phases
+
+### Phase 1: MVP (3-4 months)
+- Native contacts access
+- Basic Facebook/LinkedIn integration
+- Simple keyword search
+- Contact enrichment display
+
+### Phase 2: AI Search (2-3 months)
+- LLM query processing
+- Vector database integration
+- Semantic search capabilities
+- Natural language interface
+
+### Phase 3: Advanced Features (2-3 months)
+- System overlay integration
+- Real-time sync
+- Advanced matching algorithms
+- Analytics and insights
+
+## Cost Estimates (Monthly)
+
+- **LLM API calls:** $200-500 (depending on usage)
+- **Vector database:** $100-300 (Pinecone/Weaviate)
+- **Cloud hosting:** $100-200 (AWS/GCP)
+- **Social API costs:** $0 (free tiers)
+- **Development:** $20k-30k/month (2-3 developers)
+
+## Privacy & Compliance
+
+- **Data minimization** - Only store necessary social data
+- **Encryption** - End-to-end encryption for sensitive data
+- **User control** - Granular privacy settings
+- **Compliance** - GDPR, CCPA, app store policies

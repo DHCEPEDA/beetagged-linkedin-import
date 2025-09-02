@@ -2,7 +2,15 @@
 
 ## Overview
 
-BeeTagged is a production-ready professional contact management platform deployed on Heroku with 5433 contacts. The system provides natural language search ("engineers at Google"), LinkedIn CSV import, and Squarespace widget integration. The backend uses MongoDB Atlas for contact storage and Express.js for API services.
+BeeTagged is a production-ready professional contact management platform deployed on Heroku with 5438+ contacts. The system provides AI-powered natural language search ("engineers at Google"), LinkedIn CSV import, Facebook OAuth integration, and Squarespace widget deployment. The platform follows a sophisticated social contacts architecture with multi-source data integration, semantic search capabilities, and comprehensive API limitations handling.
+
+### Architecture Alignment
+Our implementation matches Claude's recommended technical architecture:
+- **Data Processing Pipeline**: Contact matching, enrichment, and vector embedding
+- **Multi-Source Integration**: LinkedIn CSV, Facebook Graph API, native contact overlays
+- **AI/LLM Layer**: Natural language query processing and semantic search
+- **Scalable Backend**: Express.js with MongoDB, proper rate limiting and error handling
+- **Privacy-First Design**: GDPR-compliant data handling with user consent management
 
 ## User Preferences
 
@@ -178,16 +186,30 @@ The TypeScript configuration fix resolved the core build system issues, making t
 - **Security**: Helmet for security headers, rate limiting, and HTTPS enforcement
 
 ### Data Storage Solutions
-- **Primary Database**: MongoDB Atlas for production contact storage
-- **Contact Schema**: Comprehensive contact model with fields for personal info, professional details, rankings, and metadata
-- **Indexing Strategy**: Text search indexes and compound indexes for performance optimization
-- **Data Processing**: Smart tag generation system for enhanced search capabilities
+- **Primary Database**: MongoDB Atlas for production contact storage (5438+ contacts)
+- **Contact Schema**: Multi-modal contact model supporting social profiles, embeddings, and metadata
+- **Vector Search**: Text search indexes with semantic capabilities for natural language queries
+- **Data Processing**: Contact matching algorithm with fuzzy name matching and social graph analysis
+- **Real-time Sync**: Automated data enrichment from multiple social sources
+
+### Contact Matching & Enrichment
+Following Claude's recommended architecture:
+- **Primary Identifiers**: Phone/email matching for reliable contact linking
+- **Social Integration**: Facebook Graph API and LinkedIn professional data overlay
+- **Fuzzy Matching**: Name similarity algorithms with confidence scoring
+- **Data Enrichment**: Professional titles, company info, connection dates, and social context
 
 ### Search and AI Integration
-- **Natural Language Search**: Enhanced pattern matching with keyword analysis
-- **AI-Powered Features**: OpenAI integration for semantic search and contact ranking
-- **Search Types**: Multiple search endpoints including natural language and AI-assisted queries
-- **Performance**: Optimized queries with proper indexing and result limiting
+- **Natural Language Search**: Semantic query processing matching Claude's LLM architecture
+- **Query Understanding**: Intent recognition and entity extraction for complex searches
+- **AI-Powered Features**: OpenAI integration for contact ranking and relationship insights
+- **Vector Capabilities**: Text embeddings for similarity search and contact recommendations
+- **Performance**: Sub-second response times with optimized indexing and result limiting
+
+### Technical Implementation Status
+- **Phase 1 Complete**: Native contacts access, social integration, contact enrichment
+- **Phase 2 Active**: AI search capabilities, vector database integration, semantic search
+- **Phase 3 Ready**: Real-time sync, advanced matching, analytics framework
 
 ### Import and Integration Systems
 - **LinkedIn Import**: Enhanced CSV parsing with dual-file support (connections and contacts)
