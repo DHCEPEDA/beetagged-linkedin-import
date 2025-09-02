@@ -1,0 +1,683 @@
+<!-- BeeTagged Production Widget for Squarespace Header Injection - Centered Version -->
+<!-- Copy this code into: Settings > Advanced > Code Injection > HEADER -->
+
+<div id="beetagged-widget-container"></div>
+
+<script>
+window.addEventListener('load', function() {
+  const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+  
+  // Create the full widget HTML with improved centering
+  const widgetHTML = `
+    <div style="
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      box-sizing: border-box;
+    ">
+      <div style="
+        max-width: 800px;
+        width: 100%;
+        padding: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        color: white;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        margin: auto;
+      ">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <h1 style="font-size: 2.5rem; font-weight: 700; margin: 0 0 0.5rem 0;">🏷️ BeeTagged</h1>
+          <p style="font-size: 1.1rem; opacity: 0.9; margin: 0;">AI-Powered Contact Intelligence & Search</p>
+        </div>
+        
+        <div style="display: flex; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 4px; margin-bottom: 2rem;">
+          <button id="search-tab" style="flex: 1; padding: 12px 16px; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; border-radius: 8px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">Search Contacts</button>
+          <button id="import-tab" style="flex: 1; padding: 12px 16px; border: none; background: transparent; color: white; cursor: pointer; border-radius: 8px; font-weight: 500;">Import LinkedIn</button>
+        </div>
+        
+        <!-- Search Tab Content -->
+        <div id="search-content" style="display: block;">
+          <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px; margin-bottom: 1rem;">
+            <input type="text" id="search-input" placeholder="Search your contacts naturally: 'people who work at tech companies in San Francisco'" style="
+              width: 100%;
+              padding: 12px 16px;
+              border: none;
+              border-radius: 8px;
+              font-size: 1rem;
+              margin-bottom: 1rem;
+              background: rgba(255,255,255,0.9);
+              color: #333;
+              box-sizing: border-box;
+            ">
+            
+            <button id="search-btn" style="
+              width: 100%;
+              padding: 12px 24px;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              background: rgba(255,255,255,0.2);
+              color: white;
+              border: 2px solid rgba(255,255,255,0.3);
+              transition: all 0.3s ease;
+            ">Search Contacts</button>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; justify-content: center;">
+              <span class="example-tag" data-query="Michael" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Find Michael</span>
+              <span class="example-tag" data-query="people who work at tech companies" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">Tech workers</span>
+              <span class="example-tag" data-query="contacts in San Francisco" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);">San Francisco</span>
+            </div>
+          </div>
+          
+          <div id="search-results" style="
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+          ">
+            <h3 style="margin: 0 0 1rem 0; text-align: center;">Search Results</h3>
+            <div id="results-list"></div>
+          </div>
+        </div>
+        
+        <!-- Import Tab Content -->
+        <div id="import-content" style="display: none;">
+          <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 12px;">
+            
+            <!-- Facebook Import Section -->
+            <div style="margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2rem;">
+              <h3 style="margin: 0 0 1rem 0;">📘 Facebook Import</h3>
+              
+              <div id="facebook-section">
+                <div id="facebook-connect" style="display: block;">
+                  <button id="facebook-connect-btn" style="
+                    width: 100%;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    background: #1877F2;
+                    color: white;
+                    font-size: 1rem;
+                    margin-bottom: 1rem;
+                    transition: all 0.3s ease;
+                  ">Connect Facebook Account</button>
+                  <p style="font-size: 0.9rem; opacity: 0.8; margin: 0; text-align: center;">Connect your Facebook account to import your friends</p>
+                </div>
+                
+                <div id="facebook-connected" style="display: none;">
+                  <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; text-align: center;">
+                    <div id="facebook-profile" style="margin-bottom: 1rem;"></div>
+                    <button id="facebook-import-btn" style="
+                      padding: 8px 16px;
+                      border: none;
+                      border-radius: 6px;
+                      background: rgba(255,255,255,0.2);
+                      color: white;
+                      cursor: pointer;
+                      margin-right: 8px;
+                      font-weight: 500;
+                    ">Import Contacts</button>
+                    <button id="facebook-disconnect-btn" style="
+                      padding: 8px 16px;
+                      border: none;
+                      border-radius: 6px;
+                      background: rgba(220, 38, 38, 0.2);
+                      color: white;
+                      cursor: pointer;
+                      font-weight: 500;
+                    ">Disconnect</button>
+                  </div>
+                  <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 1rem; font-size: 0.85rem;">
+                    <strong>Note:</strong> Facebook only allows apps to access friends who have also authorized the same app. You may see limited results due to Facebook's privacy policies.
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- LinkedIn Import Section -->
+            <div>
+              <h3 style="margin: 0 0 1rem 0;">💼 LinkedIn Import</h3>
+              <div id="upload-zone" style="
+                border: 2px dashed rgba(255,255,255,0.3);
+                border-radius: 12px;
+                padding: 2rem;
+                text-align: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.05);
+                margin-bottom: 1rem;
+              ">
+                <h4 style="margin: 0 0 1rem 0;">📁 Upload LinkedIn CSV</h4>
+                <p style="margin: 0 0 0.5rem 0;">Export your LinkedIn connections and upload the CSV file here</p>
+                <p style="font-size: 0.9rem; opacity: 0.8; margin: 0;">Drag & drop or click to select</p>
+                <input type="file" id="file-input" accept=".csv" style="display: none;">
+              </div>
+              
+              <div id="upload-status" style="display: none;"></div>
+              
+              <div style="margin-top: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0;">📋 How to export from LinkedIn:</h4>
+                <ol style="font-size: 0.9rem; opacity: 0.9; padding-left: 1.2rem; margin: 0;">
+                  <li>Go to LinkedIn Settings & Privacy</li>
+                  <li>Click "Data Privacy" → "Get a copy of your data"</li>
+                  <li>Select "Connections" and download</li>
+                  <li>Upload the CSV file here</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="global-message" style="display: none;"></div>
+      </div>
+    </div>
+  `;
+  
+  // Insert widget into container
+  const container = document.getElementById('beetagged-widget-container');
+  if (container) {
+    container.innerHTML = widgetHTML;
+    setupWidget();
+  }
+  
+  function setupWidget() {
+    // Tab switching
+    const searchTab = document.getElementById('search-tab');
+    const importTab = document.getElementById('import-tab');
+    const searchContent = document.getElementById('search-content');
+    const importContent = document.getElementById('import-content');
+    
+    if (searchTab && importTab && searchContent && importContent) {
+      searchTab.onclick = function() {
+        searchTab.style.background = 'rgba(255,255,255,0.2)';
+        searchTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        importTab.style.background = 'transparent';
+        importTab.style.boxShadow = 'none';
+        searchContent.style.display = 'block';
+        importContent.style.display = 'none';
+      };
+      
+      importTab.onclick = function() {
+        importTab.style.background = 'rgba(255,255,255,0.2)';
+        importTab.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        searchTab.style.background = 'transparent';
+        searchTab.style.boxShadow = 'none';
+        importContent.style.display = 'block';
+        searchContent.style.display = 'none';
+      };
+    }
+    
+    // Search functionality
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
+    
+    if (searchBtn) {
+      searchBtn.onclick = performSearch;
+    }
+    
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          performSearch();
+        }
+      });
+    }
+    
+    // Example tags
+    const exampleTags = document.querySelectorAll('.example-tag');
+    exampleTags.forEach(tag => {
+      tag.onclick = function() {
+        const query = this.getAttribute('data-query');
+        if (searchInput) {
+          searchInput.value = query;
+          performSearch();
+        }
+      };
+      
+      // Hover effects
+      tag.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.3)'; };
+      tag.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.2)'; };
+    });
+    
+    // File upload
+    setupFileUpload();
+    
+    // Facebook functionality
+    setupFacebookFeatures();
+    
+    // Load sample contacts
+    loadSampleContacts();
+  }
+  
+  async function loadSampleContacts() {
+    try {
+      const response = await fetch(BACKEND_URL + '/api/contacts?limit=3');
+      if (response.ok) {
+        const contacts = await response.json();
+        if (contacts && contacts.length > 0) {
+          displaySampleContacts(contacts);
+        }
+      }
+    } catch (error) {
+      console.log('Sample contacts failed to load - widget still functional');
+    }
+  }
+  
+  function displaySampleContacts(contacts) {
+    const resultsList = document.getElementById('results-list');
+    const resultsContainer = document.getElementById('search-results');
+    
+    if (resultsList && resultsContainer) {
+      resultsList.innerHTML = 
+        '<div style="margin-bottom: 1rem; opacity: 0.8; font-size: 0.9rem; text-align: center;"><strong>✅ Connected to your contact database! Sample contacts:</strong></div>' +
+        contacts.map(contact => {
+          console.log('Sample contact data:', contact);
+          const details = [];
+          if (contact.company) details.push(contact.company);
+          if (contact.position) details.push(contact.position);
+          if (contact.jobTitle) details.push(contact.jobTitle);
+          if (contact.location) details.push(contact.location);
+          if (contact.email) details.push(contact.email);
+          
+          return '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2); text-align: center;"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+          (contact.name || 'Unknown Name') + 
+          '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
+          (details.length > 0 ? details.join(' • ') : 'No additional details available') + 
+          '</div><div style="opacity: 0.6; font-size: 0.8rem; margin-top: 0.5rem;">Source: ' + (contact.source || 'Unknown') + '</div></div>';
+        }).join('') +
+        '<div style="margin-top: 1rem; opacity: 0.7; font-size: 0.85rem; text-align: center;">Try searching above to find specific contacts!</div>';
+      resultsContainer.style.display = 'block';
+    }
+  }
+  
+  async function performSearch() {
+    const input = document.getElementById('search-input');
+    const btn = document.getElementById('search-btn');
+    const results = document.getElementById('search-results');
+    const resultsList = document.getElementById('results-list');
+    
+    if (!input || !btn || !results || !resultsList) return;
+    
+    const query = input.value.trim();
+    if (!query) return;
+    
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/search/natural?q=' + encodeURIComponent(query));
+      const data = await response.json();
+      const contacts = data.results || data;
+      
+      if (contacts && contacts.length > 0) {
+        resultsList.innerHTML = contacts.map(contact => {
+          console.log('Contact data:', contact);
+          const details = [];
+          if (contact.company) details.push(contact.company);
+          if (contact.position) details.push(contact.position);
+          if (contact.jobTitle) details.push(contact.jobTitle);
+          if (contact.location) details.push(contact.location);
+          if (contact.email) details.push(contact.email);
+          
+          return '<div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2); text-align: center;"><div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem;">' + 
+          (contact.name || 'Unknown Name') + 
+          '</div><div style="opacity: 0.8; font-size: 0.9rem;">' + 
+          (details.length > 0 ? details.join(' • ') : 'No additional details available') + 
+          '</div><div style="opacity: 0.6; font-size: 0.8rem; margin-top: 0.5rem;">Source: ' + (contact.source || 'Unknown') + '</div></div>';
+        }).join('');
+        results.style.display = 'block';
+      } else {
+        resultsList.innerHTML = '<p style="text-align: center;">No contacts found matching your search.</p>';
+        results.style.display = 'block';
+      }
+    } catch (error) {
+      showMessage('Search failed. Please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Search Contacts';
+    }
+  }
+  
+  function setupFileUpload() {
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    
+    if (!uploadZone || !fileInput) return;
+    
+    uploadZone.onclick = function() { fileInput.click(); };
+    
+    uploadZone.ondragover = function(e) {
+      e.preventDefault();
+      this.style.borderColor = 'rgba(255,255,255,0.6)';
+      this.style.background = 'rgba(255,255,255,0.1)';
+    };
+    
+    uploadZone.ondragleave = function(e) {
+      e.preventDefault();
+      this.style.borderColor = 'rgba(255,255,255,0.3)';
+      this.style.background = 'rgba(255,255,255,0.05)';
+    };
+    
+    uploadZone.ondrop = function(e) {
+      e.preventDefault();
+      this.style.borderColor = 'rgba(255,255,255,0.3)';
+      this.style.background = 'rgba(255,255,255,0.05)';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    };
+    
+    fileInput.onchange = function(e) {
+      if (e.target.files.length > 0) {
+        handleFileUpload(e.target.files[0]);
+      }
+    };
+  }
+  
+  async function handleFileUpload(file) {
+    if (!file.name.endsWith('.csv')) {
+      showMessage('Please select a CSV file.', 'error');
+      return;
+    }
+    
+    const uploadStatus = document.getElementById('upload-status');
+    if (uploadStatus) {
+      uploadStatus.style.display = 'block';
+      uploadStatus.innerHTML = '<div style="text-align: center; padding: 1rem;">Uploading and processing ' + file.name + '...</div>';
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append('csvFile', file);
+      
+      const response = await fetch(BACKEND_URL + '/api/import/linkedin', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      const count = data.count || data.imported || data.contactsImported || 'some';
+      showMessage('Successfully imported ' + count + ' contacts!', 'success');
+      
+    } catch (error) {
+      showMessage('Upload failed. Please try again.', 'error');
+    } finally {
+      if (uploadStatus) {
+        uploadStatus.style.display = 'none';
+      }
+    }
+  }
+  
+  function showMessage(message, type) {
+    const messageElement = document.getElementById('global-message');
+    if (messageElement) {
+      const bgColor = type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)';
+      const borderColor = type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)';
+      
+      messageElement.innerHTML = '<div style="padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: center; background: ' + bgColor + '; border: 1px solid ' + borderColor + ';">' + message + '</div>';
+      messageElement.style.display = 'block';
+      
+      setTimeout(function() {
+        messageElement.style.display = 'none';
+      }, 5000);
+    }
+  }
+  
+  // Facebook functionality
+  let facebookAccessToken = null;
+  let facebookUser = null;
+  
+  function setupFacebookFeatures() {
+    const connectBtn = document.getElementById('facebook-connect-btn');
+    const importBtn = document.getElementById('facebook-import-btn');
+    const disconnectBtn = document.getElementById('facebook-disconnect-btn');
+    
+    if (connectBtn) {
+      connectBtn.onclick = initiateFacebookOAuth;
+    }
+    
+    if (importBtn) {
+      importBtn.onclick = importFacebookContacts;
+    }
+    
+    if (disconnectBtn) {
+      disconnectBtn.onclick = disconnectFacebook;
+    }
+    
+    // Check for existing token in localStorage
+    const savedToken = localStorage.getItem('facebook_access_token');
+    const savedUser = localStorage.getItem('facebook_user');
+    
+    if (savedToken && savedUser) {
+      facebookAccessToken = savedToken;
+      facebookUser = JSON.parse(savedUser);
+      updateFacebookUI();
+    }
+  }
+  
+  function initiateFacebookOAuth() {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const state = Math.random().toString(36).substring(7);
+    
+    const facebookAuthUrl = 'https://www.facebook.com/v18.0/dialog/oauth?' +
+      'client_id=1222790436230433&' +
+      'redirect_uri=' + encodeURIComponent(redirectUri) + '&' +
+      'scope=email,user_friends&' +
+      'response_type=code&' +
+      'state=' + state;
+    
+    // Store state for verification
+    localStorage.setItem('facebook_oauth_state', state);
+    
+    // Open popup window
+    const popup = window.open(
+      facebookAuthUrl,
+      'facebook-oauth',
+      'width=500,height=600,scrollbars=yes,resizable=yes'
+    );
+    
+    // Listen for the popup to be closed or for a message
+    const checkClosed = setInterval(function() {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        // Check if we got the code in URL parameters
+        handleOAuthCallback();
+      }
+    }, 1000);
+    
+    // Listen for messages from the popup
+    window.addEventListener('message', function(event) {
+      if (event.origin !== window.location.origin) return;
+      
+      if (event.data.type === 'FACEBOOK_OAUTH_SUCCESS') {
+        clearInterval(checkClosed);
+        popup.close();
+        exchangeFacebookCodeForToken(event.data.code);
+      }
+    }, { once: true });
+  }
+  
+  function handleOAuthCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const savedState = localStorage.getItem('facebook_oauth_state');
+    
+    if (code && state === savedState) {
+      exchangeFacebookCodeForToken(code);
+      // Clean up URL
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }
+  
+  async function exchangeFacebookCodeForToken(code) {
+    const connectBtn = document.getElementById('facebook-connect-btn');
+    if (connectBtn) {
+      connectBtn.disabled = true;
+      connectBtn.textContent = 'Connecting...';
+    }
+    
+    try {
+      const redirectUri = window.location.origin + window.location.pathname;
+      
+      const response = await fetch(BACKEND_URL + '/api/facebook/exchange-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: code,
+          redirectUri: redirectUri
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Token exchange failed');
+      }
+      
+      const data = await response.json();
+      facebookAccessToken = data.accessToken;
+      
+      // Get user profile
+      await fetchFacebookProfile();
+      
+      showMessage('Facebook account connected successfully!', 'success');
+      updateFacebookUI();
+      
+    } catch (error) {
+      console.error('Facebook connection error:', error);
+      showMessage('Facebook connection failed. Please try again.', 'error');
+    } finally {
+      if (connectBtn) {
+        connectBtn.disabled = false;
+        connectBtn.textContent = 'Connect Facebook Account';
+      }
+    }
+  }
+  
+  async function fetchFacebookProfile() {
+    try {
+      const response = await fetch(BACKEND_URL + '/api/facebook/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accessToken: facebookAccessToken
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Profile fetch failed');
+      }
+      
+      const profile = await response.json();
+      facebookUser = profile;
+      
+      // Save to localStorage
+      localStorage.setItem('facebook_access_token', facebookAccessToken);
+      localStorage.setItem('facebook_user', JSON.stringify(facebookUser));
+      
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      throw error;
+    }
+  }
+  
+  async function importFacebookContacts() {
+    const importBtn = document.getElementById('facebook-import-btn');
+    if (importBtn) {
+      importBtn.disabled = true;
+      importBtn.textContent = 'Importing...';
+    }
+    
+    try {
+      const response = await fetch(BACKEND_URL + '/api/facebook/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accessToken: facebookAccessToken
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Import failed');
+      }
+      
+      const data = await response.json();
+      const count = data.count || data.imported || data.contactsImported || 0;
+      
+      if (count === 0) {
+        showMessage('No new Facebook contacts found. This is normal due to Facebook\'s privacy restrictions.', 'info');
+      } else {
+        showMessage('Successfully imported ' + count + ' Facebook contacts!', 'success');
+      }
+      
+    } catch (error) {
+      console.error('Facebook import error:', error);
+      showMessage('Facebook import failed. Please try again.', 'error');
+    } finally {
+      if (importBtn) {
+        importBtn.disabled = false;
+        importBtn.textContent = 'Import Contacts';
+      }
+    }
+  }
+  
+  function disconnectFacebook() {
+    facebookAccessToken = null;
+    facebookUser = null;
+    
+    localStorage.removeItem('facebook_access_token');
+    localStorage.removeItem('facebook_user');
+    localStorage.removeItem('facebook_oauth_state');
+    
+    updateFacebookUI();
+    showMessage('Facebook account disconnected.', 'success');
+  }
+  
+  function updateFacebookUI() {
+    const connectSection = document.getElementById('facebook-connect');
+    const connectedSection = document.getElementById('facebook-connected');
+    const profileDiv = document.getElementById('facebook-profile');
+    
+    if (facebookAccessToken && facebookUser) {
+      connectSection.style.display = 'none';
+      connectedSection.style.display = 'block';
+      
+      if (profileDiv) {
+        profileDiv.innerHTML = 
+          '<div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">' +
+          (facebookUser.picture?.data?.url ? '<img src="' + facebookUser.picture.data.url + '" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%;">' : '') +
+          '<div><div style="font-weight: 600;">' + facebookUser.name + '</div>' +
+          '<div style="font-size: 0.9rem; opacity: 0.8;">Connected via Facebook</div></div>' +
+          '</div>';
+      }
+    } else {
+      connectSection.style.display = 'block';
+      connectedSection.style.display = 'none';
+    }
+  }
+  
+  // Check for OAuth callback on page load
+  if (window.location.search.includes('code=')) {
+    handleOAuthCallback();
+  }
+});
+</script>
