@@ -1,7 +1,13 @@
 // BeeTagged API Configuration
-// Always use full Heroku URL - never relative paths
+// Auto-detect development vs production environment
 
-export const BACKEND_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+const isProduction = window.location.hostname === 'www.beetagged.com' || 
+                     window.location.hostname === 'beetagged.com' ||
+                     window.location.hostname.includes('squarespace.com');
+
+export const BACKEND_URL = isProduction 
+  ? 'https://beetagged-app-53414697acd3.herokuapp.com'
+  : 'http://localhost:5000';
 
 // Generic API call function with proper CORS headers
 export const apiCall = async (endpoint, options = {}) => {

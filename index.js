@@ -975,6 +975,22 @@ app.get('/api/search-semantic', async (req, res) => {
   }
 });
 
+// Get all contacts endpoint
+app.get('/api/contacts', async (req, res) => {
+  try {
+    console.log('Fetching all contacts...');
+    const contacts = await Contact.find().sort({ updatedAt: -1 }).limit(1000);
+    console.log(`Found ${contacts.length} contacts`);
+    res.json(contacts);
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch contacts',
+      message: error.message 
+    });
+  }
+});
+
 // LinkedIn CSV import - accept any file field
 app.post('/api/import/linkedin', upload.any(), async (req, res) => {
   try {
