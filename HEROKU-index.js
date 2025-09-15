@@ -1,0 +1,1519 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const multer = require('multer');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const axios = require('axios');
+const OpenAI = require('openai');
+const similarity = require('compute-cosine-similarity');
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+// Initialize OpenAI for semantic search
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// ===== SECURITY & MIDDLEWARE =====
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(compression());
+app.use(express.json());
+
+// CORS for Squarespace integration
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://www.beetagged.com',
+      'https://beetagged.com',
+      'https://beetagged.squarespace.com',
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'http://127.0.0.1:3000',
+      'https://replit.dev',
+      'https://*.replit.dev',
+      'https://*.repl.co'
+    ];
+    
+    if (!origin || allowedOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        return origin.includes(allowed.replace('https://*.', '').replace('*', ''));
+      }
+      return allowed === origin;
+    })) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow for development
+    }
+  },
+  credentials: false,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Trust proxy for Heroku
+app.set('trust proxy', 1);
+
+// Rate limiting with Heroku proxy trust
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  trustProxy: true
+});
+app.use(limiter);
+
+// Logging
+app.use(morgan('combined'));
+
+// ===== MONGODB CONNECTION =====
+
+function connectMongoDB() {
+  // Fix database name from 'test' to 'beetagged' (only if MONGODB_URI contains '/test?')
+  const originalUri = process.env.MONGODB_URI;
+  if (!originalUri) {
+    console.error('❌ MONGODB_URI environment variable not set');
+    return;
+  }
+  
+  const mongoUri = originalUri.includes('/test?') ? originalUri.replace('/test?', '/beetagged?') : originalUri;
+  console.log('Connecting to MongoDB with database: beetagged');
+  
+  const mongoOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    retryWrites: true,
+    w: 'majority'
+  };
+
+  mongoose.connect(mongoUri, mongoOptions)
+    .then(async () => {
+      console.log('MongoDB Atlas connected successfully');
+      console.log('Database:', mongoose.connection.db.databaseName);
+      
+      // Ensure text search index exists for search functionality
+      try {
+        const indexes = await mongoose.connection.db.collection('contacts').indexes();
+        console.log('Current indexes:', indexes.map(idx => idx.name));
+        
+        const hasTextIndex = indexes.some(idx => 
+          idx.name.includes('text') || 
+          (idx.key && typeof idx.key === 'object' && Object.values(idx.key).includes('text'))
+        );
+        
+        if (!hasTextIndex) {
+          console.log('Creating text search index...');
+          await mongoose.connection.db.collection('contacts').createIndex({
+            name: 'text',
+            company: 'text',
+            position: 'text',
+            location: 'text',
+            'tags.value': 'text',
+            searchableText: 'text'
+          });
+          console.log('✅ Text search index created successfully');
+        } else {
+          console.log('✅ Text search index already exists');
+        }
+      } catch (indexError) {
+        console.error('Warning: Could not create text search index:', indexError.message);
+      }
+    })
+    .catch(err => {
+      console.error('MongoDB connection error:', err);
+      console.error('Connection string prefix:', mongoUri ? mongoUri.substring(0, 20) + '...' : 'undefined');
+    });
+
+  mongoose.connection.on('error', err => {
+    console.error('MongoDB runtime error:', err);
+  });
+
+  mongoose.connection.on('disconnected', () => {
+    console.log('MongoDB disconnected');
+  });
+
+  mongoose.connection.on('reconnected', () => {
+    console.log('MongoDB reconnected');
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    mongoose.connection.close(() => {
+      console.log('MongoDB connection closed.');
+      process.exit(0);
+    });
+  });
+}
+
+connectMongoDB();
+
+// ===== MONGODB SCHEMA =====
+
+const contactSchema = new mongoose.Schema({
+  // Basic contact information
+  name: String,
+  email: { type: String, default: '', index: true },
+  phone: String,
+  phoneNumber: { type: String, default: '', index: true },
+  company: { type: String, default: '', index: true },
+  position: { type: String, default: '' },
+  jobTitle: { type: String, default: '' },
+  location: { type: String, default: '', index: true },
+  
+  // Social media profiles
+  linkedinId: { type: String, default: '' },
+  linkedinUrl: { type: String, default: '' },
+  linkedinProfile: { type: String, default: '' },
+  facebookId: { type: String, default: '' },
+  profilePicture: { type: String, default: '' },
+  
+  // Enhanced LinkedIn fields
+  currentPosition: {
+    title: String,
+    company: String,
+    startDate: String,
+    description: String
+  },
+  
+  // Professional history
+  experience: [{
+    company: String,
+    title: String,
+    startDate: String,
+    endDate: String,
+    description: String,
+    location: String
+  }],
+  
+  // Education background
+  education: [{
+    school: String,
+    degree: String,
+    startYear: String,
+    endYear: String,
+    activities: String,
+    notes: String
+  }],
+  
+  // Skills and insights extracted from LinkedIn
+  skills: [String],
+  interests: [String],
+  industries: [String],
+  expertise_areas: [String],
+  
+  // AI-generated fields for semantic search
+  embedding: [Number], // Vector embedding for semantic search
+  personality_traits: [String],
+  career_stage: String, // junior, mid, senior, executive
+  
+  // Search and metadata
+  tags: [String],
+  searchableText: { type: String, default: '' },
+  source: String,
+  connectedOn: String,
+  lastEmbeddingUpdate: { type: Date, default: Date.now },
+  userId: { type: String, default: null, index: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Create indexes for enhanced search
+contactSchema.index({ embedding: 1 });
+contactSchema.index({ skills: 1 });
+contactSchema.index({ expertise_areas: 1 });
+contactSchema.index({ industries: 1 });
+
+const Contact = mongoose.model('Contact', contactSchema);
+
+// ===== AI & SEMANTIC SEARCH FUNCTIONS =====
+
+// LinkedIn Data Processor Class
+class LinkedInDataProcessor {
+  
+  // Extract skills from job descriptions using NLP patterns
+  extractSkills(text) {
+    const skillPatterns = [
+      /\b(JavaScript|Python|React|Node\.js|TypeScript|SQL|MongoDB|AWS|Azure|Docker|Kubernetes|Java|C\+\+|C#|PHP|Ruby|Go|Swift|Kotlin)\b/gi,
+      /\b(Marketing|Sales|Analytics|Strategy|Operations|Finance|HR|Legal|Consulting|Management)\b/gi,
+      /\b(Machine Learning|AI|Data Science|Analytics|Business Intelligence|DevOps|Cloud Computing)\b/gi,
+      /\b(Leadership|Management|Team Building|Cross-functional|Project Management|Agile|Scrum)\b/gi
+    ];
+    
+    const skills = new Set();
+    skillPatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      matches.forEach(match => skills.add(match.toLowerCase()));
+    });
+    
+    return Array.from(skills);
+  }
+
+  // Extract interests and personality traits
+  extractInterests(text) {
+    const interestPatterns = [
+      /\b(chess|soccer|basketball|hiking|photography|music|travel|cooking|gaming|reading)\b/gi,
+      /\b(entrepreneurship|startups|innovation|technology|sustainability|blockchain|crypto)\b/gi,
+      /\b(volunteer|community|nonprofit|social impact|mentoring|education|teaching)\b/gi
+    ];
+    
+    const interests = new Set();
+    interestPatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      matches.forEach(match => interests.add(match.toLowerCase()));
+    });
+    
+    return Array.from(interests);
+  }
+
+  // Determine expertise areas based on experience
+  determineExpertiseAreas(text) {
+    const expertiseMap = {
+      'Product Marketing': ['marketing', 'product', 'go-to-market', 'positioning', 'messaging', 'brand'],
+      'Data Analytics': ['analytics', 'data', 'metrics', 'reporting', 'business intelligence', 'statistics'],
+      'Sales Strategy': ['sales', 'revenue', 'pipeline', 'forecasting', 'account management', 'business development'],
+      'Entrepreneurship': ['founder', 'startup', 'entrepreneur', 'venture', 'innovation', 'business development'],
+      'Technology': ['software', 'platform', 'cloud', 'AI', 'automation', 'digital', 'engineering', 'development'],
+      'Leadership': ['director', 'manager', 'team', 'leadership', 'strategy', 'executive', 'ceo', 'cto', 'cmo']
+    };
+
+    const expertise = new Set();
+    const allText = text.toLowerCase();
+
+    Object.entries(expertiseMap).forEach(([area, keywords]) => {
+      if (keywords.some(keyword => allText.includes(keyword))) {
+        expertise.add(area);
+      }
+    });
+
+    return Array.from(expertise);
+  }
+
+  // Determine career stage based on title and experience
+  determineCareerStage(currentPosition, experienceCount) {
+    if (!currentPosition || !currentPosition.title) return 'mid';
+    
+    const title = currentPosition.title.toLowerCase();
+    
+    if (title.includes('intern') || title.includes('junior') || title.includes('associate') || experienceCount <= 2) {
+      return 'junior';
+    } else if (title.includes('senior') || title.includes('lead') || title.includes('principal') || experienceCount >= 8) {
+      return 'senior';
+    } else if (title.includes('director') || title.includes('vp') || title.includes('ceo') || title.includes('cto') || title.includes('cmo') || title.includes('head of')) {
+      return 'executive';
+    } else {
+      return 'mid';
+    }
+  }
+
+  // Enhanced contact enrichment
+  enhanceContact(contact) {
+    const allText = [
+      contact.company || '',
+      contact.position || '',
+      contact.jobTitle || '',
+      contact.location || '',
+      ...(contact.experience || []).map(exp => `${exp.company} ${exp.title} ${exp.description || ''}`),
+      ...(contact.education || []).map(edu => `${edu.school} ${edu.degree || ''} ${edu.notes || ''}`)
+    ].join(' ');
+
+    const enriched = {
+      ...contact,
+      skills: this.extractSkills(allText),
+      interests: this.extractInterests(allText),
+      expertise_areas: this.determineExpertiseAreas(allText),
+      career_stage: this.determineCareerStage(contact.currentPosition, (contact.experience || []).length),
+      searchableText: allText,
+      lastEmbeddingUpdate: new Date()
+    };
+
+    return enriched;
+  }
+}
+
+// Generate embeddings using OpenAI
+async function generateEmbedding(text) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('OpenAI API key not configured, skipping embedding generation');
+      return null;
+    }
+
+    if (!text || text.trim().length === 0) {
+      return null;
+    }
+
+    const response = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: text.substring(0, 8000), // Limit text length for API
+    });
+
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error('Error generating embedding:', error.message);
+    return null;
+  }
+}
+
+// Enhanced semantic search function
+async function semanticSearch(query, userId = null, limit = 20) {
+  try {
+    // Generate embedding for the search query
+    const queryEmbedding = await generateEmbedding(query);
+    
+    if (!queryEmbedding) {
+      // Fallback to text search
+      console.log('No query embedding available, falling back to text search');
+      return await textSearch(query, userId, limit);
+    }
+
+    // Get all contacts with embeddings
+    const searchQuery = { embedding: { $exists: true, $ne: [] } };
+    if (userId) searchQuery.userId = userId;
+    
+    const contacts = await Contact.find(searchQuery).lean();
+
+    if (contacts.length === 0) {
+      console.log('No contacts with embeddings found, falling back to text search');
+      return await textSearch(query, userId, limit);
+    }
+
+    // Calculate similarity scores
+    const results = contacts.map(contact => {
+      try {
+        const sim = similarity(queryEmbedding, contact.embedding);
+        return {
+          ...contact,
+          similarity: sim || 0
+        };
+      } catch (err) {
+        console.error('Similarity calculation error:', err.message);
+        return {
+          ...contact,
+          similarity: 0
+        };
+      }
+    })
+    .filter(contact => contact.similarity > 0.6) // Threshold for relevance
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+
+    console.log(`Semantic search found ${results.length} results for "${query}"`);
+    return results;
+  } catch (error) {
+    console.error('Semantic search error:', error.message);
+    return await textSearch(query, userId, limit);
+  }
+}
+
+// Fallback text search
+async function textSearch(query, userId = null, limit = 20) {
+  try {
+    const searchQuery = { $text: { $search: query } };
+    if (userId) searchQuery.userId = userId;
+    
+    const results = await Contact.find(searchQuery)
+      .limit(limit)
+      .sort({ score: { $meta: "textScore" } })
+      .lean();
+      
+    console.log(`Text search found ${results.length} results for "${query}"`);
+    return results;
+  } catch (error) {
+    console.error('Text search error:', error.message);
+    
+    // Final fallback to regex search
+    const regexQuery = {
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { company: { $regex: query, $options: 'i' } },
+        { position: { $regex: query, $options: 'i' } },
+        { location: { $regex: query, $options: 'i' } },
+        { skills: { $in: [new RegExp(query, 'i')] } },
+        { expertise_areas: { $in: [new RegExp(query, 'i')] } }
+      ]
+    };
+    
+    if (userId) regexQuery.userId = userId;
+    
+    const results = await Contact.find(regexQuery).limit(limit).lean();
+    console.log(`Regex search found ${results.length} results for "${query}"`);
+    return results;
+  }
+}
+
+const linkedinProcessor = new LinkedInDataProcessor();
+
+// ===== FILE UPLOAD SETUP =====
+
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
+// ===== UTILITY FUNCTIONS =====
+
+// LinkedIn header mappings
+const LINKEDIN_HEADER_MAPPINGS = {
+  firstName: ['first name', 'firstname'],
+  lastName: ['last name', 'lastname'],
+  name: ['name', 'full name', 'contact name'],
+  email: ['email address', 'email', 'e-mail'],
+  company: ['company', 'organization', 'employer'],
+  position: ['position', 'title', 'job title', 'role'],
+  location: ['location', 'region', 'area', 'city'],
+  connectedOn: ['connected on', 'connection date', 'date connected', 'connected'],
+  url: ['url', 'profile url', 'linkedin url', 'link']
+};
+
+function findHeaderIndex(headers, possibleNames) {
+  for (const name of possibleNames) {
+    const index = headers.findIndex(h => h && h.toLowerCase().includes(name.toLowerCase()));
+    if (index !== -1) return index;
+  }
+  return -1;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current);
+  return result.map(field => field.trim());
+}
+
+// Enhanced CSV processing with LinkedIn format support
+function processSingleCSV(lines) {
+  const contacts = [];
+  const errors = [];
+  
+  // Parse headers - handle LinkedIn CSV format with notes at the top
+  let headerIndex = 0;
+  let headers = [];
+  let headerLine = '';
+  
+  // Find the actual header row (skip notes and empty lines)
+  for (let i = 0; i < Math.min(10, lines.length); i++) {
+    const line = lines[i].trim();
+    if (!line || line.toLowerCase().startsWith('note')) {
+      console.log(`Skipping line ${i}: "${line.substring(0, 50)}..."`);
+      continue;
+    }
+    
+    const testHeaders = parseCSVLine(line);
+    console.log(`Testing line ${i} as headers:`, testHeaders.slice(0, 5));
+    
+    // Check if this looks like a LinkedIn header row
+    if (testHeaders.some(h => h && (
+      h.toLowerCase().includes('first name') || 
+      h.toLowerCase().includes('last name') ||
+      h.toLowerCase().includes('company') ||
+      h.toLowerCase().includes('position') ||
+      h.toLowerCase().includes('email') ||
+      h.toLowerCase().includes('connected')
+    ))) {
+      headers = testHeaders;
+      headerIndex = i;
+      headerLine = line;
+      break;
+    }
+  }
+  
+  if (headers.length === 0) {
+    console.log('All lines tested:');
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      console.log(`Line ${i}: "${lines[i].substring(0, 100)}..."`);
+    }
+    throw new Error('Could not find valid LinkedIn CSV headers. Please check your file format.');
+  }
+  
+  console.log('CSV Headers found:', headers);
+  console.log('Header found at line:', headerIndex);
+  console.log('Raw header line:', headerLine);
+  
+  // Enhanced header validation - accept minimal LinkedIn format
+  const hasValidHeaders = headers.some(header => 
+    header.toLowerCase().includes('name') || 
+    header.toLowerCase().includes('company') ||
+    header.toLowerCase().includes('position') ||
+    header.toLowerCase().includes('connected')
+  );
+  
+  if (!hasValidHeaders) {
+    throw new Error('This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Last Name", etc.');
+  }
+  
+  // Find column indices with better mapping
+  const indices = {
+    firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
+    lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
+    name: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.name),
+    email: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.email),
+    company: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.company),
+    position: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.position),
+    location: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.location),
+    connectedOn: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.connectedOn),
+    url: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.url)
+  };
+
+  console.log('Field indices:', indices);
+  console.log('Available headers for mapping:', headers.map((h, i) => `${i}: "${h}"`));
+  
+  // Debug email field specifically
+  if (indices.email >= 0) {
+    console.log(`✅ Email field found at index ${indices.email}: "${headers[indices.email]}"`);
+  } else {
+    console.log('❌ No email field found in headers');
+  }
+
+  // Validate that we found at least name fields
+  if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
+    throw new Error('Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.');
+  }
+
+  // Check what data we can expect to extract
+  const availableFields = [];
+  if (indices.firstName >= 0 || indices.lastName >= 0) availableFields.push('Names');
+  if (indices.email >= 0) availableFields.push('Emails');
+  if (indices.company >= 0) availableFields.push('Companies');
+  if (indices.position >= 0) availableFields.push('Positions');
+  if (indices.location >= 0) availableFields.push('Locations');
+  
+  console.log('Will extract:', availableFields.join(', '));
+  
+  // Warn if only basic data is available
+  if (availableFields.length === 1 && availableFields[0] === 'Names') {
+    console.log('⚠️ LinkedIn export contains only names - no company/email data available');
+  }
+
+  let processed = 0;
+  let skipped = 0;
+
+  // Process data rows (skip header)
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      const fields = parseCSVLine(line);
+      processed++;
+
+      // Extract name with priority: explicit name field > firstName + lastName
+      let name = '';
+      if (indices.name >= 0 && fields[indices.name]?.trim()) {
+        name = fields[indices.name].trim();
+      } else {
+        const firstName = indices.firstName >= 0 ? (fields[indices.firstName]?.trim() || '') : '';
+        const lastName = indices.lastName >= 0 ? (fields[indices.lastName]?.trim() || '') : '';
+        name = `${firstName} ${lastName}`.trim();
+      }
+
+      if (!name) {
+        errors.push(`Row ${i + 1}: No valid name found`);
+        continue;
+      }
+
+      // Extract field data with better error handling
+      const emailRaw = indices.email >= 0 && fields[indices.email] ? fields[indices.email].trim() : '';
+      const companyRaw = indices.company >= 0 && fields[indices.company] ? fields[indices.company].trim() : '';
+      const positionRaw = indices.position >= 0 && fields[indices.position] ? fields[indices.position].trim() : '';
+      
+      const contactData = {
+        name,
+        email: emailRaw.toLowerCase(),
+        company: companyRaw,
+        position: positionRaw,
+        location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : '',
+        connectedOn: indices.connectedOn >= 0 && fields[indices.connectedOn] ? fields[indices.connectedOn].trim() : '',
+        url: indices.url >= 0 && fields[indices.url] ? fields[indices.url].trim() : '',
+        source: 'linkedin_import'
+      };
+
+      // Debug sample contacts
+      if (contacts.length < 3) {
+        console.log(`Sample contact ${contacts.length + 1}:`, JSON.stringify(contactData));
+        console.log(`Raw fields for row ${contacts.length + 1}:`, fields);
+      }
+
+      contacts.push(contactData);
+
+    } catch (error) {
+      console.error(`Error parsing line ${i + 1}:`, error.message);
+      errors.push(`Row ${i + 1}: ${error.message}`);
+      skipped++;
+    }
+  }
+
+  console.log(`Parsing complete: ${contacts.length} contacts found, ${skipped} rows skipped`);
+  
+  if (errors.length > 0) {
+    console.log('Parsing errors:', errors.slice(0, 5)); // Show first 5 errors
+  }
+
+  return contacts;
+}
+
+// ===== FACEBOOK OAUTH INTEGRATION =====
+
+app.get('/api/facebook/auth', (req, res) => {
+  const fbAppId = process.env.FACEBOOK_APP_ID || '1222790436230433';
+  
+  // Get the current domain for callback
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('host');
+  const redirectUri = `${protocol}://${host}/api/facebook/callback`;
+  
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email,user_friends&response_type=code`;
+  
+  res.json({ auth_url: authUrl });
+});
+
+app.get('/api/facebook/callback', async (req, res) => {
+  try {
+    const { code, error, error_description } = req.query;
+    
+    if (error) {
+      console.error('Facebook OAuth error:', error, error_description);
+      return res.status(400).json({ 
+        success: false, 
+        error: error, 
+        description: error_description 
+      });
+    }
+
+    if (!code) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No authorization code received' 
+      });
+    }
+
+    console.log('Facebook callback received with code');
+
+    // Exchange code for access token
+    const fbAppId = process.env.FACEBOOK_APP_ID;
+    const fbAppSecret = process.env.FACEBOOK_APP_SECRET;
+    
+    if (!fbAppId || !fbAppSecret) {
+      console.error('Facebook app credentials not configured');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Facebook app not properly configured on server' 
+      });
+    }
+
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('host');
+    const redirectUri = `${protocol}://${host}/api/facebook/callback`;
+    
+    console.log('Exchanging code for access token...');
+    const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${fbAppSecret}&code=${code}`;
+    
+    const tokenResponse = await axios.get(tokenUrl);
+    const { access_token } = tokenResponse.data;
+    
+    if (!access_token) {
+      console.error('No access token received from Facebook');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Failed to get access token from Facebook' 
+      });
+    }
+
+    console.log('Access token received, fetching user profile...');
+
+    // Get user profile and friends with the access token
+    const userResponse = await axios.get(`https://graph.facebook.com/v18.0/me?fields=id,name,email&access_token=${access_token}`);
+    const userProfile = userResponse.data;
+    
+    console.log('User profile fetched:', userProfile.name);
+
+    // Get friends list with enhanced friend permissions
+    const friendsResponse = await axios.get(`https://graph.facebook.com/v18.0/me/friends?fields=id,name&access_token=${access_token}`);
+    const friends = friendsResponse.data.data || [];
+    
+    console.log(`Found ${friends.length} friends to import`);
+
+    // Import user profile
+    const userContact = {
+      name: userProfile.name,
+      email: userProfile.email,
+      facebookId: userProfile.id,
+      source: 'facebook_profile'
+    };
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    // Save user profile
+    const existingUser = await Contact.findOne({ facebookId: userProfile.id });
+    if (!existingUser) {
+      const newUserContact = new Contact(userContact);
+      await newUserContact.save();
+      insertedCount++;
+      console.log('Imported user profile:', userProfile.name);
+    } else {
+      await Contact.findByIdAndUpdate(existingUser._id, userContact);
+      updatedCount++;
+      console.log('Updated user profile:', userProfile.name);
+    }
+
+    // Import friends
+    for (const friend of friends) {
+      const friendContact = {
+        name: friend.name,
+        facebookId: friend.id,
+        source: 'facebook_friend'
+      };
+
+      const existingFriend = await Contact.findOne({ facebookId: friend.id });
+      if (!existingFriend) {
+        const newFriendContact = new Contact(friendContact);
+        await newFriendContact.save();
+        insertedCount++;
+      } else {
+        await Contact.findByIdAndUpdate(existingFriend._id, friendContact);
+        updatedCount++;
+      }
+    }
+
+    console.log(`Facebook import complete: ${insertedCount} new, ${updatedCount} updated`);
+
+    res.json({
+      success: true,
+      imported: insertedCount,
+      updated: updatedCount,
+      total_contacts: insertedCount + updatedCount,
+      user_profile: userProfile.name,
+      friends_count: friends.length,
+      message: `Successfully imported ${insertedCount} new contacts and updated ${updatedCount} existing contacts from Facebook`
+    });
+
+  } catch (error) {
+    console.error('Facebook import error:', error.response?.data || error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Facebook import failed', 
+      message: error.message 
+    });
+  }
+});
+
+app.post('/api/facebook/import', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Access token required' 
+      });
+    }
+
+    console.log('Facebook import started with provided access token');
+
+    // Get user profile
+    const userResponse = await axios.get(`https://graph.facebook.com/v18.0/me?fields=id,name,email&access_token=${accessToken}`);
+    const userProfile = userResponse.data;
+    
+    // Get friends list
+    const friendsResponse = await axios.get(`https://graph.facebook.com/v18.0/me/friends?fields=id,name&access_token=${accessToken}`);
+    const friends = friendsResponse.data.data || [];
+    
+    console.log(`Processing ${friends.length} friends for user: ${userProfile.name}`);
+
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    // Import friends as contacts
+    for (const friend of friends) {
+      try {
+        const existingContact = await Contact.findOne({ facebookId: friend.id });
+        
+        if (!existingContact) {
+          const newContact = new Contact({
+            name: friend.name,
+            facebookId: friend.id,
+            source: 'facebook_import',
+            createdAt: new Date()
+          });
+          
+          await newContact.save();
+          importedCount++;
+        } else {
+          skippedCount++;
+        }
+      } catch (error) {
+        console.error(`Error importing friend ${friend.name}:`, error.message);
+        skippedCount++;
+      }
+    }
+
+    console.log(`Facebook import complete: ${importedCount} imported, ${skippedCount} skipped`);
+
+    const totalContacts = await Contact.countDocuments();
+    
+    let message;
+    if (importedCount > 0) {
+      message = `✅ Successfully imported your profile and ${friendsCount} friends from Facebook!`;
+    } else {
+      message = `⚠️ No new contacts imported. ${skippedCount} contacts were already in your database.`;
+    }
+
+    res.json({
+      success: true,
+      imported: importedCount,
+      skipped: skippedCount,
+      totalContacts: totalContacts,
+      userProfile: userProfile.name,
+      friendsCount: friends.length,
+      message: message
+    });
+
+  } catch (error) {
+    console.error('Facebook import error:', error.response?.data || error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Facebook import failed', 
+      message: error.message 
+    });
+  }
+});
+
+// ===== API ROUTES =====
+
+// Health check endpoints
+app.get('/', (req, res) => {
+  res.json({
+    status: 'BeeTagged Server running',
+    environment: process.env.NODE_ENV || 'development',
+    mongodb: 'configured'
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    service: 'beetagged-backend'
+  });
+});
+
+// Enhanced search with semantic capabilities
+app.get('/api/search', async (req, res) => {
+  try {
+    const { q: query, userId } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter required' });
+    }
+
+    console.log(`Search request: "${query}" for user: ${userId || 'all'}`);
+
+    // Try semantic search first
+    const results = await textSearch(query, userId, 50);
+    
+    const analytics = {
+      total_contacts_searched: await Contact.countDocuments(userId ? { userId } : {}),
+      query_length: query.length,
+      results_count: results.length,
+      search_method: 'text',
+      companies_found: [...new Set(results.map(r => r.company).filter(Boolean))].slice(0, 5),
+      skills_found: [...new Set(results.flatMap(r => r.skills || []))].slice(0, 10)
+    };
+    
+    res.json({
+      query: query,
+      count: results.length,
+      contacts: results,
+      search_type: 'text',
+      analytics: analytics,
+      openai_enabled: !!process.env.OPENAI_API_KEY
+    });
+
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ 
+      error: 'Search failed',
+      message: error.message,
+      contacts: [],
+      count: 0
+    });
+  }
+});
+
+// Semantic search endpoint
+app.get('/api/search-semantic', async (req, res) => {
+  try {
+    const { q: query, userId } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter required' });
+    }
+
+    console.log(`Semantic search request: "${query}" for user: ${userId || 'all'}`);
+    
+    if (!process.env.OPENAI_API_KEY) {
+      console.log('OpenAI API key not available, falling back to text search');
+      return await textSearch(query, userId, 50);
+    }
+
+    // Use semantic search
+    const results = await semanticSearch(query, userId, 50);
+    
+    const analytics = {
+      total_contacts_with_embeddings: results.filter(r => r.embedding && r.embedding.length > 0).length,
+      avg_similarity: results.length > 0 ? (results.reduce((sum, r) => sum + (r.similarity || 0), 0) / results.length).toFixed(3) : 0,
+      skills_found: [...new Set(results.flatMap(r => r.skills || []))].slice(0, 10),
+      companies_found: [...new Set(results.map(r => r.company).filter(Boolean))].slice(0, 5),
+      career_stages: [...new Set(results.map(r => r.career_stage).filter(Boolean))]
+    };
+    
+    res.json({
+      query: query,
+      count: results.length,
+      contacts: results,
+      search_type: 'semantic',
+      analytics: analytics,
+      openai_enabled: true
+    });
+
+  } catch (error) {
+    console.error('Semantic search error:', error);
+    res.status(500).json({ 
+      error: 'Search failed',
+      message: error.message,
+      contacts: [],
+      count: 0
+    });
+  }
+});
+
+// Get all contacts endpoint
+app.get('/api/contacts', async (req, res) => {
+  try {
+    console.log('Fetching all contacts...');
+    const contacts = await Contact.find().sort({ updatedAt: -1 }).limit(1000);
+    console.log(`Found ${contacts.length} contacts`);
+    res.json(contacts);
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch contacts',
+      message: error.message 
+    });
+  }
+});
+
+// LinkedIn CSV import - accept any file field
+app.post('/api/import/linkedin', upload.any(), async (req, res) => {
+  try {
+    console.log('=== LinkedIn CSV Import Started ===');
+    console.log('Files received:', req.files);
+    
+    console.log('Files array:', req.files);
+    
+    // Get the first uploaded file (upload.any() provides an array)
+    const linkedinFile = req.files && req.files.length > 0 ? req.files[0] : null;
+    
+    if (!linkedinFile) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `At least one CSV file is required. Received ${req.files ? req.files.length : 0} files.`
+      });
+    }
+    
+    console.log('LinkedIn file:', !!linkedinFile);
+
+    // Validate file type
+    if (!linkedinFile.originalname?.toLowerCase().endsWith('.csv')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `${linkedinFile.originalname} is not a CSV file. LinkedIn exports are in CSV format.` 
+      });
+    }
+
+    // Parse CSV file
+    const csvData = linkedinFile.buffer.toString('utf8');
+    const lines = csvData.split(/\r?\n/).filter(line => line.trim());
+    console.log('Total lines found:', lines.length);
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
+      });
+    }
+    
+    // Process CSV with enhanced LinkedIn format support
+    const mergedContacts = processSingleCSV(lines);
+    
+    if (mergedContacts.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No valid contacts found in the uploaded files.' 
+      });
+    }
+
+    // Enhanced processing with AI-powered insights
+    let insertedCount = 0;
+    let duplicateCount = 0;
+    let contactsWithCompany = 0;
+    let contactsWithEmail = 0;
+    let embeddingCount = 0;
+    
+    for (const contactData of mergedContacts) {
+      if (contactData.company) contactsWithCompany++;
+      if (contactData.email) contactsWithEmail++;
+      
+      try {
+        // Enhance contact with AI-powered insights
+        const enhancedContact = linkedinProcessor.enhanceContact(contactData);
+        
+        // Generate embedding for semantic search (if OpenAI available)
+        if (process.env.OPENAI_API_KEY && enhancedContact.searchableText) {
+          try {
+            const embedding = await generateEmbedding(enhancedContact.searchableText);
+            if (embedding) {
+              enhancedContact.embedding = embedding;
+              embeddingCount++;
+            }
+          } catch (embeddingError) {
+            console.log(`Skipping embedding for ${enhancedContact.name}: ${embeddingError.message}`);
+          }
+        }
+        
+        // Check for existing contact by name
+        const existingContact = await Contact.findOne({ 
+          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        });
+        
+        if (!existingContact) {
+          // Create new enhanced contact
+          const contact = new Contact({
+            ...enhancedContact,
+            name: contactData.name,
+            email: contactData.email,
+            phone: contactData.phone,
+            company: contactData.company,
+            position: contactData.position,
+            location: contactData.location,
+            source: 'linkedin_import',
+            connectedOn: contactData.connectedOn,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          await contact.save();
+          insertedCount++;
+        } else {
+          // Update existing contact with enhanced data
+          const updates = {
+            ...enhancedContact,
+            updatedAt: new Date()
+          };
+          if (contactData.email && !existingContact.email) updates.email = contactData.email;
+          if (contactData.company && !existingContact.company) updates.company = contactData.company;
+          if (contactData.position && !existingContact.position) updates.position = contactData.position;
+          if (contactData.location && !existingContact.location) updates.location = contactData.location;
+          if (contactData.connectedOn && !existingContact.connectedOn) updates.connectedOn = contactData.connectedOn;
+          
+          if (Object.keys(updates).length > 0) {
+            await Contact.findByIdAndUpdate(existingContact._id, updates);
+            console.log(`Enhanced existing contact: ${contactData.name} with AI insights`);
+          }
+          duplicateCount++;
+        }
+      } catch (error) {
+        console.error(`Error saving enhanced contact ${contactData.name}:`, error);
+      }
+    }
+
+    const totalContacts = await Contact.countDocuments();
+    console.log(`=== Import Complete ===`);
+    console.log(`Processed: ${mergedContacts.length}`);
+    console.log(`Inserted: ${insertedCount}`);
+    console.log(`Enhanced/Skipped: ${duplicateCount}`);
+    console.log(`Total contacts in DB: ${totalContacts}`);
+
+    res.json({
+      success: true,
+      count: insertedCount,
+      processed: mergedContacts.length,
+      enhanced: duplicateCount,
+      totalContacts: totalContacts,
+      embeddings: embeddingCount,
+      ai_features: process.env.OPENAI_API_KEY ? 'enabled' : 'disabled',
+      message: insertedCount > 0 
+        ? `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}${embeddingCount > 0 ? `Generated ${embeddingCount} semantic embeddings. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`
+        : duplicateCount > 0
+          ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`
+          : `❌ No valid contacts found in the uploaded files.`
+    });
+
+  } catch (error) {
+    console.error('=== Import Error ===', error);
+    res.status(500).json({
+      success: false, 
+      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
+  }
+});
+
+// Enhanced Facebook OAuth URLs with dynamic domain detection
+app.get('/api/facebook/auth', (req, res) => {
+  const fbAppId = process.env.FACEBOOK_APP_ID;
+  if (!fbAppId) {
+    return res.status(500).json({ error: 'Facebook App ID not configured' });
+  }
+  
+  // Auto-detect current domain for OAuth callback
+  const protocol = req.get('x-forwarded-proto') || req.protocol;
+  const host = req.get('host');
+  const baseUrl = `${protocol}://${host}`;
+  const redirectUri = `${baseUrl}/api/facebook/callback`;
+  
+  // Enhanced permissions for better friend access
+  const scope = 'email,user_friends,user_link';
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&display=popup`;
+  
+  console.log(`Generated Facebook OAuth URL for domain: ${host}`);
+  console.log(`Redirect URI: ${redirectUri}`);
+  
+  res.json({ 
+    auth_url: authUrl,
+    redirect_uri: redirectUri,
+    app_id: fbAppId,
+    current_domain: host
+  });
+});
+
+app.get('/api/facebook/callback', async (req, res) => {
+  const { code, error, error_description } = req.query;
+  
+  if (error) {
+    console.error('Facebook OAuth error:', error, error_description);
+    return res.status(400).json({ 
+      success: false, 
+      error: error,
+      description: error_description,
+      help: 'This usually means the user cancelled the login or there\'s a domain configuration issue.'
+    });
+  }
+
+  if (!code) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'no_code',
+      message: 'No authorization code received from Facebook'
+    });
+  }
+
+  try {
+    // Exchange authorization code for access token
+    const fbAppId = process.env.FACEBOOK_APP_ID;
+    const fbAppSecret = process.env.FACEBOOK_APP_SECRET;
+    
+    if (!fbAppId || !fbAppSecret) {
+      return res.status(500).json({
+        success: false,
+        error: 'facebook_not_configured',
+        message: 'Facebook App credentials not found on server'
+      });
+    }
+
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('host');
+    const redirectUri = `${protocol}://${host}/api/facebook/callback`;
+    
+    console.log('Exchanging Facebook code for access token...');
+    
+    const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+      params: {
+        client_id: fbAppId,
+        client_secret: fbAppSecret,
+        redirect_uri: redirectUri,
+        code: code
+      }
+    });
+
+    const { access_token } = tokenResponse.data;
+    
+    if (!access_token) {
+      throw new Error('No access token received from Facebook');
+    }
+
+    // Get user profile
+    const userResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
+      params: {
+        fields: 'id,name,email',
+        access_token: access_token
+      }
+    });
+    
+    const userProfile = userResponse.data;
+    console.log(`Facebook user authenticated: ${userProfile.name}`);
+
+    // Get friends (if permission granted)
+    let friends = [];
+    try {
+      const friendsResponse = await axios.get('https://graph.facebook.com/v18.0/me/friends', {
+        params: {
+          fields: 'id,name',
+          access_token: access_token
+        }
+      });
+      friends = friendsResponse.data.data || [];
+      console.log(`Found ${friends.length} Facebook friends`);
+    } catch (friendsError) {
+      console.log('Friends permission not granted or no friends found:', friendsError.message);
+    }
+
+    // Save user and friends to database
+    let importedCount = 0;
+    let updatedCount = 0;
+
+    // Import user profile
+    const existingUser = await Contact.findOne({ facebookId: userProfile.id });
+    const userData = {
+      name: userProfile.name,
+      email: userProfile.email || '',
+      facebookId: userProfile.id,
+      source: 'facebook_oauth',
+      updatedAt: new Date()
+    };
+
+    if (!existingUser) {
+      const newUser = new Contact({ ...userData, createdAt: new Date() });
+      await newUser.save();
+      importedCount++;
+    } else {
+      await Contact.findByIdAndUpdate(existingUser._id, userData);
+      updatedCount++;
+    }
+
+    // Import friends
+    for (const friend of friends) {
+      const existingFriend = await Contact.findOne({ facebookId: friend.id });
+      const friendData = {
+        name: friend.name,
+        facebookId: friend.id,
+        source: 'facebook_friend',
+        updatedAt: new Date()
+      };
+
+      if (!existingFriend) {
+        const newFriend = new Contact({ ...friendData, createdAt: new Date() });
+        await newFriend.save();
+        importedCount++;
+      } else {
+        await Contact.findByIdAndUpdate(existingFriend._id, friendData);
+        updatedCount++;
+      }
+    }
+
+    const totalContacts = await Contact.countDocuments();
+    const friendsCount = friends.length;
+    
+    let message;
+    if (importedCount > 0) {
+      message = `✅ Successfully imported your profile and ${friendsCount} friends from Facebook!`;
+    } else {
+      message = `⚠️ Connected to Facebook successfully. ${updatedCount} existing contacts were updated.`;
+    }
+
+    console.log(`Facebook import complete: ${importedCount} new, ${updatedCount} updated`);
+
+    res.json({
+      success: true,
+      imported: importedCount,
+      updated: updatedCount,
+      total_contacts: totalContacts,
+      user_profile: userProfile.name,
+      friends_count: friendsCount,
+      message: message
+    });
+
+  } catch (error) {
+    console.error('Facebook OAuth callback error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      error: 'oauth_failed',
+      message: 'Failed to complete Facebook login',
+      details: error.message
+    });
+  }
+});
+
+app.post('/api/facebook/import', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'missing_token',
+        message: 'Facebook access token is required'
+      });
+    }
+
+    console.log('Processing Facebook import with access token');
+
+    // Validate token and get user info
+    const userResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
+      params: {
+        fields: 'id,name,email',
+        access_token: accessToken
+      }
+    });
+
+    const userProfile = userResponse.data;
+    console.log(`Importing data for Facebook user: ${userProfile.name}`);
+
+    // Get friends list
+    const friendsResponse = await axios.get('https://graph.facebook.com/v18.0/me/friends', {
+      params: {
+        fields: 'id,name',
+        access_token: accessToken
+      }
+    });
+
+    const friends = friendsResponse.data.data || [];
+    console.log(`Processing ${friends.length} Facebook friends`);
+
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    // Import user profile first
+    const existingUser = await Contact.findOne({ facebookId: userProfile.id });
+    if (!existingUser) {
+      const userContact = new Contact({
+        name: userProfile.name,
+        email: userProfile.email || '',
+        facebookId: userProfile.id,
+        source: 'facebook_import',
+        createdAt: new Date()
+      });
+      await userContact.save();
+      importedCount++;
+      console.log('Imported user profile');
+    } else {
+      skippedCount++;
+    }
+
+    // Import friends
+    for (const friend of friends) {
+      try {
+        const existingFriend = await Contact.findOne({ facebookId: friend.id });
+        
+        if (!existingFriend) {
+          const friendContact = new Contact({
+            name: friend.name,
+            facebookId: friend.id,
+            source: 'facebook_import',
+            createdAt: new Date()
+          });
+          await friendContact.save();
+          importedCount++;
+        } else {
+          skippedCount++;
+        }
+      } catch (friendError) {
+        console.error(`Error importing friend ${friend.name}:`, friendError.message);
+        skippedCount++;
+      }
+    }
+
+    const totalContacts = await Contact.countDocuments();
+    
+    console.log(`Facebook import completed: ${importedCount} imported, ${skippedCount} skipped`);
+
+    res.json({
+      success: true,
+      imported: importedCount,
+      skipped: skippedCount,
+      total_contacts: totalContacts,
+      user_profile: userProfile.name,
+      friends_count: friends.length,
+      message: importedCount > 0 
+        ? `✅ Successfully imported ${importedCount} contacts from Facebook`
+        : `⚠️ No new contacts imported. All ${skippedCount} contacts were already in your database.`
+    });
+
+  } catch (error) {
+    console.error('Facebook import error:', error.response?.data || error.message);
+    
+    let errorMessage = 'Facebook import failed';
+    if (error.response?.data?.error?.message) {
+      errorMessage = error.response.data.error.message;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'import_failed',
+      message: errorMessage,
+      details: error.message
+    });
+  }
+});
+
+// ===== SERVER STARTUP =====
+
+const server = app.listen(port, '0.0.0.0', () => {
+  console.log(`BeeTagged Server running on port ${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`MongoDB: ${process.env.MONGODB_URI ? 'configured' : 'not configured'}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('HTTP server closed');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
+
+module.exports = app;
