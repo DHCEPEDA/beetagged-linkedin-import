@@ -73,5 +73,24 @@ export const contactsAPI = {
       headers: { 'Accept': 'application/json' }
     });
     return response.json();
+  },
+
+  // Update contact (for adding tags and other updates)
+  updateContact: async (contactId, updateData) => {
+    const response = await fetch(`${BACKEND_URL}/api/contacts/${contactId}`, {
+      method: 'PUT',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(updateData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update contact: ${response.status} ${response.statusText}`);
+    }
+    
+    return response.json();
   }
 };

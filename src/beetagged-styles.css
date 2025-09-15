@@ -357,9 +357,109 @@
   color: #1d4ed8;
 }
 
-.skill-tag {
+.tag-skill {
   background: #d1fae5;
   color: #065f46;
+}
+
+.tag-expertise {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tag-industry {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.tag-interest {
+  background: #fce7f3;
+  color: #a21caf;
+}
+
+.tag-custom {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+/* Experience and Education Sections */
+.experience-list, .education-list {
+  display: grid;
+  gap: 16px;
+}
+
+.experience-item, .education-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.experience-header, .education-header {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.experience-dates, .education-dates {
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.experience-location, .education-degree {
+  color: #4b5563;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.experience-description, .education-activities, .education-notes {
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+/* Custom Tag Input */
+.custom-tag-input {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 250px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.tag-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.add-tag-btn {
+  padding: 10px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.add-tag-btn:hover {
+  background: #5a67d8;
 }
 
 /* Duplicate Detection Modal */

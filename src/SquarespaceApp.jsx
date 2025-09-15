@@ -2,62 +2,181 @@ import React, { useState, useEffect } from 'react';
 import { contactsAPI } from './lib/api.js';
 
 // Contact Detail Modal Component
-const ContactDetailModal = ({ contact, onClose }) => {
+const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
+  const [newTag, setNewTag] = useState('');
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [localContact, setLocalContact] = useState(contact);
+  
   if (!contact) return null;
+
+  const handleAddTag = async () => {
+    if (!newTag.trim() || isAddingTag) return;
+    
+    setIsAddingTag(true);
+    try {
+      // Update local state immediately for UI responsiveness
+      const updatedTags = [...(localContact.tags || []), newTag.trim()];
+      const updatedContact = { ...localContact, tags: updatedTags };
+      setLocalContact(updatedContact);
+      
+      // Call API to persist the tag
+      await contactsAPI.updateContact(contact._id, { tags: updatedTags });
+      
+      // Update parent component's contact list if callback provided
+      if (onContactUpdate) {
+        onContactUpdate(updatedContact);
+      }
+      
+      // Clear input
+      setNewTag('');
+      
+    } catch (error) {
+      console.error('Failed to add tag:', error);
+      // Revert local state on error
+      setLocalContact(contact);
+      alert('Failed to add tag. Please try again.');
+    } finally {
+      setIsAddingTag(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleAddTag();
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="contact-card" onClick={e => e.stopPropagation()}>
         <div className="contact-card-header">
-          <h2>{contact.basicInfo?.fullName || 'Unknown Contact'}</h2>
+          <h2>{contact.name || 'Unknown Contact'}</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
         
         <div className="contact-card-content">
+          {/* Basic Contact Info */}
           <div className="card-section">
-            <h3>📱 Contact Info</h3>
+            <h3>📱 Contact Information</h3>
             <div className="info-grid">
-              <div><strong>Email:</strong> {contact.basicInfo?.email || 'Not available'}</div>
-              <div><strong>Phone:</strong> {contact.basicInfo?.phone || 'Not available'}</div>
-              <div><strong>Nickname:</strong> {contact.basicInfo?.nickname || 'Not set'}</div>
+              <div><strong>Email:</strong> {contact.email || 'Not available'}</div>
+              <div><strong>Phone:</strong> {contact.phone || contact.phoneNumber || 'Not available'}</div>
+              {contact.linkedinUrl && (
+                <div>
+                  <strong>LinkedIn:</strong> 
+                  <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                    View Profile
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
-          {(contact.professional?.company || contact.professional?.position) && (
+          {/* Current Position */}
+          {(contact.company || contact.position) && (
             <div className="card-section">
-              <h3>💼 Professional</h3>
+              <h3>💼 Current Position</h3>
               <div className="info-grid">
-                {contact.professional.company && (
-                  <div><strong>Company:</strong> {contact.professional.company}</div>
-                )}
-                {contact.professional.position && (
-                  <div><strong>Position:</strong> {contact.professional.position}</div>
-                )}
-                {contact.professional.profileUrl && (
-                  <div>
-                    <strong>Profile:</strong> 
-                    <a href={contact.professional.profileUrl} target="_blank" rel="noopener noreferrer">
-                      View LinkedIn
-                    </a>
-                  </div>
-                )}
+                {contact.company && <div><strong>Company:</strong> {contact.company}</div>}
+                {contact.position && <div><strong>Position:</strong> {contact.position}</div>}
+                {contact.jobTitle && <div><strong>Job Title:</strong> {contact.jobTitle}</div>}
+                {contact.location && <div><strong>Location:</strong> {contact.location}</div>}
               </div>
             </div>
           )}
 
-          {(contact.personal?.location || contact.personal?.interests?.length > 0) && (
+          {/* Experience History */}
+          {contact.experience && contact.experience.length > 0 && (
             <div className="card-section">
-              <h3>🌍 Personal</h3>
+              <h3>🏢 Experience History</h3>
+              <div className="experience-list">
+                {contact.experience.map((exp, i) => (
+                  <div key={i} className="experience-item">
+                    <div className="experience-header">
+                      <strong>{exp.title}</strong> at <strong>{exp.company}</strong>
+                    </div>
+                    <div className="experience-dates">
+                      {exp.startDate} - {exp.endDate || 'Present'}
+                    </div>
+                    {exp.location && <div className="experience-location">{exp.location}</div>}
+                    {exp.description && <div className="experience-description">{exp.description}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Education */}
+          {contact.education && contact.education.length > 0 && (
+            <div className="card-section">
+              <h3>🎓 Education</h3>
+              <div className="education-list">
+                {contact.education.map((edu, i) => (
+                  <div key={i} className="education-item">
+                    <div className="education-header">
+                      <strong>{edu.school}</strong>
+                    </div>
+                    {edu.degree && <div className="education-degree">{edu.degree}</div>}
+                    <div className="education-dates">
+                      {edu.startYear} - {edu.endYear || 'Present'}
+                    </div>
+                    {edu.activities && <div className="education-activities">{edu.activities}</div>}
+                    {edu.notes && <div className="education-notes">{edu.notes}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Skills & Expertise */}
+          {((contact.skills && contact.skills.length > 0) || (contact.expertise_areas && contact.expertise_areas.length > 0)) && (
+            <div className="card-section">
+              <h3>🎯 Skills & Expertise</h3>
+              {contact.skills && contact.skills.length > 0 && (
+                <div>
+                  <strong>Skills:</strong>
+                  <div className="tags">
+                    {contact.skills.map((skill, i) => (
+                      <span key={i} className="tag tag-skill">{skill}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {contact.expertise_areas && contact.expertise_areas.length > 0 && (
+                <div>
+                  <strong>Expertise Areas:</strong>
+                  <div className="tags">
+                    {contact.expertise_areas.map((area, i) => (
+                      <span key={i} className="tag tag-expertise">{area}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {contact.industries && contact.industries.length > 0 && (
+                <div>
+                  <strong>Industries:</strong>
+                  <div className="tags">
+                    {contact.industries.map((industry, i) => (
+                      <span key={i} className="tag tag-industry">{industry}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Career Stage & Insights */}
+          {(contact.career_stage || contact.interests) && (
+            <div className="card-section">
+              <h3>💡 Professional Insights</h3>
               <div className="info-grid">
-                {contact.personal.location && (
-                  <div><strong>Location:</strong> {contact.personal.location}</div>
-                )}
-                {contact.personal.interests?.length > 0 && (
+                {contact.career_stage && <div><strong>Career Stage:</strong> {contact.career_stage}</div>}
+                {contact.interests && contact.interests.length > 0 && (
                   <div>
-                    <strong>Interests:</strong> 
+                    <strong>Interests:</strong>
                     <div className="tags">
-                      {contact.personal.interests.map((interest, i) => (
-                        <span key={i} className="tag">{interest}</span>
+                      {contact.interests.map((interest, i) => (
+                        <span key={i} className="tag tag-interest">{interest}</span>
                       ))}
                     </div>
                   </div>
@@ -66,33 +185,47 @@ const ContactDetailModal = ({ contact, onClose }) => {
             </div>
           )}
 
-          {contact.networking?.connectedDate && (
-            <div className="card-section">
-              <h3>🤝 Networking</h3>
-              <div className="info-grid">
-                <div><strong>Connected:</strong> {new Date(contact.networking.connectedDate).toLocaleDateString()}</div>
-              </div>
-            </div>
-          )}
-
-          {(contact.metadata?.tags?.length > 0 || contact.metadata?.notes) && (
-            <div className="card-section">
-              <h3>📝 Notes & Tags</h3>
-              {contact.metadata.tags?.length > 0 && (
+          {/* Connection & Tags */}
+          <div className="card-section">
+            <h3>🤝 Connection Details</h3>
+            <div className="info-grid">
+              {contact.connectedOn && <div><strong>Connected On:</strong> {contact.connectedOn}</div>}
+              {contact.source && <div><strong>Source:</strong> {contact.source}</div>}
+              {localContact.tags && localContact.tags.length > 0 && (
                 <div>
-                  <strong>Tags:</strong>
+                  <strong>Custom Tags:</strong>
                   <div className="tags">
-                    {contact.metadata.tags.map((tag, i) => (
-                      <span key={i} className="tag tag-primary">{tag}</span>
+                    {localContact.tags.map((tag, i) => (
+                      <span key={i} className="tag tag-custom">{tag}</span>
                     ))}
                   </div>
                 </div>
               )}
-              {contact.metadata.notes && (
-                <div><strong>Notes:</strong> {contact.metadata.notes}</div>
-              )}
             </div>
-          )}
+          </div>
+
+          {/* Add Custom Tag Section */}
+          <div className="card-section">
+            <h3>📝 Add Custom Tags</h3>
+            <div className="custom-tag-input">
+              <input 
+                type="text" 
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Add a custom tag (e.g., 'Hot Lead', 'Friend', 'Mentor')" 
+                className="tag-input"
+                disabled={isAddingTag}
+              />
+              <button 
+                className="add-tag-btn" 
+                onClick={handleAddTag}
+                disabled={isAddingTag || !newTag.trim()}
+              >
+                {isAddingTag ? 'Adding...' : 'Add Tag'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -277,19 +410,22 @@ const BeeTaggedApp = () => {
     }
   };
 
-  const handleContactClick = async (contact) => {
-    try {
-      const response = await fetch(`https://beetagged-app-53414697acd3.herokuapp.com/api/contacts/${contact._id}/details`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setSelectedContact(data.contact);
-      } else {
-        alert('Error loading contact details');
-      }
-    } catch (error) {
-      alert('Error loading contact details: ' + error.message);
-    }
+  const handleContactClick = (contact) => {
+    // Use the contact data we already have instead of fetching from non-existent endpoint
+    setSelectedContact(contact);
+  };
+
+  const handleContactUpdate = (updatedContact) => {
+    // Update the contact in both contacts and searchResults arrays
+    const updateContactInArray = (contactsArray) => {
+      return contactsArray.map(c => 
+        c._id === updatedContact._id ? updatedContact : c
+      );
+    };
+    
+    setContacts(prev => updateContactInArray(prev));
+    setSearchResults(prev => updateContactInArray(prev));
+    setSelectedContact(updatedContact);
   };
 
   return (
@@ -394,7 +530,8 @@ const BeeTaggedApp = () => {
       {selectedContact && (
         <ContactDetailModal 
           contact={selectedContact} 
-          onClose={() => setSelectedContact(null)} 
+          onClose={() => setSelectedContact(null)}
+          onContactUpdate={handleContactUpdate}
         />
       )}
       
