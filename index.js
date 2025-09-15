@@ -73,8 +73,14 @@ app.use(morgan('combined'));
 // ===== MONGODB CONNECTION =====
 
 function connectMongoDB() {
-  // Fix database name from 'test' to 'beetagged'
-  const mongoUri = process.env.MONGODB_URI.replace('/test?', '/beetagged?');
+  // Fix database name from 'test' to 'beetagged' (only if MONGODB_URI contains '/test?')
+  const originalUri = process.env.MONGODB_URI;
+  if (!originalUri) {
+    console.error('❌ MONGODB_URI environment variable not set');
+    return;
+  }
+  
+  const mongoUri = originalUri.includes('/test?') ? originalUri.replace('/test?', '/beetagged?') : originalUri;
   console.log('Connecting to MongoDB with database: beetagged');
   
   const mongoOptions = {
@@ -834,12 +840,27 @@ app.post('/api/facebook/import', async (req, res) => {
 
 // ===== API ROUTES =====
 
-// Health check
+// Health check endpoints
 app.get('/', (req, res) => {
   res.json({
     status: 'BeeTagged Server running',
     environment: process.env.NODE_ENV || 'development',
     mongodb: 'configured'
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    service: 'beetagged-backend'
   });
 });
 
