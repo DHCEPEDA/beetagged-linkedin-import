@@ -544,29 +544,68 @@ function parseCSVLine(line) {
   return result.map(field => field.trim());
 }
 
-// Function to detect CSV format based on headers
+// Function to detect CSV format based on headers using scoring
 function detectCSVFormat(headers) {
-  const headerLower = headers.map(h => h.toLowerCase());
+  const headerLower = headers.map(h => h.toLowerCase().trim());
   
-  // Check for Contacts CSV format indicators
-  const contactsIndicators = ['firstname', 'lastname', 'fullname', 'companies', 'emails', 'phone numbers', 'addresses', 'sites', 'instantmessagehandles', 'bookmarkedat', 'profiles'];
-  const contactsMatches = contactsIndicators.filter(indicator => 
-    headerLower.some(h => h.includes(indicator))
-  );
+  let contactsScore = 0;
+  let linkedinScore = 0;
   
-  // Check for LinkedIn CSV format indicators
-  const linkedinIndicators = ['first name', 'last name', 'connected on', 'position'];
-  const linkedinMatches = linkedinIndicators.filter(indicator => 
-    headerLower.some(h => h.includes(indicator))
-  );
+  // Contacts CSV format indicators with weights
+  const contactsIndicators = {
+    'firstname': 2,
+    'lastname': 2, 
+    'fullname': 3,
+    'companies': 4, // Unique to contacts format
+    'emails': 4, // Unique to contacts format  
+    'phone numbers': 4, // Unique to contacts format
+    'addresses': 3,
+    'sites': 3,
+    'instantmessagehandles': 5, // Very unique to contacts format
+    'bookmarkedat': 5, // Very unique to contacts format
+    'profiles': 3,
+    'birthday': 3,
+    'source': 2
+  };
   
-  console.log('Contacts format matches:', contactsMatches.length, contactsMatches);
-  console.log('LinkedIn format matches:', linkedinMatches.length, linkedinMatches);
+  // LinkedIn CSV format indicators with weights
+  const linkedinIndicators = {
+    'first name': 3,
+    'last name': 3,
+    'connected on': 5, // Very unique to LinkedIn format
+    'connection date': 5, // Very unique to LinkedIn format
+    'profile url': 4,
+    'linkedin url': 5,
+    'position': 1, // Common to both
+    'company': 1, // Common to both
+    'email address': 2 // LinkedIn uses 'email address' vs 'emails'
+  };
   
-  // Return format with more matches, defaulting to LinkedIn if tie
-  if (contactsMatches.length > linkedinMatches.length) {
+  // Calculate scores for Contacts format
+  Object.entries(contactsIndicators).forEach(([indicator, weight]) => {
+    if (headerLower.some(h => h.includes(indicator))) {
+      contactsScore += weight;
+    }
+  });
+  
+  // Calculate scores for LinkedIn format
+  Object.entries(linkedinIndicators).forEach(([indicator, weight]) => {
+    if (headerLower.some(h => h.includes(indicator))) {
+      linkedinScore += weight;
+    }
+  });
+  
+  console.log('Format detection scores:');
+  console.log('- Contacts score:', contactsScore);
+  console.log('- LinkedIn score:', linkedinScore);
+  console.log('Headers analyzed:', headerLower.slice(0, 8));
+  
+  // Return format with higher score, defaulting to LinkedIn if tie
+  if (contactsScore > linkedinScore) {
+    console.log('✅ Detected format: Contacts CSV');
     return 'contacts';
   } else {
+    console.log('✅ Detected format: LinkedIn CSV');
     return 'linkedin';
   }
 }
