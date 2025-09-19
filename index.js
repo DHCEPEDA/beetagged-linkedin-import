@@ -25,34 +25,46 @@ app.use(helmet({
 app.use(compression());
 app.use(express.json());
 
-// CORS for Squarespace integration
+// Enhanced CORS configuration with environment-based security
 app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = [
+    const prodOrigins = [
       'https://www.beetagged.com',
       'https://beetagged.com',
-      'https://beetagged.squarespace.com',
+      'https://beetagged.squarespace.com'
+    ];
+    
+    const devOrigins = [
       'http://localhost:3000',
       'http://localhost:5000',
       'http://127.0.0.1:3000',
-      'https://replit.dev',
-      'https://*.replit.dev',
-      'https://*.repl.co'
+      'https://replit.dev'
     ];
     
-    if (!origin || allowedOrigins.some(allowed => {
-      if (allowed.includes('*')) {
-        return origin.includes(allowed.replace('https://*.', '').replace('*', ''));
-      }
-      return allowed === origin;
-    })) {
+    let allowedOrigins;
+    if (process.env.NODE_ENV === 'production') {
+      allowedOrigins = prodOrigins;
+    } else {
+      allowedOrigins = [...prodOrigins, ...devOrigins];
+    }
+    
+    // Check for exact origin match or replit dev domains
+    const isAllowed = !origin || // Same origin requests
+      allowedOrigins.includes(origin) ||
+      (process.env.NODE_ENV !== 'production' && origin && (
+        origin.includes('.replit.dev') || 
+        origin.includes('.repl.co')
+      ));
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow for development
+      console.warn('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS policy'));
     }
   },
   credentials: false,
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
@@ -236,6 +248,17 @@ const contactSchema = new mongoose.Schema({
   connectedOn: String,
   lastEmbeddingUpdate: { type: Date, default: Date.now },
   userId: { type: String, default: null, index: true },
+  
+  // Audit trail and merge history
+  mergeHistory: [{
+    timestamp: { type: Date, default: Date.now },
+    action: { type: String, enum: ['create', 'merge', 'update'], default: 'create' },
+    sourceContactId: String,
+    sourceData: String,
+    mergedFields: [String]
+  }],
+  
+  // Timestamps
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -466,6 +489,113 @@ async function textSearch(query, userId = null, limit = 20) {
 
 const linkedinProcessor = new LinkedInDataProcessor();
 
+// ===== AUTHENTICATION MIDDLEWARE =====
+
+// Enhanced authentication middleware for protected endpoints
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required. Please provide a valid auth token.'
+    });
+  }
+  
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  
+  if (!token || token.trim().length === 0) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid authentication token'
+    });
+  }
+  
+  // Production environment should use proper JWT validation
+  if (process.env.NODE_ENV === 'production') {
+    // In production, implement JWT verification
+    try {
+      // For now, use a simple verification - this should be replaced with proper JWT
+      if (!token.startsWith('prod-token-') || token.length < 20) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid production token'
+        });
+      }
+      // Extract user ID from production token
+      const userId = token.replace('prod-token-', '').split('-')[0];
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token format'
+        });
+      }
+      req.user = {
+        id: userId,
+        userId: userId,
+        isAuthenticated: true
+      };
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token verification failed'
+      });
+    }
+  } else {
+  
+    // Development environment: Use a stable user ID for consistent data scoping
+    // Generate a consistent userId based on token prefix for session continuity
+    const userId = 'dev-user-' + (token.includes('beetagged-session') ? 
+      token.split('-')[2] || 'anonymous' : 'anonymous');
+    
+    req.user = {
+      id: userId,
+      userId: userId,
+      isAuthenticated: true
+    };
+  }
+  
+  next();
+}
+
+// Input validation middleware
+function validateMergeRequest(req, res, next) {
+  const { mergeDecisions } = req.body;
+  
+  if (!mergeDecisions || !Array.isArray(mergeDecisions)) {
+    return res.status(400).json({
+      success: false,
+      message: 'mergeDecisions array is required'
+    });
+  }
+  
+  // Validate each decision object
+  for (const decision of mergeDecisions) {
+    if (!decision.action || !['add', 'merge', 'skip'].includes(decision.action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Each decision must have a valid action: add, merge, or skip'
+      });
+    }
+    
+    if (decision.action === 'merge' && !decision.existingContactId) {
+      return res.status(400).json({
+        success: false,
+        message: 'existingContactId is required for merge action'
+      });
+    }
+    
+    if (!decision.newContact) {
+      return res.status(400).json({
+        success: false,
+        message: 'newContact data is required for each decision'
+      });
+    }
+  }
+  
+  next();
+}
+
 // ===== FILE UPLOAD SETUP =====
 
 const storage = multer.memoryStorage();
@@ -478,16 +608,49 @@ const upload = multer({
 
 // ===== UTILITY FUNCTIONS =====
 
-// Function to find potential duplicate contacts by name matching
+// Enhanced name normalization function
+function normalizeName(name) {
+  if (!name) return '';
+  
+  return name
+    .toLowerCase()
+    .trim()
+    // Remove diacritics and special characters
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    // Remove punctuation and special characters
+    .replace(/[^\w\s]/g, '')
+    // Normalize multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Function to find potential duplicate contacts by enhanced name matching
 async function findPotentialDuplicates(contactData, userId = null) {
   try {
-    const searchName = contactData.name.toLowerCase().trim();
+    const normalizedNewName = normalizeName(contactData.name);
+    const newNameWords = normalizedNewName.split(/\s+/).filter(w => w.length > 1);
     
-    // Build search query
+    if (newNameWords.length === 0) {
+      console.warn('No valid name words found for duplicate detection');
+      return [];
+    }
+    
+    // Build search query with multiple strategies
     const query = {
       $or: [
-        { name: { $regex: new RegExp(searchName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') } },
-        { name: { $regex: new RegExp(searchName.split(' ').join('.*'), 'i') } }
+        // Exact normalized match
+        { name: { $regex: new RegExp(`^${normalizedNewName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+        // Partial word matches
+        ...newNameWords.map(word => ({
+          name: { $regex: new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+        })),
+        // Email exact match (secondary identifier)
+        ...(contactData.email ? [{ email: contactData.email.toLowerCase().trim() }] : []),
+        // Phone exact match (secondary identifier)  
+        ...(contactData.phone || contactData.phoneNumber ? [
+          { phone: contactData.phone || contactData.phoneNumber },
+          { phoneNumber: contactData.phone || contactData.phoneNumber }
+        ] : [])
       ]
     };
     
@@ -495,32 +658,64 @@ async function findPotentialDuplicates(contactData, userId = null) {
       query.userId = userId;
     }
     
-    // Find existing contacts with similar names
-    const existingContacts = await Contact.find(query).limit(10).lean();
+    // Find existing contacts with similar identifiers
+    const existingContacts = await Contact.find(query).limit(20).lean();
     
-    // Filter for more precise matches
+    // Enhanced duplicate detection with multiple criteria
     const potentialDuplicates = existingContacts.filter(existing => {
-      const existingName = existing.name.toLowerCase().trim();
-      const newName = searchName;
+      const normalizedExistingName = normalizeName(existing.name);
+      const existingNameWords = normalizedExistingName.split(/\s+/).filter(w => w.length > 1);
       
-      // Check for exact match
-      if (existingName === newName) return true;
+      // 1. Exact email match = high confidence duplicate
+      if (contactData.email && existing.email && 
+          contactData.email.toLowerCase().trim() === existing.email.toLowerCase().trim()) {
+        return true;
+      }
       
-      // Check for similar names (allow for small differences)
-      const existingWords = existingName.split(/\s+/).filter(w => w.length > 1);
-      const newWords = newName.split(/\s+/).filter(w => w.length > 1);
+      // 2. Exact phone match = high confidence duplicate  
+      if ((contactData.phone || contactData.phoneNumber) && 
+          (existing.phone || existing.phoneNumber)) {
+        const newPhone = (contactData.phone || contactData.phoneNumber).replace(/\D/g, '');
+        const existingPhone = (existing.phone || existing.phoneNumber).replace(/\D/g, '');
+        if (newPhone.length > 7 && newPhone === existingPhone) {
+          return true;
+        }
+      }
       
-      // At least 2 words should match for potential duplicate
-      const matchingWords = existingWords.filter(word => 
-        newWords.some(newWord => 
-          word.includes(newWord) || newWord.includes(word) || 
-          (word.length > 2 && newWord.length > 2 && word.substring(0, 3) === newWord.substring(0, 3))
-        )
+      // 3. Name similarity scoring
+      if (existingNameWords.length === 0 || newNameWords.length === 0) {
+        return false;
+      }
+      
+      // Calculate name similarity score
+      const matchingWords = existingNameWords.filter(existingWord => 
+        newNameWords.some(newWord => {
+          // Exact word match
+          if (existingWord === newWord) return true;
+          
+          // Substring match for longer words
+          if (existingWord.length > 3 && newWord.length > 3) {
+            return existingWord.includes(newWord) || newWord.includes(existingWord);
+          }
+          
+          // Prefix match for names (first 3 characters)
+          if (existingWord.length > 2 && newWord.length > 2) {
+            return existingWord.substring(0, 3) === newWord.substring(0, 3);
+          }
+          
+          return false;
+        })
       );
       
-      return matchingWords.length >= Math.min(2, Math.min(existingWords.length, newWords.length));
+      // Calculate similarity ratio
+      const totalWords = Math.max(existingNameWords.length, newNameWords.length);
+      const similarityRatio = matchingWords.length / totalWords;
+      
+      // Require at least 50% name similarity for potential duplicate
+      return similarityRatio >= 0.5;
     });
     
+    console.log(`Found ${potentialDuplicates.length} potential duplicates for: ${contactData.name}`);
     return potentialDuplicates;
   } catch (error) {
     console.error('Error finding potential duplicates:', error);
@@ -663,30 +858,123 @@ function detectCSVFormat(headers) {
   }
 }
 
-// Function to merge contact data intelligently
-function mergeContactData(existingContact, newContactData) {
+// Enhanced function to merge contact data with priority-based field selection
+function mergeContactData(existingContact, newContactData, mergeStrategy = 'prefer_existing') {
   const merged = { ...existingContact };
   
-  // Merge non-empty fields from new contact
+  // Define field priorities (higher priority sources overwrite lower priority)
+  const fieldPriorities = {
+    linkedin: 3,      // Highest priority - most structured data
+    contacts: 2,      // Medium priority - user-exported data
+    facebook: 1,      // Lower priority - less professional context
+    manual: 4         // Highest priority - user-entered data
+  };
+  
+  // Get source priorities
+  const existingPriority = fieldPriorities[existingContact.source?.toLowerCase()] || 1;
+  const newPriority = fieldPriorities[newContactData.source?.toLowerCase()] || 1;
+  
+  // Define merge rules for different field types
+  const mergeRules = {
+    // Always prefer non-empty values for basic contact info
+    critical_fields: ['name', 'email', 'phone', 'phoneNumber'],
+    
+    // Union arrays (combine and deduplicate)
+    array_fields: ['emails', 'phoneNumbers', 'companies', 'addresses', 'sites', 
+                   'profiles', 'instantMessageHandles', 'skills', 'interests', 
+                   'expertise_areas', 'industries', 'tags'],
+    
+    // Prefer LinkedIn for professional data
+    professional_fields: ['company', 'position', 'jobTitle', 'currentPosition', 
+                          'experience', 'education', 'linkedinUrl', 'linkedinProfile'],
+    
+    // Prefer more recent or higher quality data
+    metadata_fields: ['profilePicture', 'location', 'birthday', 'birthdayParsed'],
+    
+    // Always combine sources
+    special_fields: ['source']
+  };
+  
+  // Process each field from new contact data
   Object.keys(newContactData).forEach(key => {
-    if (newContactData[key] && newContactData[key] !== '' && newContactData[key] !== null) {
-      if (Array.isArray(newContactData[key])) {
-        // For arrays, combine and deduplicate
-        const existingArray = merged[key] || [];
-        const newArray = newContactData[key] || [];
-        merged[key] = [...new Set([...existingArray, ...newArray])].filter(item => item && item !== '');
-      } else if (key === 'source') {
-        // Combine sources
-        merged[key] = merged[key] ? `${merged[key]}, ${newContactData[key]}` : newContactData[key];
-      } else if (!merged[key] || merged[key] === '') {
-        // Only replace if existing field is empty
-        merged[key] = newContactData[key];
+    const newValue = newContactData[key];
+    const existingValue = merged[key];
+    
+    // Skip empty or null values
+    if (!newValue || newValue === '' || newValue === null) {
+      return;
+    }
+    
+    if (mergeRules.array_fields.includes(key)) {
+      // Union arrays with deduplication
+      const existingArray = Array.isArray(existingValue) ? existingValue : 
+                           (existingValue ? [existingValue] : []);
+      const newArray = Array.isArray(newValue) ? newValue : [newValue];
+      
+      // Combine, deduplicate, and filter empty values
+      const combined = [...existingArray, ...newArray]
+        .filter(item => item && item !== '' && item !== null)
+        .map(item => typeof item === 'string' ? item.trim() : item);
+      
+      merged[key] = [...new Set(combined)];
+      
+    } else if (mergeRules.special_fields.includes(key)) {
+      // Special handling for source field
+      if (key === 'source') {
+        merged[key] = existingValue ? `${existingValue}, ${newValue}` : newValue;
+      }
+      
+    } else if (mergeRules.critical_fields.includes(key)) {
+      // Critical fields: prefer non-empty values, then higher priority source
+      if (!existingValue || existingValue === '') {
+        merged[key] = newValue;
+      } else if (newPriority > existingPriority) {
+        merged[key] = newValue;
+      }
+      // Otherwise keep existing value
+      
+    } else if (mergeRules.professional_fields.includes(key)) {
+      // Professional fields: prefer LinkedIn data
+      if (!existingValue || existingValue === '') {
+        merged[key] = newValue;
+      } else if (newContactData.source?.toLowerCase() === 'linkedin' && 
+                 existingContact.source?.toLowerCase() !== 'linkedin') {
+        merged[key] = newValue; // LinkedIn overwrites non-LinkedIn
+      } else if (newPriority > existingPriority) {
+        merged[key] = newValue;
+      }
+      
+    } else {
+      // Default behavior: prefer non-empty values, then higher priority source
+      if (!existingValue || existingValue === '' || newPriority > existingPriority) {
+        merged[key] = newValue;
       }
     }
   });
   
-  // Update timestamps
+  // Ensure data consistency and quality
   merged.updatedAt = new Date();
+  
+  // Preserve the earliest creation date
+  if (newContactData.createdAt && (!merged.createdAt || newContactData.createdAt < merged.createdAt)) {
+    merged.originalCreatedAt = merged.createdAt;
+    merged.createdAt = newContactData.createdAt;
+  }
+  
+  // Create audit trail for merged contact IDs (ensure schema supports this)
+  if (!merged.mergeHistory) {
+    merged.mergeHistory = [];
+  }
+  
+  // Add merge event to history
+  merged.mergeHistory.push({
+    timestamp: new Date(),
+    action: 'merge',
+    sourceContactId: existingContact._id ? existingContact._id.toString() : null,
+    sourceData: newContactData.source || 'unknown',
+    mergedFields: Object.keys(newContactData).filter(key => 
+      newContactData[key] && newContactData[key] !== '' && newContactData[key] !== null)
+  });
   
   return merged;
 }
@@ -1491,7 +1779,10 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
           if (contactData.connectedOn && !existingContact.connectedOn) updates.connectedOn = contactData.connectedOn;
           
           if (Object.keys(updates).length > 0) {
-            await Contact.findByIdAndUpdate(existingContact._id, updates);
+            await Contact.updateOne(
+              { _id: existingContact._id, userId: userId },
+              { $set: updates }
+            );
             console.log(`Enhanced existing contact: ${contactData.name} with AI insights`);
           }
           duplicateCount++;
@@ -1533,11 +1824,12 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
   }
 });
 
-// API endpoint to handle merge decisions
-app.post('/api/contacts/merge', async (req, res) => {
+// API endpoint to handle merge decisions (protected)
+app.post('/api/contacts/merge', requireAuth, validateMergeRequest, async (req, res) => {
   try {
-    const { mergeDecisions, userId } = req.body;
-    console.log('Processing merge decisions:', mergeDecisions);
+    const { mergeDecisions } = req.body;
+    const userId = req.user.userId; // Get userId from authenticated user
+    console.log('Processing merge decisions for user:', userId, 'Decisions:', mergeDecisions.length);
     
     if (!mergeDecisions || !Array.isArray(mergeDecisions)) {
       return res.status(400).json({
@@ -1556,22 +1848,51 @@ app.post('/api/contacts/merge', async (req, res) => {
       
       try {
         if (action === 'merge' && existingContactId) {
-          // Merge with existing contact
-          const existingContact = await Contact.findById(existingContactId);
+          // Merge with existing contact (verify ownership)
+          const existingContact = await Contact.findOne({ 
+            _id: existingContactId, 
+            userId: userId 
+          });
           if (existingContact) {
-            const mergedContactData = mergeContactData(existingContact.toObject(), newContact);
-            await Contact.findByIdAndUpdate(existingContactId, mergedContactData);
+            const mergedContactData = mergeContactData(existingContact.toObject(), {
+              ...newContact,
+              userId: userId
+            });
+            await Contact.updateOne(
+              { _id: existingContactId, userId: userId },
+              { $set: mergedContactData }
+            );
             mergedCount++;
             console.log(`Merged contact: ${newContact.name} with existing ID: ${existingContactId}`);
           } else {
-            console.warn(`Existing contact ${existingContactId} not found, adding as new`);
-            // If existing contact not found, add as new
-            await Contact.create({ ...newContact, userId });
+            console.warn(`Existing contact ${existingContactId} not found or access denied for user ${userId}, adding as new`);
+            // If existing contact not found, add as new with audit trail
+            await Contact.create({ 
+              ...newContact, 
+              userId,
+              mergeHistory: [{
+                timestamp: new Date(),
+                action: 'create',
+                sourceContactId: null,
+                sourceData: newContact.source || 'contacts-csv',
+                mergedFields: Object.keys(newContact)
+              }]
+            });
             addedCount++;
           }
         } else if (action === 'add') {
-          // Add as new contact
-          await Contact.create({ ...newContact, userId });
+          // Add as new contact with proper audit trail
+          await Contact.create({ 
+            ...newContact, 
+            userId,
+            mergeHistory: [{
+              timestamp: new Date(),
+              action: 'create',
+              sourceContactId: null,
+              sourceData: newContact.source || 'contacts-csv',
+              mergedFields: Object.keys(newContact)
+            }]
+          });
           addedCount++;
           console.log(`Added new contact: ${newContact.name}`);
         } else if (action === 'skip') {
