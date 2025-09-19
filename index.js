@@ -641,11 +641,25 @@ async function findPotentialDuplicates(contactData, userId = null) {
         })) : []),
         // Email exact match (primary identifier for automatic merging)
         ...(contactData.email ? [{ email: contactData.email.toLowerCase().trim() }] : []),
-        // Phone exact match (secondary identifier)  
-        ...(contactData.phone || contactData.phoneNumber ? [
-          { phone: contactData.phone || contactData.phoneNumber },
-          { phoneNumber: contactData.phone || contactData.phoneNumber }
-        ] : [])
+        // Phone exact match (secondary identifier) - search multiple phone fields
+        ...(contactData.phone || contactData.phoneNumber || (contactData.phoneNumbers && contactData.phoneNumbers.length > 0) ? (() => {
+          const phoneQueries = [];
+          const phoneToSearch = contactData.phone || contactData.phoneNumber || (contactData.phoneNumbers && contactData.phoneNumbers[0]);
+          if (phoneToSearch) {
+            const normalizedPhone = phoneToSearch.replace(/\D/g, '');
+            if (normalizedPhone.length > 7) {
+              phoneQueries.push(
+                { phone: phoneToSearch },
+                { phoneNumber: phoneToSearch },
+                { phone: normalizedPhone },
+                { phoneNumber: normalizedPhone },
+                // Also search in phoneNumbers array
+                { phoneNumbers: { $in: [phoneToSearch, normalizedPhone] } }
+              );
+            }
+          }
+          return phoneQueries;
+        })() : [])
       ]
     };
     
@@ -671,12 +685,28 @@ async function findPotentialDuplicates(contactData, userId = null) {
         return; // Don't add to manual review if email matches
       }
       
-      // 2. Exact phone match = automatic merge (high priority)  
-      if ((contactData.phone || contactData.phoneNumber) && 
-          (existing.phone || existing.phoneNumber)) {
-        const newPhone = (contactData.phone || contactData.phoneNumber).replace(/\D/g, '');
-        const existingPhone = (existing.phone || existing.phoneNumber).replace(/\D/g, '');
-        if (newPhone.length > 7 && newPhone === existingPhone) {
+      // 2. Exact phone match = automatic merge (high priority)
+      const getPhoneNumbers = (contact) => {
+        const phones = [];
+        if (contact.phone) phones.push(contact.phone);
+        if (contact.phoneNumber) phones.push(contact.phoneNumber);
+        if (contact.phoneNumbers && Array.isArray(contact.phoneNumbers)) {
+          phones.push(...contact.phoneNumbers);
+        }
+        return phones.filter(p => p && p.trim()).map(p => p.replace(/\D/g, ''));
+      };
+      
+      const newPhones = getPhoneNumbers(contactData);
+      const existingPhones = getPhoneNumbers(existing);
+      
+      if (newPhones.length > 0 && existingPhones.length > 0) {
+        const hasMatchingPhone = newPhones.some(newPhone => 
+          existingPhones.some(existingPhone => 
+            newPhone.length > 7 && existingPhone.length > 7 && newPhone === existingPhone
+          )
+        );
+        
+        if (hasMatchingPhone) {
           automaticMerges.push(existing);
           return; // Don't add to manual review if phone matches
         }
@@ -715,19 +745,38 @@ async function findPotentialDuplicates(contactData, userId = null) {
       }
     });
     
-    console.log(`Duplicate analysis for "${contactData.name}": ${automaticMerges.length} automatic merges, ${manualReview.length} manual review needed`);
+    const hasEmailMatch = automaticMerges.length > 0 && automaticMerges.some(contact => 
+      contact.email && contactData.email && 
+      contact.email.toLowerCase().trim() === contactData.email.toLowerCase().trim()
+    );
+    
+    const hasPhoneMatch = automaticMerges.length > 0 && automaticMerges.some(contact => {
+      const newPhones = getPhoneNumbers(contactData);
+      const existingPhones = getPhoneNumbers(contact);
+      return newPhones.some(newPhone => 
+        existingPhones.some(existingPhone => 
+          newPhone.length > 7 && existingPhone.length > 7 && newPhone === existingPhone
+        )
+      );
+    });
+    
+    const matchTypes = [];
+    if (hasEmailMatch) matchTypes.push('email');
+    if (hasPhoneMatch) matchTypes.push('phone');
+    if (manualReview.length > 0) matchTypes.push('name-similarity');
+    
+    console.log(`Duplicate analysis for "${contactData.name}": ${automaticMerges.length} automatic merges (${matchTypes.join(', ') || 'none'}), ${manualReview.length} manual review needed`);
     
     return {
       automaticMerges,
       manualReview,
-      hasEmailMatch: automaticMerges.length > 0 && automaticMerges.some(contact => 
-        contact.email && contactData.email && 
-        contact.email.toLowerCase().trim() === contactData.email.toLowerCase().trim()
-      )
+      hasEmailMatch,
+      hasPhoneMatch,
+      matchTypes
     };
   } catch (error) {
     console.error('Error finding potential duplicates:', error);
-    return { automaticMerges: [], manualReview: [], hasEmailMatch: false };
+    return { automaticMerges: [], manualReview: [], hasEmailMatch: false, hasPhoneMatch: false, matchTypes: [] };
   }
 }
 
