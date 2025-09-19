@@ -478,6 +478,56 @@ const upload = multer({
 
 // ===== UTILITY FUNCTIONS =====
 
+// Function to find potential duplicate contacts by name matching
+async function findPotentialDuplicates(contactData, userId = null) {
+  try {
+    const searchName = contactData.name.toLowerCase().trim();
+    
+    // Build search query
+    const query = {
+      $or: [
+        { name: { $regex: new RegExp(searchName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') } },
+        { name: { $regex: new RegExp(searchName.split(' ').join('.*'), 'i') } }
+      ]
+    };
+    
+    if (userId) {
+      query.userId = userId;
+    }
+    
+    // Find existing contacts with similar names
+    const existingContacts = await Contact.find(query).limit(10).lean();
+    
+    // Filter for more precise matches
+    const potentialDuplicates = existingContacts.filter(existing => {
+      const existingName = existing.name.toLowerCase().trim();
+      const newName = searchName;
+      
+      // Check for exact match
+      if (existingName === newName) return true;
+      
+      // Check for similar names (allow for small differences)
+      const existingWords = existingName.split(/\s+/).filter(w => w.length > 1);
+      const newWords = newName.split(/\s+/).filter(w => w.length > 1);
+      
+      // At least 2 words should match for potential duplicate
+      const matchingWords = existingWords.filter(word => 
+        newWords.some(newWord => 
+          word.includes(newWord) || newWord.includes(word) || 
+          (word.length > 2 && newWord.length > 2 && word.substring(0, 3) === newWord.substring(0, 3))
+        )
+      );
+      
+      return matchingWords.length >= Math.min(2, Math.min(existingWords.length, newWords.length));
+    });
+    
+    return potentialDuplicates;
+  } catch (error) {
+    console.error('Error finding potential duplicates:', error);
+    return [];
+  }
+}
+
 // LinkedIn header mappings
 const LINKEDIN_HEADER_MAPPINGS = {
   firstName: ['first name', 'firstname'],
@@ -611,6 +661,34 @@ function detectCSVFormat(headers) {
     console.log('✅ Detected format: LinkedIn CSV');
     return 'linkedin';
   }
+}
+
+// Function to merge contact data intelligently
+function mergeContactData(existingContact, newContactData) {
+  const merged = { ...existingContact };
+  
+  // Merge non-empty fields from new contact
+  Object.keys(newContactData).forEach(key => {
+    if (newContactData[key] && newContactData[key] !== '' && newContactData[key] !== null) {
+      if (Array.isArray(newContactData[key])) {
+        // For arrays, combine and deduplicate
+        const existingArray = merged[key] || [];
+        const newArray = newContactData[key] || [];
+        merged[key] = [...new Set([...existingArray, ...newArray])].filter(item => item && item !== '');
+      } else if (key === 'source') {
+        // Combine sources
+        merged[key] = merged[key] ? `${merged[key]}, ${newContactData[key]}` : newContactData[key];
+      } else if (!merged[key] || merged[key] === '') {
+        // Only replace if existing field is empty
+        merged[key] = newContactData[key];
+      }
+    }
+  });
+  
+  // Update timestamps
+  merged.updatedAt = new Date();
+  
+  return merged;
 }
 
 // Enhanced CSV processing with support for both LinkedIn and Contacts formats
@@ -1318,14 +1396,46 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
       });
     }
 
-    // Enhanced processing with AI-powered insights
+    // Check for potential duplicates
+    const userId = req.body.userId || null;
+    const newContacts = [];
+    const potentialDuplicates = [];
+    
+    console.log(`Checking ${mergedContacts.length} contacts for duplicates...`);
+    
+    for (const contactData of mergedContacts) {
+      const duplicates = await findPotentialDuplicates(contactData, userId);
+      
+      if (duplicates.length > 0) {
+        potentialDuplicates.push({
+          newContact: contactData,
+          existingContacts: duplicates
+        });
+        console.log(`Found ${duplicates.length} potential duplicates for: ${contactData.name}`);
+      } else {
+        newContacts.push(contactData);
+      }
+    }
+    
+    // If there are potential duplicates, return them for user decision
+    if (potentialDuplicates.length > 0) {
+      return res.json({
+        success: true,
+        hasDuplicates: true,
+        newContacts: newContacts,
+        potentialDuplicates: potentialDuplicates,
+        message: `Found ${potentialDuplicates.length} potential duplicate(s). Please review and decide whether to merge or keep separate.`
+      });
+    }
+
+    // Enhanced processing with AI-powered insights for new contacts only
     let insertedCount = 0;
     let duplicateCount = 0;
     let contactsWithCompany = 0;
     let contactsWithEmail = 0;
     let embeddingCount = 0;
     
-    for (const contactData of mergedContacts) {
+    for (const contactData of newContacts) {
       if (contactData.company) contactsWithCompany++;
       if (contactData.email) contactsWithEmail++;
       
@@ -1410,7 +1520,8 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
         ? `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}${embeddingCount > 0 ? `Generated ${embeddingCount} semantic embeddings. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`
         : duplicateCount > 0
           ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`
-          : `❌ No valid contacts found in the uploaded files.`
+          : `❌ No valid contacts found in the uploaded files.`,
+      hasDuplicates: false
     });
 
   } catch (error) {
@@ -1418,6 +1529,80 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    });
+  }
+});
+
+// API endpoint to handle merge decisions
+app.post('/api/contacts/merge', async (req, res) => {
+  try {
+    const { mergeDecisions, userId } = req.body;
+    console.log('Processing merge decisions:', mergeDecisions);
+    
+    if (!mergeDecisions || !Array.isArray(mergeDecisions)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Merge decisions array is required'
+      });
+    }
+    
+    let processedCount = 0;
+    let mergedCount = 0;
+    let addedCount = 0;
+    let skippedCount = 0;
+    
+    for (const decision of mergeDecisions) {
+      const { action, newContact, existingContactId, mergedData } = decision;
+      
+      try {
+        if (action === 'merge' && existingContactId) {
+          // Merge with existing contact
+          const existingContact = await Contact.findById(existingContactId);
+          if (existingContact) {
+            const mergedContactData = mergeContactData(existingContact.toObject(), newContact);
+            await Contact.findByIdAndUpdate(existingContactId, mergedContactData);
+            mergedCount++;
+            console.log(`Merged contact: ${newContact.name} with existing ID: ${existingContactId}`);
+          } else {
+            console.warn(`Existing contact ${existingContactId} not found, adding as new`);
+            // If existing contact not found, add as new
+            await Contact.create({ ...newContact, userId });
+            addedCount++;
+          }
+        } else if (action === 'add') {
+          // Add as new contact
+          await Contact.create({ ...newContact, userId });
+          addedCount++;
+          console.log(`Added new contact: ${newContact.name}`);
+        } else if (action === 'skip') {
+          // Skip this contact
+          skippedCount++;
+          console.log(`Skipped contact: ${newContact.name}`);
+        }
+        
+        processedCount++;
+      } catch (error) {
+        console.error(`Error processing merge decision for ${newContact.name}:`, error);
+        // Continue with other contacts even if one fails
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Processed ${processedCount} contacts: ${addedCount} added, ${mergedCount} merged, ${skippedCount} skipped`,
+      summary: {
+        processed: processedCount,
+        added: addedCount,
+        merged: mergedCount,
+        skipped: skippedCount
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error processing merge decisions:', error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to process merge decisions: ${error.message}`
     });
   }
 });
