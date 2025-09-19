@@ -179,13 +179,16 @@ const contactSchema = new mongoose.Schema({
   facebookId: { type: String, default: '' },
   profilePicture: { type: String, default: '' },
   sites: [String], // Support for multiple websites from Contacts CSV
-  profiles: { type: String, default: '' }, // Social profiles from Contacts CSV
+  profiles: [String], // Social profiles from Contacts CSV
   
   // Additional Contacts CSV fields
   birthday: { type: String, default: '' }, // Store as string to handle various date formats
+  birthdayParsed: { type: Date, default: null }, // Parsed birthday as Date
   instantMessageHandles: [String], // Support for multiple IM handles
   bookmarkedAt: { type: String, default: '' }, // Store as string initially
+  bookmarkedAtParsed: { type: Date, default: null }, // Parsed bookmarked date as Date
   originalCreatedAt: { type: String, default: '' }, // For 'created at' field from Contacts CSV
+  originalCreatedAtParsed: { type: Date, default: null } // Parsed created date as Date
   
   // Enhanced LinkedIn fields
   currentPosition: {
@@ -783,9 +786,43 @@ function processSingleCSV(lines) {
         
         // Helper function to parse date fields
         const parseDate = (rawDate) => {
-          if (!rawDate) return '';
-          // Return as string for now - can be enhanced later for date parsing
-          return rawDate.trim();
+          if (!rawDate) return { raw: '', parsed: null };
+          const trimmed = rawDate.trim();
+          
+          // Try to parse common date formats
+          let parsed = null;
+          if (trimmed) {
+            // Try parsing with Date constructor (handles ISO, MM/DD/YYYY, etc.)
+            const dateAttempt = new Date(trimmed);
+            if (!isNaN(dateAttempt.getTime())) {
+              parsed = dateAttempt;
+            } else {
+              // Try some common formats if direct parsing fails
+              const patterns = [
+                /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, // MM/DD/YYYY
+                /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // YYYY-MM-DD
+                /^(\d{1,2})-(\d{1,2})-(\d{4})$/, // MM-DD-YYYY
+              ];
+              
+              for (const pattern of patterns) {
+                const match = trimmed.match(pattern);
+                if (match) {
+                  const [, part1, part2, part3] = match;
+                  // Assume first pattern is MM/DD/YYYY, others are YYYY-MM-DD or MM-DD-YYYY
+                  const testDate = pattern === patterns[0] || pattern === patterns[2] 
+                    ? new Date(part3, part1 - 1, part2) // MM/DD/YYYY or MM-DD-YYYY
+                    : new Date(part1, part2 - 1, part3); // YYYY-MM-DD
+                  
+                  if (!isNaN(testDate.getTime())) {
+                    parsed = testDate;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          
+          return { raw: trimmed, parsed };
         };
         
         // Extract field data for Contacts CSV format
@@ -805,9 +842,15 @@ function processSingleCSV(lines) {
         const addressesList = parseMultiValueField(addressRaw);
         const sitesList = parseMultiValueField(sitesRaw);
         const imHandlesList = parseMultiValueField(imHandlesRaw);
+        const profilesList = parseMultiValueField(profilesRaw);
+        
+        // Parse date fields
+        const birthdayData = indices.birthday >= 0 && fields[indices.birthday] ? parseDate(fields[indices.birthday]) : { raw: '', parsed: null };
+        const bookmarkedData = indices.bookmarkedAt >= 0 && fields[indices.bookmarkedAt] ? parseDate(fields[indices.bookmarkedAt]) : { raw: '', parsed: null };
+        const createdData = indices.createdAt >= 0 && fields[indices.createdAt] ? parseDate(fields[indices.createdAt]) : { raw: '', parsed: null };
         
         // Extract LinkedIn URL from sites or profiles
-        const allUrls = [...sitesList, ...parseMultiValueField(profilesRaw)];
+        const allUrls = [...sitesList, ...profilesList];
         const linkedinUrl = allUrls.find(url => url.toLowerCase().includes('linkedin')) || '';
         
         contactData = {
@@ -830,10 +873,17 @@ function processSingleCSV(lines) {
           // Single value fields from Contacts CSV
           source: indices.source >= 0 && fields[indices.source] ? fields[indices.source].trim() : 'contacts_import',
           linkedinUrl: linkedinUrl,
-          birthday: indices.birthday >= 0 && fields[indices.birthday] ? parseDate(fields[indices.birthday]) : '',
-          bookmarkedAt: indices.bookmarkedAt >= 0 && fields[indices.bookmarkedAt] ? parseDate(fields[indices.bookmarkedAt]) : '',
-          originalCreatedAt: indices.createdAt >= 0 && fields[indices.createdAt] ? parseDate(fields[indices.createdAt]) : '',
-          profiles: profilesRaw
+          
+          // Date fields (both raw and parsed)
+          birthday: birthdayData.raw,
+          birthdayParsed: birthdayData.parsed,
+          bookmarkedAt: bookmarkedData.raw,
+          bookmarkedAtParsed: bookmarkedData.parsed,
+          originalCreatedAt: createdData.raw,
+          originalCreatedAtParsed: createdData.parsed,
+          
+          // Social profiles as array
+          profiles: profilesList
         };
       } else {
         // LinkedIn CSV format processing (existing logic)
