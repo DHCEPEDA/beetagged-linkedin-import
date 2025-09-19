@@ -188,7 +188,7 @@ const contactSchema = new mongoose.Schema({
   bookmarkedAt: { type: String, default: '' }, // Store as string initially
   bookmarkedAtParsed: { type: Date, default: null }, // Parsed bookmarked date as Date
   originalCreatedAt: { type: String, default: '' }, // For 'created at' field from Contacts CSV
-  originalCreatedAtParsed: { type: Date, default: null } // Parsed created date as Date
+  originalCreatedAtParsed: { type: Date, default: null }, // Parsed created date as Date
   
   // Enhanced LinkedIn fields
   currentPosition: {
