@@ -14,10 +14,6 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "UpdateHerokuBuild"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "ViteDev"
 
 [[workflows.workflow.tasks]]
@@ -26,23 +22,7 @@ args = "BuildSquarespaceBundle"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "BuildDevelopment"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "RebuildSquarespaceBundle"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "ViteBuildDev"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "BuildDevScript"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Build"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
@@ -51,14 +31,6 @@ args = "Backend"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "FinalRebuildSquarespaceBundle"
-
-[[workflows.workflow]]
-name = "UpdateHerokuBuild"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo '{\"scripts\":{\"start\":\"node index.js\",\"build\":\"npx webpack --config webpack.production.config.js\",\"heroku-postbuild\":\"npm run build\"}}' > temp-scripts.json && cat temp-scripts.json"
 
 [[workflows.workflow]]
 name = "ViteDev"
@@ -78,44 +50,12 @@ task = "shell.exec"
 args = "npx webpack --config webpack.squarespace.config.js"
 
 [[workflows.workflow]]
-name = "BuildDevelopment"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "vite build --mode development"
-
-[[workflows.workflow]]
 name = "RebuildSquarespaceBundle"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx webpack --config webpack.squarespace.config.js"
-
-[[workflows.workflow]]
-name = "ViteBuildDev"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "vite build --mode development"
-
-[[workflows.workflow]]
-name = "BuildDevScript"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "vite build --mode development"
-
-[[workflows.workflow]]
-name = "Build"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "vite build"
 
 [[workflows.workflow]]
 name = "Backend"
