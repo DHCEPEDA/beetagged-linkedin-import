@@ -624,27 +624,22 @@ function normalizeName(name) {
     .trim();
 }
 
-// Function to find potential duplicate contacts by enhanced name matching
+// Function to categorize potential duplicates by match type for automatic vs manual handling
 async function findPotentialDuplicates(contactData, userId = null) {
   try {
     const normalizedNewName = normalizeName(contactData.name);
     const newNameWords = normalizedNewName.split(/\s+/).filter(w => w.length > 1);
-    
-    if (newNameWords.length === 0) {
-      console.warn('No valid name words found for duplicate detection');
-      return [];
-    }
     
     // Build search query with multiple strategies
     const query = {
       $or: [
         // Exact normalized match
         { name: { $regex: new RegExp(`^${normalizedNewName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
-        // Partial word matches
-        ...newNameWords.map(word => ({
+        // Partial word matches (only if we have valid name words)
+        ...(newNameWords.length > 0 ? newNameWords.map(word => ({
           name: { $regex: new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
-        })),
-        // Email exact match (secondary identifier)
+        })) : []),
+        // Email exact match (primary identifier for automatic merging)
         ...(contactData.email ? [{ email: contactData.email.toLowerCase().trim() }] : []),
         // Phone exact match (secondary identifier)  
         ...(contactData.phone || contactData.phoneNumber ? [
@@ -661,65 +656,78 @@ async function findPotentialDuplicates(contactData, userId = null) {
     // Find existing contacts with similar identifiers
     const existingContacts = await Contact.find(query).limit(20).lean();
     
-    // Enhanced duplicate detection with multiple criteria
-    const potentialDuplicates = existingContacts.filter(existing => {
+    // Categorize duplicates by match type
+    const automaticMerges = [];
+    const manualReview = [];
+    
+    existingContacts.forEach(existing => {
       const normalizedExistingName = normalizeName(existing.name);
       const existingNameWords = normalizedExistingName.split(/\s+/).filter(w => w.length > 1);
       
-      // 1. Exact email match = high confidence duplicate
+      // 1. Exact email match = automatic merge (highest priority)
       if (contactData.email && existing.email && 
           contactData.email.toLowerCase().trim() === existing.email.toLowerCase().trim()) {
-        return true;
+        automaticMerges.push(existing);
+        return; // Don't add to manual review if email matches
       }
       
-      // 2. Exact phone match = high confidence duplicate  
+      // 2. Exact phone match = automatic merge (high priority)  
       if ((contactData.phone || contactData.phoneNumber) && 
           (existing.phone || existing.phoneNumber)) {
         const newPhone = (contactData.phone || contactData.phoneNumber).replace(/\D/g, '');
         const existingPhone = (existing.phone || existing.phoneNumber).replace(/\D/g, '');
         if (newPhone.length > 7 && newPhone === existingPhone) {
-          return true;
+          automaticMerges.push(existing);
+          return; // Don't add to manual review if phone matches
         }
       }
       
-      // 3. Name similarity scoring
-      if (existingNameWords.length === 0 || newNameWords.length === 0) {
-        return false;
+      // 3. Name similarity scoring = manual review required
+      if (existingNameWords.length > 0 && newNameWords.length > 0) {
+        // Calculate name similarity score
+        const matchingWords = existingNameWords.filter(existingWord => 
+          newNameWords.some(newWord => {
+            // Exact word match
+            if (existingWord === newWord) return true;
+            
+            // Substring match for longer words
+            if (existingWord.length > 3 && newWord.length > 3) {
+              return existingWord.includes(newWord) || newWord.includes(existingWord);
+            }
+            
+            // Prefix match for names (first 3 characters)
+            if (existingWord.length > 2 && newWord.length > 2) {
+              return existingWord.substring(0, 3) === newWord.substring(0, 3);
+            }
+            
+            return false;
+          })
+        );
+        
+        // Calculate similarity ratio
+        const totalWords = Math.max(existingNameWords.length, newNameWords.length);
+        const similarityRatio = matchingWords.length / totalWords;
+        
+        // Require at least 50% name similarity for potential duplicate
+        if (similarityRatio >= 0.5) {
+          manualReview.push(existing);
+        }
       }
-      
-      // Calculate name similarity score
-      const matchingWords = existingNameWords.filter(existingWord => 
-        newNameWords.some(newWord => {
-          // Exact word match
-          if (existingWord === newWord) return true;
-          
-          // Substring match for longer words
-          if (existingWord.length > 3 && newWord.length > 3) {
-            return existingWord.includes(newWord) || newWord.includes(existingWord);
-          }
-          
-          // Prefix match for names (first 3 characters)
-          if (existingWord.length > 2 && newWord.length > 2) {
-            return existingWord.substring(0, 3) === newWord.substring(0, 3);
-          }
-          
-          return false;
-        })
-      );
-      
-      // Calculate similarity ratio
-      const totalWords = Math.max(existingNameWords.length, newNameWords.length);
-      const similarityRatio = matchingWords.length / totalWords;
-      
-      // Require at least 50% name similarity for potential duplicate
-      return similarityRatio >= 0.5;
     });
     
-    console.log(`Found ${potentialDuplicates.length} potential duplicates for: ${contactData.name}`);
-    return potentialDuplicates;
+    console.log(`Duplicate analysis for "${contactData.name}": ${automaticMerges.length} automatic merges, ${manualReview.length} manual review needed`);
+    
+    return {
+      automaticMerges,
+      manualReview,
+      hasEmailMatch: automaticMerges.length > 0 && automaticMerges.some(contact => 
+        contact.email && contactData.email && 
+        contact.email.toLowerCase().trim() === contactData.email.toLowerCase().trim()
+      )
+    };
   } catch (error) {
     console.error('Error finding potential duplicates:', error);
-    return [];
+    return { automaticMerges: [], manualReview: [], hasEmailMatch: false };
   }
 }
 
@@ -1684,35 +1692,81 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
       });
     }
 
-    // Check for potential duplicates
+    // Check for potential duplicates and handle automatic merges
     const userId = req.body.userId || null;
     const newContacts = [];
     const potentialDuplicates = [];
+    let automaticMergeCount = 0;
     
     console.log(`Checking ${mergedContacts.length} contacts for duplicates...`);
     
     for (const contactData of mergedContacts) {
-      const duplicates = await findPotentialDuplicates(contactData, userId);
+      const duplicateAnalysis = await findPotentialDuplicates(contactData, userId);
       
-      if (duplicates.length > 0) {
+      // Handle automatic merges (exact email matches)
+      if (duplicateAnalysis.automaticMerges.length > 0) {
+        console.log(`Automatically merging "${contactData.name}" with existing contact (email match)`);
+        
+        // Merge with the first matching contact (highest priority)
+        const existingContact = duplicateAnalysis.automaticMerges[0];
+        try {
+          const mergedContactData = mergeContactData(existingContact, {
+            ...contactData,
+            userId: userId,
+            source: contactData.source || 'contacts-csv'
+          });
+          
+          await Contact.updateOne(
+            { _id: existingContact._id, userId: userId },
+            { 
+              $set: mergedContactData,
+              $push: {
+                mergeHistory: {
+                  timestamp: new Date(),
+                  action: 'merge',
+                  sourceContactId: null,
+                  sourceData: 'automatic-email-merge',
+                  mergedFields: Object.keys(contactData)
+                }
+              }
+            }
+          );
+          
+          automaticMergeCount++;
+          console.log(`Successfully auto-merged contact: ${contactData.name}`);
+        } catch (error) {
+          console.error(`Failed to auto-merge contact ${contactData.name}:`, error);
+          // If automatic merge fails, add to new contacts instead
+          newContacts.push(contactData);
+        }
+        
+      } else if (duplicateAnalysis.manualReview.length > 0) {
+        // Add to manual review if name-based duplicates found
         potentialDuplicates.push({
           newContact: contactData,
-          existingContacts: duplicates
+          existingContacts: duplicateAnalysis.manualReview
         });
-        console.log(`Found ${duplicates.length} potential duplicates for: ${contactData.name}`);
+        console.log(`Found ${duplicateAnalysis.manualReview.length} potential name-based duplicates for: ${contactData.name}`);
+        
       } else {
+        // No duplicates found, add to new contacts
         newContacts.push(contactData);
       }
     }
     
     // If there are potential duplicates, return them for user decision
     if (potentialDuplicates.length > 0) {
+      const message = automaticMergeCount > 0 
+        ? `Automatically merged ${automaticMergeCount} contact(s) with matching emails. Found ${potentialDuplicates.length} potential name-based duplicate(s) that need your review.`
+        : `Found ${potentialDuplicates.length} potential duplicate(s). Please review and decide whether to merge or keep separate.`;
+        
       return res.json({
         success: true,
         hasDuplicates: true,
         newContacts: newContacts,
         potentialDuplicates: potentialDuplicates,
-        message: `Found ${potentialDuplicates.length} potential duplicate(s). Please review and decide whether to merge or keep separate.`
+        automaticMerges: automaticMergeCount,
+        message: message
       });
     }
 
@@ -1797,21 +1851,45 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
     console.log(`Processed: ${mergedContacts.length}`);
     console.log(`Inserted: ${insertedCount}`);
     console.log(`Enhanced/Skipped: ${duplicateCount}`);
+    console.log(`Automatic Merges: ${automaticMergeCount}`);
     console.log(`Total contacts in DB: ${totalContacts}`);
+
+    // Build success message including automatic merges
+    let message = '';
+    if (insertedCount > 0) {
+      message = `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! `;
+      if (automaticMergeCount > 0) {
+        message += `Automatically merged ${automaticMergeCount} contact(s) with matching emails. `;
+      }
+      if (duplicateCount > 0) {
+        message += `Enhanced ${duplicateCount} existing contacts. `;
+      }
+      if (embeddingCount > 0) {
+        message += `Generated ${embeddingCount} semantic embeddings. `;
+      }
+      message += `Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`;
+    } else if (automaticMergeCount > 0) {
+      message = `✅ Automatically merged ${automaticMergeCount} contact(s) with matching emails! `;
+      if (duplicateCount > 0) {
+        message += `Enhanced ${duplicateCount} existing contacts with AI-powered insights. `;
+      }
+      message += `No new contacts needed to be added - all contacts were successfully merged with existing records.`;
+    } else if (duplicateCount > 0) {
+      message = `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`;
+    } else {
+      message = `❌ No valid contacts found in the uploaded files.`;
+    }
 
     res.json({
       success: true,
       count: insertedCount,
       processed: mergedContacts.length,
       enhanced: duplicateCount,
+      automaticMerges: automaticMergeCount,
       totalContacts: totalContacts,
       embeddings: embeddingCount,
       ai_features: process.env.OPENAI_API_KEY ? 'enabled' : 'disabled',
-      message: insertedCount > 0 
-        ? `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! ${duplicateCount > 0 ? `Enhanced ${duplicateCount} existing contacts. ` : ''}${embeddingCount > 0 ? `Generated ${embeddingCount} semantic embeddings. ` : ''}Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`
-        : duplicateCount > 0
-          ? `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`
-          : `❌ No valid contacts found in the uploaded files.`,
+      message: message,
       hasDuplicates: false
     });
 
