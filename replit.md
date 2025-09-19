@@ -40,6 +40,8 @@ Always provide exact files and deployment locations after making changes.
 
 ### Import and Integration Systems
 - **LinkedIn Import**: Enhanced CSV parsing with dual-file support (connections and contacts) and intelligent duplicate detection.
+- **Contacts CSV Import**: Full support for generic "Contacts" CSV format with fields: source, firstname, lastname, companies, title, emails, phone numbers, created at, addresses, sites, instantmessagehandles, fullname, birthday, location, bookmarkedat, and profiles.
+- **Multi-Format CSV Processing**: Automatic detection and handling of both LinkedIn and Contacts CSV formats with intelligent field mapping.
 - **Facebook Integration**: OAuth flow and contact import capabilities with enhanced friend access (`user_friends` permission).
 - **Authentication Integration**: Complete OAuth system for LinkedIn, Gmail, and Facebook with real-time status indicators.
 
