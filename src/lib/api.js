@@ -92,5 +92,24 @@ export const contactsAPI = {
     }
     
     return response.json();
+  },
+
+  // Merge duplicate contacts
+  mergeDuplicates: async (mergeDecisions) => {
+    const response = await fetch(`${BACKEND_URL}/api/contacts/merge`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ mergeDecisions })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to merge contacts: ${response.status} ${response.statusText}`);
+    }
+    
+    return response.json();
   }
 };

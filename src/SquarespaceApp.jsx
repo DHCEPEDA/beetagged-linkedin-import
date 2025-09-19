@@ -232,109 +232,194 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
   );
 };
 
-// Duplicate Detection Component
-const DuplicateDetection = ({ onClose }) => {
-  const [duplicates, setDuplicates] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [merging, setMerging] = useState(false);
+// Duplicate Resolution Modal Component
+const DuplicateResolutionModal = ({ potentialDuplicates, newContacts, onClose, onMergeDecisions }) => {
+  const [decisions, setDecisions] = useState(() => {
+    const initialDecisions = {};
+    potentialDuplicates.forEach((duplicate, index) => {
+      initialDecisions[index] = {
+        action: 'add', // default to adding as new
+        newContact: duplicate.newContact,
+        existingContactId: null
+      };
+    });
+    return initialDecisions;
+  });
 
-  const findDuplicates = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts/find-duplicates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setDuplicates(data.duplicates);
-      } else {
-        alert('Error finding duplicates: ' + data.message);
+  const handleDecisionChange = (index, action, existingContactId = null) => {
+    setDecisions(prev => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        action,
+        existingContactId: action === 'merge' ? existingContactId : null
       }
-    } catch (error) {
-      alert('Error finding duplicates: ' + error.message);
-    }
-    setLoading(false);
+    }));
   };
 
-  const mergeDuplicates = async (contactIds, mergedData) => {
-    setMerging(true);
-    try {
-      const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts/merge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactIds, mergedData })
+  const handleSubmit = () => {
+    const mergeDecisions = Object.values(decisions);
+    
+    // Also add decisions for new contacts (no duplicates)
+    newContacts.forEach(contact => {
+      mergeDecisions.push({
+        action: 'add',
+        newContact: contact,
+        existingContactId: null
       });
-      
-      const data = await response.json();
-      if (data.success) {
-        alert('Contacts merged successfully!');
-        findDuplicates();
-      } else {
-        alert('Error merging contacts: ' + data.message);
-      }
-    } catch (error) {
-      alert('Error merging contacts: ' + error.message);
-    }
-    setMerging(false);
+    });
+
+    onMergeDecisions(mergeDecisions);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="duplicate-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>🔍 Duplicate Detection</h2>
+    <div className="modal-overlay">
+      <div className="contact-card" style={{ maxWidth: '800px', maxHeight: '90vh' }}>
+        <div className="contact-card-header">
+          <h2>Resolve Duplicate Contacts</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
         
-        <div className="modal-content">
-          <button 
-            className="btn btn-primary" 
-            onClick={findDuplicates} 
-            disabled={loading}
-          >
-            {loading ? 'Analyzing Contacts...' : 'Find Duplicates'}
-          </button>
+        <div className="contact-card-content">
+          <div style={{ marginBottom: '20px' }}>
+            <p>We found {potentialDuplicates.length} potential duplicate(s) and {newContacts.length} new contact(s). 
+               Please choose how to handle each duplicate:</p>
+          </div>
 
-          {duplicates.length > 0 && (
-            <div className="duplicates-list">
-              <h3>Potential Duplicates Found:</h3>
-              {duplicates.map((group, i) => (
-                <div key={i} className="duplicate-group">
-                  <div className="duplicate-reason">
-                    <strong>Reason:</strong> {group.reason} 
-                    <span className="confidence">(Confidence: {Math.round(group.confidence * 100)}%)</span>
+          {potentialDuplicates.map((duplicate, index) => (
+            <div key={index} className="card-section" style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+              <h3>Potential Duplicate #{index + 1}</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                {/* New Contact */}
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#059669' }}>New Contact</h4>
+                  <div style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '6px' }}>
+                    <div><strong>{duplicate.newContact.name}</strong></div>
+                    {duplicate.newContact.email && <div>Email: {duplicate.newContact.email}</div>}
+                    {duplicate.newContact.company && <div>Company: {duplicate.newContact.company}</div>}
+                    {duplicate.newContact.position && <div>Position: {duplicate.newContact.position}</div>}
+                    {duplicate.newContact.location && <div>Location: {duplicate.newContact.location}</div>}
                   </div>
-                  
-                  <div className="duplicate-contacts">
-                    {group.contacts.map(contact => (
-                      <div key={contact._id} className="duplicate-contact">
-                        <strong>{contact.name}</strong>
-                        {contact.email && <div>Email: {contact.email}</div>}
-                        {contact.company && <div>Company: {contact.company}</div>}
-                      </div>
-                    ))}
-                  </div>
-
-                  <button 
-                    className="btn btn-success"
-                    onClick={() => mergeDuplicates(
-                      group.contacts.map(c => c._id),
-                      group.suggested_merge
-                    )}
-                    disabled={merging}
-                  >
-                    {merging ? 'Merging...' : 'Merge These Contacts'}
-                  </button>
                 </div>
-              ))}
+
+                {/* Existing Contacts */}
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#dc2626' }}>Existing Contact(s)</h4>
+                  {duplicate.existingContacts.map((existing, idx) => (
+                    <div key={idx} style={{ backgroundColor: '#fef2f2', padding: '12px', borderRadius: '6px', marginBottom: '8px' }}>
+                      <div><strong>{existing.name}</strong></div>
+                      {existing.email && <div>Email: {existing.email}</div>}
+                      {existing.company && <div>Company: {existing.company}</div>}
+                      {existing.position && <div>Position: {existing.position}</div>}
+                      {existing.location && <div>Location: {existing.location}</div>}
+                      
+                      <button
+                        className={`beetagged-button ${decisions[index]?.action === 'merge' && decisions[index]?.existingContactId === existing._id ? 'active' : ''}`}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          backgroundColor: decisions[index]?.action === 'merge' && decisions[index]?.existingContactId === existing._id ? '#059669' : '#6b7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => handleDecisionChange(index, 'merge', existing._id)}
+                      >
+                        Merge with this contact
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  className={`beetagged-button ${decisions[index]?.action === 'add' ? 'active' : ''}`}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: decisions[index]?.action === 'add' ? '#2196f3' : '#e5e5e5',
+                    color: decisions[index]?.action === 'add' ? 'white' : '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleDecisionChange(index, 'add')}
+                >
+                  Add as New Contact
+                </button>
+                
+                <button
+                  className={`beetagged-button ${decisions[index]?.action === 'skip' ? 'active' : ''}`}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: decisions[index]?.action === 'skip' ? '#dc2626' : '#e5e5e5',
+                    color: decisions[index]?.action === 'skip' ? 'white' : '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleDecisionChange(index, 'skip')}
+                >
+                  Skip This Contact
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {newContacts.length > 0 && (
+            <div className="card-section" style={{ border: '1px solid #10b981', borderRadius: '8px', padding: '16px', backgroundColor: '#f0fdf4' }}>
+              <h3 style={{ color: '#059669' }}>New Contacts (No Duplicates Found)</h3>
+              <p>These {newContacts.length} contact(s) will be added automatically:</p>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {newContacts.slice(0, 5).map((contact, idx) => (
+                  <div key={idx} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '4px' }}>
+                    <strong>{contact.name}</strong>
+                    {contact.company && ` - ${contact.company}`}
+                  </div>
+                ))}
+                {newContacts.length > 5 && (
+                  <div style={{ padding: '8px', fontStyle: 'italic', color: '#6b7280' }}>
+                    ... and {newContacts.length - 5} more contacts
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {duplicates.length === 0 && !loading && (
-            <p>No duplicates found. Your contacts look clean! 🎉</p>
-          )}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e5e5' }}>
+            <button
+              className="beetagged-button"
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              className="beetagged-button"
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              onClick={handleSubmit}
+            >
+              Apply Decisions
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -349,7 +434,9 @@ const BeeTaggedApp = () => {
   const [backendConnected, setBackendConnected] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
-  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [potentialDuplicates, setPotentialDuplicates] = useState([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [newContacts, setNewContacts] = useState([]);
 
   useEffect(() => {
     checkBackendHealth();
@@ -401,10 +488,21 @@ const BeeTaggedApp = () => {
     setUploadStatus('Uploading...');
     try {
       const result = await contactsAPI.importCSV(file);
-      setUploadStatus(`Success! Imported ${result.count} contacts`);
-      loadContacts(); // Reload contacts after import
-      setTimeout(() => setUploadStatus(''), 3000);
+      
+      if (result.hasDuplicates) {
+        // Show duplicate resolution UI
+        setPotentialDuplicates(result.potentialDuplicates || []);
+        setNewContacts(result.newContacts || []);
+        setShowDuplicateModal(true);
+        setUploadStatus(`Found ${result.potentialDuplicates?.length || 0} potential duplicates. Please review.`);
+      } else {
+        // Normal import success
+        setUploadStatus(`Success! Imported ${result.count || result.added || 0} contacts`);
+        loadContacts(); // Reload contacts after import
+        setTimeout(() => setUploadStatus(''), 3000);
+      }
     } catch (error) {
+      console.error('Upload error:', error);
       setUploadStatus('Upload failed. Please check file format.');
       setTimeout(() => setUploadStatus(''), 3000);
     }
@@ -426,6 +524,32 @@ const BeeTaggedApp = () => {
     setContacts(prev => updateContactInArray(prev));
     setSearchResults(prev => updateContactInArray(prev));
     setSelectedContact(updatedContact);
+  };
+
+  const handleMergeDecisions = async (mergeDecisions) => {
+    try {
+      setUploadStatus('Processing merge decisions...');
+      const result = await contactsAPI.mergeDuplicates(mergeDecisions);
+      
+      setShowDuplicateModal(false);
+      setPotentialDuplicates([]);
+      setNewContacts([]);
+      
+      setUploadStatus(`${result.message}`);
+      loadContacts(); // Reload contacts after merge
+      setTimeout(() => setUploadStatus(''), 5000);
+    } catch (error) {
+      console.error('Merge error:', error);
+      setUploadStatus('Failed to process merge decisions.');
+      setTimeout(() => setUploadStatus(''), 3000);
+    }
+  };
+
+  const closeDuplicateModal = () => {
+    setShowDuplicateModal(false);
+    setPotentialDuplicates([]);
+    setNewContacts([]);
+    setUploadStatus('');
   };
 
   return (
@@ -535,9 +659,12 @@ const BeeTaggedApp = () => {
         />
       )}
       
-      {showDuplicates && (
-        <DuplicateDetection 
-          onClose={() => setShowDuplicates(false)} 
+      {showDuplicateModal && (
+        <DuplicateResolutionModal 
+          potentialDuplicates={potentialDuplicates}
+          newContacts={newContacts}
+          onClose={closeDuplicateModal}
+          onMergeDecisions={handleMergeDecisions}
         />
       )}
     </div>
