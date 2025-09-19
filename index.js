@@ -476,6 +476,26 @@ const LINKEDIN_HEADER_MAPPINGS = {
   url: ['url', 'profile url', 'linkedin url', 'link']
 };
 
+// Contacts CSV format header mappings
+const CONTACTS_HEADER_MAPPINGS = {
+  source: ['source'],
+  firstName: ['firstname', 'first name'],
+  lastName: ['lastname', 'last name'],
+  fullName: ['fullname', 'full name', 'name'],
+  companies: ['companies', 'company', 'organization'],
+  title: ['title', 'position', 'job title'],
+  emails: ['emails', 'email', 'email address', 'e-mail'],
+  phoneNumbers: ['phone numbers', 'phone', 'phone number', 'mobile'],
+  createdAt: ['created at', 'date created', 'created'],
+  addresses: ['addresses', 'address', 'location'],
+  sites: ['sites', 'website', 'websites', 'url'],
+  instantMessageHandles: ['instantmessagehandles', 'instant message', 'im'],
+  birthday: ['birthday', 'birth date', 'date of birth'],
+  location: ['location', 'region', 'area', 'city'],
+  bookmarkedAt: ['bookmarkedat', 'bookmarked', 'bookmarked at'],
+  profiles: ['profiles', 'profile', 'social profiles']
+};
+
 function findHeaderIndex(headers, possibleNames) {
   for (const name of possibleNames) {
     const index = headers.findIndex(h => h && h.toLowerCase().includes(name.toLowerCase()));
