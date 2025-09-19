@@ -6,8 +6,102 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
   const [newTag, setNewTag] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [localContact, setLocalContact] = useState(contact);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   
   if (!contact) return null;
+
+  // Initialize edit data when entering edit mode
+  const startEditing = () => {
+    setEditData({
+      name: localContact.name || '',
+      email: localContact.email || '',
+      phone: localContact.phone || localContact.phoneNumber || '',
+      emails: localContact.emails || (localContact.email ? [localContact.email] : []),
+      phoneNumbers: localContact.phoneNumbers || (localContact.phone || localContact.phoneNumber ? [localContact.phone || localContact.phoneNumber] : []),
+      company: localContact.company || '',
+      position: localContact.position || '',
+      jobTitle: localContact.jobTitle || '',
+      location: localContact.location || '',
+      linkedinUrl: localContact.linkedinUrl || '',
+      companies: localContact.companies || [],
+      sites: localContact.sites || [],
+      addresses: localContact.addresses || []
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditData({});
+  };
+
+  const saveChanges = async () => {
+    setIsSaving(true);
+    try {
+      // Prepare update data
+      const updateData = {
+        ...editData,
+        // Ensure arrays are properly formatted
+        emails: editData.emails.filter(email => email.trim() !== ''),
+        phoneNumbers: editData.phoneNumbers.filter(phone => phone.trim() !== ''),
+        companies: editData.companies.filter(company => company.trim() !== ''),
+        sites: editData.sites.filter(site => site.trim() !== ''),
+        addresses: editData.addresses.filter(address => address.trim() !== ''),
+        updatedAt: new Date()
+      };
+
+      // Call API to update contact
+      await contactsAPI.updateContact(contact._id, updateData);
+      
+      // Update local contact state
+      const updatedContact = { ...localContact, ...updateData };
+      setLocalContact(updatedContact);
+      
+      // Update parent component's contact list if callback provided
+      if (onContactUpdate) {
+        onContactUpdate(updatedContact);
+      }
+      
+      setIsEditing(false);
+      setEditData({});
+      
+    } catch (error) {
+      console.error('Failed to update contact:', error);
+      alert('Failed to update contact. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateEditField = (field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const addArrayItem = (arrayField) => {
+    setEditData(prev => ({
+      ...prev,
+      [arrayField]: [...(prev[arrayField] || []), '']
+    }));
+  };
+
+  const updateArrayItem = (arrayField, index, value) => {
+    setEditData(prev => ({
+      ...prev,
+      [arrayField]: prev[arrayField].map((item, i) => i === index ? value : item)
+    }));
+  };
+
+  const removeArrayItem = (arrayField, index) => {
+    setEditData(prev => ({
+      ...prev,
+      [arrayField]: prev[arrayField].filter((_, i) => i !== index)
+    }));
+  };
 
   const handleAddTag = async () => {
     if (!newTag.trim() || isAddingTag) return;
@@ -50,40 +144,307 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="contact-card" onClick={e => e.stopPropagation()}>
         <div className="contact-card-header">
-          <h2>{contact.name || 'Unknown Contact'}</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editData.name}
+                onChange={(e) => updateEditField('name', e.target.value)}
+                style={{ fontSize: '1.5em', fontWeight: 'bold', border: '1px solid #ddd', padding: '4px 8px', borderRadius: '4px', flex: 1 }}
+                placeholder="Contact Name"
+              />
+            ) : (
+              <h2>{localContact.name || 'Unknown Contact'}</h2>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {!isEditing && (
+              <button 
+                className="edit-btn" 
+                onClick={startEditing}
+                style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Edit
+              </button>
+            )}
+            <button className="close-btn" onClick={onClose}>×</button>
+          </div>
         </div>
         
         <div className="contact-card-content">
           {/* Basic Contact Info */}
           <div className="card-section">
             <h3>📱 Contact Information</h3>
-            <div className="info-grid">
-              <div><strong>Email:</strong> {contact.email || 'Not available'}</div>
-              <div><strong>Phone:</strong> {contact.phone || contact.phoneNumber || 'Not available'}</div>
-              {contact.linkedinUrl && (
+            {isEditing ? (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {/* Primary Email */}
                 <div>
-                  <strong>LinkedIn:</strong> 
-                  <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">
-                    View Profile
-                  </a>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Primary Email:</label>
+                  <input
+                    type="email"
+                    value={editData.email}
+                    onChange={(e) => updateEditField('email', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Primary email address"
+                  />
                 </div>
-              )}
-            </div>
+
+                {/* Multiple Emails */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>All Email Addresses:</label>
+                  {editData.emails.map((email, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => updateArrayItem('emails', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Email address"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('emails', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('emails')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Email
+                  </button>
+                </div>
+
+                {/* Primary Phone */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Primary Phone:</label>
+                  <input
+                    type="tel"
+                    value={editData.phone}
+                    onChange={(e) => updateEditField('phone', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Primary phone number"
+                  />
+                </div>
+
+                {/* Multiple Phone Numbers */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>All Phone Numbers:</label>
+                  {editData.phoneNumbers.map((phone, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => updateArrayItem('phoneNumbers', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Phone number"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('phoneNumbers', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('phoneNumbers')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Phone
+                  </button>
+                </div>
+
+                {/* LinkedIn URL */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>LinkedIn URL:</label>
+                  <input
+                    type="url"
+                    value={editData.linkedinUrl}
+                    onChange={(e) => updateEditField('linkedinUrl', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="LinkedIn profile URL"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="info-grid">
+                <div><strong>Email:</strong> {localContact.email || 'Not available'}</div>
+                {localContact.emails && localContact.emails.length > 1 && (
+                  <div>
+                    <strong>All Emails:</strong> {localContact.emails.join(', ')}
+                  </div>
+                )}
+                <div><strong>Phone:</strong> {localContact.phone || localContact.phoneNumber || 'Not available'}</div>
+                {localContact.phoneNumbers && localContact.phoneNumbers.length > 1 && (
+                  <div>
+                    <strong>All Phones:</strong> {localContact.phoneNumbers.join(', ')}
+                  </div>
+                )}
+                {localContact.linkedinUrl && (
+                  <div>
+                    <strong>LinkedIn:</strong> 
+                    <a href={localContact.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                      View Profile
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Current Position */}
-          {(contact.company || contact.position) && (
-            <div className="card-section">
-              <h3>💼 Current Position</h3>
-              <div className="info-grid">
-                {contact.company && <div><strong>Company:</strong> {contact.company}</div>}
-                {contact.position && <div><strong>Position:</strong> {contact.position}</div>}
-                {contact.jobTitle && <div><strong>Job Title:</strong> {contact.jobTitle}</div>}
-                {contact.location && <div><strong>Location:</strong> {contact.location}</div>}
+          <div className="card-section">
+            <h3>💼 Current Position</h3>
+            {isEditing ? (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Company:</label>
+                  <input
+                    type="text"
+                    value={editData.company}
+                    onChange={(e) => updateEditField('company', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Company name"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Position:</label>
+                  <input
+                    type="text"
+                    value={editData.position}
+                    onChange={(e) => updateEditField('position', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Job position"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Job Title:</label>
+                  <input
+                    type="text"
+                    value={editData.jobTitle}
+                    onChange={(e) => updateEditField('jobTitle', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Job title"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Location:</label>
+                  <input
+                    type="text"
+                    value={editData.location}
+                    onChange={(e) => updateEditField('location', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Location"
+                  />
+                </div>
+                
+                {/* Multiple Companies */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>All Companies:</label>
+                  {editData.companies.map((company, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="text"
+                        value={company}
+                        onChange={(e) => updateArrayItem('companies', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Company name"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('companies', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('companies')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Company
+                  </button>
+                </div>
+
+                {/* Websites/Sites */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Websites:</label>
+                  {editData.sites.map((site, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="url"
+                        value={site}
+                        onChange={(e) => updateArrayItem('sites', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Website URL"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('sites', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('sites')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Website
+                  </button>
+                </div>
+
+                {/* Addresses */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Addresses:</label>
+                  {editData.addresses.map((address, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => updateArrayItem('addresses', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Address"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('addresses', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('addresses')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Address
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="info-grid">
+                {localContact.company && <div><strong>Company:</strong> {localContact.company}</div>}
+                {localContact.position && <div><strong>Position:</strong> {localContact.position}</div>}
+                {localContact.jobTitle && <div><strong>Job Title:</strong> {localContact.jobTitle}</div>}
+                {localContact.location && <div><strong>Location:</strong> {localContact.location}</div>}
+                {localContact.companies && localContact.companies.length > 0 && (
+                  <div><strong>All Companies:</strong> {localContact.companies.join(', ')}</div>
+                )}
+                {localContact.sites && localContact.sites.length > 0 && (
+                  <div><strong>Websites:</strong> {localContact.sites.map(site => 
+                    <a key={site} href={site} target="_blank" rel="noopener noreferrer" style={{ marginRight: '8px' }}>{site}</a>
+                  )}</div>
+                )}
+                {localContact.addresses && localContact.addresses.length > 0 && (
+                  <div><strong>Addresses:</strong> {localContact.addresses.join(', ')}</div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Experience History */}
           {contact.experience && contact.experience.length > 0 && (
@@ -204,28 +565,68 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
             </div>
           </div>
 
-          {/* Add Custom Tag Section */}
-          <div className="card-section">
-            <h3>📝 Add Custom Tags</h3>
-            <div className="custom-tag-input">
-              <input 
-                type="text" 
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Add a custom tag (e.g., 'Hot Lead', 'Friend', 'Mentor')" 
-                className="tag-input"
-                disabled={isAddingTag}
-              />
-              <button 
-                className="add-tag-btn" 
-                onClick={handleAddTag}
-                disabled={isAddingTag || !newTag.trim()}
-              >
-                {isAddingTag ? 'Adding...' : 'Add Tag'}
-              </button>
+          {/* Save/Cancel Buttons for Edit Mode */}
+          {isEditing && (
+            <div className="card-section" style={{ borderTop: '2px solid #e5e5e5', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={cancelEditing}
+                  disabled={isSaving}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveChanges}
+                  disabled={isSaving}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Add Custom Tag Section */}
+          {!isEditing && (
+            <div className="card-section">
+              <h3>📝 Add Custom Tags</h3>
+              <div className="custom-tag-input">
+                <input 
+                  type="text" 
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Add a custom tag (e.g., 'Hot Lead', 'Friend', 'Mentor')" 
+                  className="tag-input"
+                  disabled={isAddingTag}
+                />
+                <button 
+                  className="add-tag-btn" 
+                  onClick={handleAddTag}
+                  disabled={isAddingTag || !newTag.trim()}
+                >
+                  {isAddingTag ? 'Adding...' : 'Add Tag'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
