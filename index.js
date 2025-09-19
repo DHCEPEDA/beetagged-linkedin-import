@@ -532,12 +532,39 @@ function parseCSVLine(line) {
   return result.map(field => field.trim());
 }
 
-// Enhanced CSV processing with LinkedIn format support
+// Function to detect CSV format based on headers
+function detectCSVFormat(headers) {
+  const headerLower = headers.map(h => h.toLowerCase());
+  
+  // Check for Contacts CSV format indicators
+  const contactsIndicators = ['firstname', 'lastname', 'fullname', 'companies', 'emails', 'phone numbers', 'addresses', 'sites', 'instantmessagehandles', 'bookmarkedat', 'profiles'];
+  const contactsMatches = contactsIndicators.filter(indicator => 
+    headerLower.some(h => h.includes(indicator))
+  );
+  
+  // Check for LinkedIn CSV format indicators
+  const linkedinIndicators = ['first name', 'last name', 'connected on', 'position'];
+  const linkedinMatches = linkedinIndicators.filter(indicator => 
+    headerLower.some(h => h.includes(indicator))
+  );
+  
+  console.log('Contacts format matches:', contactsMatches.length, contactsMatches);
+  console.log('LinkedIn format matches:', linkedinMatches.length, linkedinMatches);
+  
+  // Return format with more matches, defaulting to LinkedIn if tie
+  if (contactsMatches.length > linkedinMatches.length) {
+    return 'contacts';
+  } else {
+    return 'linkedin';
+  }
+}
+
+// Enhanced CSV processing with support for both LinkedIn and Contacts formats
 function processSingleCSV(lines) {
   const contacts = [];
   const errors = [];
   
-  // Parse headers - handle LinkedIn CSV format with notes at the top
+  // Parse headers - handle both CSV formats with notes at the top
   let headerIndex = 0;
   let headers = [];
   let headerLine = '';
@@ -553,14 +580,23 @@ function processSingleCSV(lines) {
     const testHeaders = parseCSVLine(line);
     console.log(`Testing line ${i} as headers:`, testHeaders.slice(0, 5));
     
-    // Check if this looks like a LinkedIn header row
-    if (testHeaders.some(h => h && (
+    // Check if this looks like a valid CSV header row (either format)
+    if (testHeaders.length >= 3 && testHeaders.some(h => h && (
+      // LinkedIn format indicators
       h.toLowerCase().includes('first name') || 
       h.toLowerCase().includes('last name') ||
       h.toLowerCase().includes('company') ||
       h.toLowerCase().includes('position') ||
       h.toLowerCase().includes('email') ||
-      h.toLowerCase().includes('connected')
+      h.toLowerCase().includes('connected') ||
+      // Contacts format indicators
+      h.toLowerCase().includes('firstname') ||
+      h.toLowerCase().includes('lastname') ||
+      h.toLowerCase().includes('fullname') ||
+      h.toLowerCase().includes('companies') ||
+      h.toLowerCase().includes('emails') ||
+      h.toLowerCase().includes('phone numbers') ||
+      h.toLowerCase().includes('addresses')
     ))) {
       headers = testHeaders;
       headerIndex = i;
@@ -574,67 +610,86 @@ function processSingleCSV(lines) {
     for (let i = 0; i < Math.min(5, lines.length); i++) {
       console.log(`Line ${i}: "${lines[i].substring(0, 100)}..."`);
     }
-    throw new Error('Could not find valid LinkedIn CSV headers. Please check your file format.');
+    throw new Error('Could not find valid CSV headers. Please check your file format.');
   }
   
   console.log('CSV Headers found:', headers);
   console.log('Header found at line:', headerIndex);
   console.log('Raw header line:', headerLine);
   
-  // Enhanced header validation - accept minimal LinkedIn format
-  const hasValidHeaders = headers.some(header => 
-    header.toLowerCase().includes('name') || 
-    header.toLowerCase().includes('company') ||
-    header.toLowerCase().includes('position') ||
-    header.toLowerCase().includes('connected')
-  );
+  // Detect CSV format
+  const csvFormat = detectCSVFormat(headers);
+  console.log('Detected CSV format:', csvFormat);
   
-  if (!hasValidHeaders) {
-    throw new Error('This doesn\'t appear to be a valid LinkedIn connections CSV. Expected headers like "First Name", "Last Name", etc.');
+  // Choose appropriate mappings based on detected format
+  const mappings = csvFormat === 'contacts' ? CONTACTS_HEADER_MAPPINGS : LINKEDIN_HEADER_MAPPINGS;
+  
+  // Find column indices with appropriate mapping
+  let indices;
+  if (csvFormat === 'contacts') {
+    indices = {
+      source: findHeaderIndex(headers, mappings.source),
+      firstName: findHeaderIndex(headers, mappings.firstName),
+      lastName: findHeaderIndex(headers, mappings.lastName),
+      fullName: findHeaderIndex(headers, mappings.fullName),
+      companies: findHeaderIndex(headers, mappings.companies),
+      title: findHeaderIndex(headers, mappings.title),
+      emails: findHeaderIndex(headers, mappings.emails),
+      phoneNumbers: findHeaderIndex(headers, mappings.phoneNumbers),
+      createdAt: findHeaderIndex(headers, mappings.createdAt),
+      addresses: findHeaderIndex(headers, mappings.addresses),
+      sites: findHeaderIndex(headers, mappings.sites),
+      instantMessageHandles: findHeaderIndex(headers, mappings.instantMessageHandles),
+      birthday: findHeaderIndex(headers, mappings.birthday),
+      location: findHeaderIndex(headers, mappings.location),
+      bookmarkedAt: findHeaderIndex(headers, mappings.bookmarkedAt),
+      profiles: findHeaderIndex(headers, mappings.profiles)
+    };
+  } else {
+    indices = {
+      firstName: findHeaderIndex(headers, mappings.firstName),
+      lastName: findHeaderIndex(headers, mappings.lastName),
+      name: findHeaderIndex(headers, mappings.name),
+      email: findHeaderIndex(headers, mappings.email),
+      company: findHeaderIndex(headers, mappings.company),
+      position: findHeaderIndex(headers, mappings.position),
+      location: findHeaderIndex(headers, mappings.location),
+      connectedOn: findHeaderIndex(headers, mappings.connectedOn),
+      url: findHeaderIndex(headers, mappings.url)
+    };
   }
-  
-  // Find column indices with better mapping
-  const indices = {
-    firstName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.firstName),
-    lastName: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.lastName),
-    name: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.name),
-    email: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.email),
-    company: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.company),
-    position: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.position),
-    location: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.location),
-    connectedOn: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.connectedOn),
-    url: findHeaderIndex(headers, LINKEDIN_HEADER_MAPPINGS.url)
-  };
 
   console.log('Field indices:', indices);
   console.log('Available headers for mapping:', headers.map((h, i) => `${i}: "${h}"`));
   
-  // Debug email field specifically
-  if (indices.email >= 0) {
-    console.log(`✅ Email field found at index ${indices.email}: "${headers[indices.email]}"`);
-  } else {
-    console.log('❌ No email field found in headers');
-  }
-
   // Validate that we found at least name fields
-  if (indices.firstName === -1 && indices.lastName === -1 && indices.name === -1) {
-    throw new Error('Could not find name columns in CSV. Expected "First Name" and "Last Name" or similar.');
+  const hasNameField = (csvFormat === 'contacts') ? 
+    (indices.firstName >= 0 || indices.lastName >= 0 || indices.fullName >= 0) :
+    (indices.firstName >= 0 || indices.lastName >= 0 || indices.name >= 0);
+    
+  if (!hasNameField) {
+    throw new Error(`Could not find name columns in ${csvFormat} CSV. Expected name fields.`);
   }
 
   // Check what data we can expect to extract
   const availableFields = [];
-  if (indices.firstName >= 0 || indices.lastName >= 0) availableFields.push('Names');
-  if (indices.email >= 0) availableFields.push('Emails');
-  if (indices.company >= 0) availableFields.push('Companies');
-  if (indices.position >= 0) availableFields.push('Positions');
-  if (indices.location >= 0) availableFields.push('Locations');
+  if (csvFormat === 'contacts') {
+    if (indices.firstName >= 0 || indices.lastName >= 0 || indices.fullName >= 0) availableFields.push('Names');
+    if (indices.emails >= 0) availableFields.push('Emails');
+    if (indices.companies >= 0) availableFields.push('Companies');
+    if (indices.title >= 0) availableFields.push('Titles');
+    if (indices.phoneNumbers >= 0) availableFields.push('Phone Numbers');
+    if (indices.addresses >= 0) availableFields.push('Addresses');
+    if (indices.sites >= 0) availableFields.push('Websites');
+  } else {
+    if (indices.firstName >= 0 || indices.lastName >= 0) availableFields.push('Names');
+    if (indices.email >= 0) availableFields.push('Emails');
+    if (indices.company >= 0) availableFields.push('Companies');
+    if (indices.position >= 0) availableFields.push('Positions');
+    if (indices.location >= 0) availableFields.push('Locations');
+  }
   
   console.log('Will extract:', availableFields.join(', '));
-  
-  // Warn if only basic data is available
-  if (availableFields.length === 1 && availableFields[0] === 'Names') {
-    console.log('⚠️ LinkedIn export contains only names - no company/email data available');
-  }
 
   let processed = 0;
   let skipped = 0;
@@ -651,41 +706,84 @@ function processSingleCSV(lines) {
       const fields = parseCSVLine(line);
       processed++;
 
-      // Extract name with priority: explicit name field > firstName + lastName
-      let name = '';
-      if (indices.name >= 0 && fields[indices.name]?.trim()) {
-        name = fields[indices.name].trim();
-      } else {
-        const firstName = indices.firstName >= 0 ? (fields[indices.firstName]?.trim() || '') : '';
-        const lastName = indices.lastName >= 0 ? (fields[indices.lastName]?.trim() || '') : '';
-        name = `${firstName} ${lastName}`.trim();
-      }
-
-      if (!name) {
-        errors.push(`Row ${i + 1}: No valid name found`);
-        continue;
-      }
-
-      // Extract field data with better error handling
-      const emailRaw = indices.email >= 0 && fields[indices.email] ? fields[indices.email].trim() : '';
-      const companyRaw = indices.company >= 0 && fields[indices.company] ? fields[indices.company].trim() : '';
-      const positionRaw = indices.position >= 0 && fields[indices.position] ? fields[indices.position].trim() : '';
+      let contactData;
       
-      const contactData = {
-        name,
-        email: emailRaw.toLowerCase(),
-        company: companyRaw,
-        position: positionRaw,
-        location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : '',
-        connectedOn: indices.connectedOn >= 0 && fields[indices.connectedOn] ? fields[indices.connectedOn].trim() : '',
-        url: indices.url >= 0 && fields[indices.url] ? fields[indices.url].trim() : '',
-        source: 'linkedin_import'
-      };
+      if (csvFormat === 'contacts') {
+        // Extract name with priority: fullName > firstName + lastName
+        let name = '';
+        if (indices.fullName >= 0 && fields[indices.fullName]?.trim()) {
+          name = fields[indices.fullName].trim();
+        } else {
+          const firstName = indices.firstName >= 0 ? (fields[indices.firstName]?.trim() || '') : '';
+          const lastName = indices.lastName >= 0 ? (fields[indices.lastName]?.trim() || '') : '';
+          name = `${firstName} ${lastName}`.trim();
+        }
+
+        if (!name) {
+          errors.push(`Row ${i + 1}: No valid name found`);
+          continue;
+        }
+
+        // Extract field data for Contacts CSV format
+        const emailsRaw = indices.emails >= 0 && fields[indices.emails] ? fields[indices.emails].trim() : '';
+        const companiesRaw = indices.companies >= 0 && fields[indices.companies] ? fields[indices.companies].trim() : '';
+        const titleRaw = indices.title >= 0 && fields[indices.title] ? fields[indices.title].trim() : '';
+        const phoneRaw = indices.phoneNumbers >= 0 && fields[indices.phoneNumbers] ? fields[indices.phoneNumbers].trim() : '';
+        const addressRaw = indices.addresses >= 0 && fields[indices.addresses] ? fields[indices.addresses].trim() : '';
+        const sitesRaw = indices.sites >= 0 && fields[indices.sites] ? fields[indices.sites].trim() : '';
+        
+        contactData = {
+          name,
+          email: emailsRaw ? emailsRaw.split(/[;,]|\s+/)[0].toLowerCase() : '', // Take first email if multiple
+          company: companiesRaw ? companiesRaw.split(/[;,]/)[0].trim() : '', // Take first company if multiple
+          position: titleRaw,
+          phone: phoneRaw ? phoneRaw.split(/[;,]|\s+/)[0].trim() : '', // Take first phone if multiple
+          location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : addressRaw,
+          source: indices.source >= 0 && fields[indices.source] ? fields[indices.source].trim() : 'contacts_import',
+          linkedinUrl: sitesRaw ? sitesRaw.split(/[;,\s]+/).find(url => url.includes('linkedin')) || '' : '',
+          birthday: indices.birthday >= 0 && fields[indices.birthday] ? fields[indices.birthday].trim() : '',
+          instantMessageHandles: indices.instantMessageHandles >= 0 && fields[indices.instantMessageHandles] ? fields[indices.instantMessageHandles].trim() : '',
+          bookmarkedAt: indices.bookmarkedAt >= 0 && fields[indices.bookmarkedAt] ? fields[indices.bookmarkedAt].trim() : '',
+          createdAt: indices.createdAt >= 0 && fields[indices.createdAt] ? fields[indices.createdAt].trim() : '',
+          profiles: indices.profiles >= 0 && fields[indices.profiles] ? fields[indices.profiles].trim() : ''
+        };
+      } else {
+        // LinkedIn CSV format processing (existing logic)
+        let name = '';
+        if (indices.name >= 0 && fields[indices.name]?.trim()) {
+          name = fields[indices.name].trim();
+        } else {
+          const firstName = indices.firstName >= 0 ? (fields[indices.firstName]?.trim() || '') : '';
+          const lastName = indices.lastName >= 0 ? (fields[indices.lastName]?.trim() || '') : '';
+          name = `${firstName} ${lastName}`.trim();
+        }
+
+        if (!name) {
+          errors.push(`Row ${i + 1}: No valid name found`);
+          continue;
+        }
+
+        // Extract field data for LinkedIn CSV format
+        const emailRaw = indices.email >= 0 && fields[indices.email] ? fields[indices.email].trim() : '';
+        const companyRaw = indices.company >= 0 && fields[indices.company] ? fields[indices.company].trim() : '';
+        const positionRaw = indices.position >= 0 && fields[indices.position] ? fields[indices.position].trim() : '';
+        
+        contactData = {
+          name,
+          email: emailRaw.toLowerCase(),
+          company: companyRaw,
+          position: positionRaw,
+          location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : '',
+          connectedOn: indices.connectedOn >= 0 && fields[indices.connectedOn] ? fields[indices.connectedOn].trim() : '',
+          linkedinUrl: indices.url >= 0 && fields[indices.url] ? fields[indices.url].trim() : '',
+          source: 'linkedin_import'
+        };
+      }
 
       // Debug sample contacts
       if (contacts.length < 3) {
-        console.log(`Sample contact ${contacts.length + 1}:`, JSON.stringify(contactData));
-        console.log(`Raw fields for row ${contacts.length + 1}:`, fields);
+        console.log(`Sample contact ${contacts.length + 1} (${csvFormat}):`, JSON.stringify(contactData));
+        console.log(`Raw fields for row ${contacts.length + 1}:`, fields.slice(0, 10));
       }
 
       contacts.push(contactData);
