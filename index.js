@@ -161,12 +161,16 @@ const contactSchema = new mongoose.Schema({
   // Basic contact information
   name: String,
   email: { type: String, default: '', index: true },
+  emails: [String], // Support for multiple emails from Contacts CSV
   phone: String,
   phoneNumber: { type: String, default: '', index: true },
+  phoneNumbers: [String], // Support for multiple phone numbers from Contacts CSV
   company: { type: String, default: '', index: true },
+  companies: [String], // Support for multiple companies from Contacts CSV
   position: { type: String, default: '' },
   jobTitle: { type: String, default: '' },
   location: { type: String, default: '', index: true },
+  addresses: [String], // Support for multiple addresses from Contacts CSV
   
   // Social media profiles
   linkedinId: { type: String, default: '' },
@@ -174,6 +178,14 @@ const contactSchema = new mongoose.Schema({
   linkedinProfile: { type: String, default: '' },
   facebookId: { type: String, default: '' },
   profilePicture: { type: String, default: '' },
+  sites: [String], // Support for multiple websites from Contacts CSV
+  profiles: { type: String, default: '' }, // Social profiles from Contacts CSV
+  
+  // Additional Contacts CSV fields
+  birthday: { type: String, default: '' }, // Store as string to handle various date formats
+  instantMessageHandles: [String], // Support for multiple IM handles
+  bookmarkedAt: { type: String, default: '' }, // Store as string initially
+  originalCreatedAt: { type: String, default: '' }, // For 'created at' field from Contacts CSV
   
   // Enhanced LinkedIn fields
   currentPosition: {
@@ -724,6 +736,19 @@ function processSingleCSV(lines) {
           continue;
         }
 
+        // Helper function to parse multi-value fields
+        const parseMultiValueField = (rawValue) => {
+          if (!rawValue) return [];
+          return rawValue.split(/[;,|]/).map(val => val.trim()).filter(val => val.length > 0);
+        };
+        
+        // Helper function to parse date fields
+        const parseDate = (rawDate) => {
+          if (!rawDate) return '';
+          // Return as string for now - can be enhanced later for date parsing
+          return rawDate.trim();
+        };
+        
         // Extract field data for Contacts CSV format
         const emailsRaw = indices.emails >= 0 && fields[indices.emails] ? fields[indices.emails].trim() : '';
         const companiesRaw = indices.companies >= 0 && fields[indices.companies] ? fields[indices.companies].trim() : '';
@@ -731,21 +756,45 @@ function processSingleCSV(lines) {
         const phoneRaw = indices.phoneNumbers >= 0 && fields[indices.phoneNumbers] ? fields[indices.phoneNumbers].trim() : '';
         const addressRaw = indices.addresses >= 0 && fields[indices.addresses] ? fields[indices.addresses].trim() : '';
         const sitesRaw = indices.sites >= 0 && fields[indices.sites] ? fields[indices.sites].trim() : '';
+        const profilesRaw = indices.profiles >= 0 && fields[indices.profiles] ? fields[indices.profiles].trim() : '';
+        const imHandlesRaw = indices.instantMessageHandles >= 0 && fields[indices.instantMessageHandles] ? fields[indices.instantMessageHandles].trim() : '';
+        
+        // Parse multi-value fields into arrays
+        const emailsList = parseMultiValueField(emailsRaw);
+        const companiesList = parseMultiValueField(companiesRaw);
+        const phonesList = parseMultiValueField(phoneRaw);
+        const addressesList = parseMultiValueField(addressRaw);
+        const sitesList = parseMultiValueField(sitesRaw);
+        const imHandlesList = parseMultiValueField(imHandlesRaw);
+        
+        // Extract LinkedIn URL from sites or profiles
+        const allUrls = [...sitesList, ...parseMultiValueField(profilesRaw)];
+        const linkedinUrl = allUrls.find(url => url.toLowerCase().includes('linkedin')) || '';
         
         contactData = {
           name,
-          email: emailsRaw ? emailsRaw.split(/[;,]|\s+/)[0].toLowerCase() : '', // Take first email if multiple
-          company: companiesRaw ? companiesRaw.split(/[;,]/)[0].trim() : '', // Take first company if multiple
+          // Primary fields (backward compatibility)
+          email: emailsList.length > 0 ? emailsList[0].toLowerCase() : '',
+          company: companiesList.length > 0 ? companiesList[0] : '',
           position: titleRaw,
-          phone: phoneRaw ? phoneRaw.split(/[;,]|\s+/)[0].trim() : '', // Take first phone if multiple
-          location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : addressRaw,
+          phone: phonesList.length > 0 ? phonesList[0] : '',
+          location: indices.location >= 0 && fields[indices.location] ? fields[indices.location].trim() : (addressesList.length > 0 ? addressesList[0] : ''),
+          
+          // Multi-value arrays (new schema fields)
+          emails: emailsList.map(email => email.toLowerCase()),
+          companies: companiesList,
+          phoneNumbers: phonesList,
+          addresses: addressesList,
+          sites: sitesList,
+          instantMessageHandles: imHandlesList,
+          
+          // Single value fields from Contacts CSV
           source: indices.source >= 0 && fields[indices.source] ? fields[indices.source].trim() : 'contacts_import',
-          linkedinUrl: sitesRaw ? sitesRaw.split(/[;,\s]+/).find(url => url.includes('linkedin')) || '' : '',
-          birthday: indices.birthday >= 0 && fields[indices.birthday] ? fields[indices.birthday].trim() : '',
-          instantMessageHandles: indices.instantMessageHandles >= 0 && fields[indices.instantMessageHandles] ? fields[indices.instantMessageHandles].trim() : '',
-          bookmarkedAt: indices.bookmarkedAt >= 0 && fields[indices.bookmarkedAt] ? fields[indices.bookmarkedAt].trim() : '',
-          createdAt: indices.createdAt >= 0 && fields[indices.createdAt] ? fields[indices.createdAt].trim() : '',
-          profiles: indices.profiles >= 0 && fields[indices.profiles] ? fields[indices.profiles].trim() : ''
+          linkedinUrl: linkedinUrl,
+          birthday: indices.birthday >= 0 && fields[indices.birthday] ? parseDate(fields[indices.birthday]) : '',
+          bookmarkedAt: indices.bookmarkedAt >= 0 && fields[indices.bookmarkedAt] ? parseDate(fields[indices.bookmarkedAt]) : '',
+          originalCreatedAt: indices.createdAt >= 0 && fields[indices.createdAt] ? parseDate(fields[indices.createdAt]) : '',
+          profiles: profilesRaw
         };
       } else {
         // LinkedIn CSV format processing (existing logic)
