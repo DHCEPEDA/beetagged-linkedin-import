@@ -6,8 +6,102 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
   const [newTag, setNewTag] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [localContact, setLocalContact] = useState(contact);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   
   if (!contact) return null;
+
+  // Initialize edit data when entering edit mode
+  const startEditing = () => {
+    setEditData({
+      name: localContact.name || '',
+      email: localContact.email || '',
+      phone: localContact.phone || localContact.phoneNumber || '',
+      emails: localContact.emails || (localContact.email ? [localContact.email] : []),
+      phoneNumbers: localContact.phoneNumbers || (localContact.phone || localContact.phoneNumber ? [localContact.phone || localContact.phoneNumber] : []),
+      company: localContact.company || '',
+      position: localContact.position || '',
+      jobTitle: localContact.jobTitle || '',
+      location: localContact.location || '',
+      linkedinUrl: localContact.linkedinUrl || '',
+      companies: localContact.companies || [],
+      sites: localContact.sites || [],
+      addresses: localContact.addresses || []
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditData({});
+  };
+
+  const saveChanges = async () => {
+    setIsSaving(true);
+    try {
+      // Prepare update data
+      const updateData = {
+        ...editData,
+        // Ensure arrays are properly formatted
+        emails: editData.emails.filter(email => email.trim() !== ''),
+        phoneNumbers: editData.phoneNumbers.filter(phone => phone.trim() !== ''),
+        companies: editData.companies.filter(company => company.trim() !== ''),
+        sites: editData.sites.filter(site => site.trim() !== ''),
+        addresses: editData.addresses.filter(address => address.trim() !== ''),
+        updatedAt: new Date()
+      };
+
+      // Call API to update contact
+      await contactsAPI.updateContact(contact._id, updateData);
+      
+      // Update local contact state
+      const updatedContact = { ...localContact, ...updateData };
+      setLocalContact(updatedContact);
+      
+      // Update parent component's contact list if callback provided
+      if (onContactUpdate) {
+        onContactUpdate(updatedContact);
+      }
+      
+      setIsEditing(false);
+      setEditData({});
+      
+    } catch (error) {
+      console.error('Failed to update contact:', error);
+      alert('Failed to update contact. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateEditField = (field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const addArrayItem = (arrayField) => {
+    setEditData(prev => ({
+      ...prev,
+      [arrayField]: [...(prev[arrayField] || []), '']
+    }));
+  };
+
+  const updateArrayItem = (arrayField, index, value) => {
+    setEditData(prev => ({
+      ...prev,
+      [arrayField]: prev[arrayField].map((item, i) => i === index ? value : item)
+    }));
+  };
+
+  const removeArrayItem = (arrayField, index) => {
+    setEditData(prev => ({
+      ...prev,
+      [arrayField]: prev[arrayField].filter((_, i) => i !== index)
+    }));
+  };
 
   const handleAddTag = async () => {
     if (!newTag.trim() || isAddingTag) return;
@@ -50,40 +144,307 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="contact-card" onClick={e => e.stopPropagation()}>
         <div className="contact-card-header">
-          <h2>{contact.name || 'Unknown Contact'}</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editData.name}
+                onChange={(e) => updateEditField('name', e.target.value)}
+                style={{ fontSize: '1.5em', fontWeight: 'bold', border: '1px solid #ddd', padding: '4px 8px', borderRadius: '4px', flex: 1 }}
+                placeholder="Contact Name"
+              />
+            ) : (
+              <h2>{localContact.name || 'Unknown Contact'}</h2>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {!isEditing && (
+              <button 
+                className="edit-btn" 
+                onClick={startEditing}
+                style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Edit
+              </button>
+            )}
+            <button className="close-btn" onClick={onClose}>×</button>
+          </div>
         </div>
         
         <div className="contact-card-content">
           {/* Basic Contact Info */}
           <div className="card-section">
             <h3>📱 Contact Information</h3>
-            <div className="info-grid">
-              <div><strong>Email:</strong> {contact.email || 'Not available'}</div>
-              <div><strong>Phone:</strong> {contact.phone || contact.phoneNumber || 'Not available'}</div>
-              {contact.linkedinUrl && (
+            {isEditing ? (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {/* Primary Email */}
                 <div>
-                  <strong>LinkedIn:</strong> 
-                  <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">
-                    View Profile
-                  </a>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Primary Email:</label>
+                  <input
+                    type="email"
+                    value={editData.email}
+                    onChange={(e) => updateEditField('email', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Primary email address"
+                  />
                 </div>
-              )}
-            </div>
+
+                {/* Multiple Emails */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>All Email Addresses:</label>
+                  {editData.emails.map((email, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => updateArrayItem('emails', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Email address"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('emails', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('emails')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Email
+                  </button>
+                </div>
+
+                {/* Primary Phone */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Primary Phone:</label>
+                  <input
+                    type="tel"
+                    value={editData.phone}
+                    onChange={(e) => updateEditField('phone', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Primary phone number"
+                  />
+                </div>
+
+                {/* Multiple Phone Numbers */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>All Phone Numbers:</label>
+                  {editData.phoneNumbers.map((phone, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => updateArrayItem('phoneNumbers', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Phone number"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('phoneNumbers', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('phoneNumbers')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Phone
+                  </button>
+                </div>
+
+                {/* LinkedIn URL */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>LinkedIn URL:</label>
+                  <input
+                    type="url"
+                    value={editData.linkedinUrl}
+                    onChange={(e) => updateEditField('linkedinUrl', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="LinkedIn profile URL"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="info-grid">
+                <div><strong>Email:</strong> {localContact.email || 'Not available'}</div>
+                {localContact.emails && localContact.emails.length > 1 && (
+                  <div>
+                    <strong>All Emails:</strong> {localContact.emails.join(', ')}
+                  </div>
+                )}
+                <div><strong>Phone:</strong> {localContact.phone || localContact.phoneNumber || 'Not available'}</div>
+                {localContact.phoneNumbers && localContact.phoneNumbers.length > 1 && (
+                  <div>
+                    <strong>All Phones:</strong> {localContact.phoneNumbers.join(', ')}
+                  </div>
+                )}
+                {localContact.linkedinUrl && (
+                  <div>
+                    <strong>LinkedIn:</strong> 
+                    <a href={localContact.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                      View Profile
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Current Position */}
-          {(contact.company || contact.position) && (
-            <div className="card-section">
-              <h3>💼 Current Position</h3>
-              <div className="info-grid">
-                {contact.company && <div><strong>Company:</strong> {contact.company}</div>}
-                {contact.position && <div><strong>Position:</strong> {contact.position}</div>}
-                {contact.jobTitle && <div><strong>Job Title:</strong> {contact.jobTitle}</div>}
-                {contact.location && <div><strong>Location:</strong> {contact.location}</div>}
+          <div className="card-section">
+            <h3>💼 Current Position</h3>
+            {isEditing ? (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Company:</label>
+                  <input
+                    type="text"
+                    value={editData.company}
+                    onChange={(e) => updateEditField('company', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Company name"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Position:</label>
+                  <input
+                    type="text"
+                    value={editData.position}
+                    onChange={(e) => updateEditField('position', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Job position"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Job Title:</label>
+                  <input
+                    type="text"
+                    value={editData.jobTitle}
+                    onChange={(e) => updateEditField('jobTitle', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Job title"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Location:</label>
+                  <input
+                    type="text"
+                    value={editData.location}
+                    onChange={(e) => updateEditField('location', e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Location"
+                  />
+                </div>
+                
+                {/* Multiple Companies */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>All Companies:</label>
+                  {editData.companies.map((company, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="text"
+                        value={company}
+                        onChange={(e) => updateArrayItem('companies', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Company name"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('companies', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('companies')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Company
+                  </button>
+                </div>
+
+                {/* Websites/Sites */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Websites:</label>
+                  {editData.sites.map((site, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="url"
+                        value={site}
+                        onChange={(e) => updateArrayItem('sites', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Website URL"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('sites', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('sites')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Website
+                  </button>
+                </div>
+
+                {/* Addresses */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>Addresses:</label>
+                  {editData.addresses.map((address, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => updateArrayItem('addresses', index, e.target.value)}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        placeholder="Address"
+                      />
+                      <button
+                        onClick={() => removeArrayItem('addresses', index)}
+                        style={{ padding: '6px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addArrayItem('addresses')}
+                    style={{ padding: '6px 12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Add Address
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="info-grid">
+                {localContact.company && <div><strong>Company:</strong> {localContact.company}</div>}
+                {localContact.position && <div><strong>Position:</strong> {localContact.position}</div>}
+                {localContact.jobTitle && <div><strong>Job Title:</strong> {localContact.jobTitle}</div>}
+                {localContact.location && <div><strong>Location:</strong> {localContact.location}</div>}
+                {localContact.companies && localContact.companies.length > 0 && (
+                  <div><strong>All Companies:</strong> {localContact.companies.join(', ')}</div>
+                )}
+                {localContact.sites && localContact.sites.length > 0 && (
+                  <div><strong>Websites:</strong> {localContact.sites.map(site => 
+                    <a key={site} href={site} target="_blank" rel="noopener noreferrer" style={{ marginRight: '8px' }}>{site}</a>
+                  )}</div>
+                )}
+                {localContact.addresses && localContact.addresses.length > 0 && (
+                  <div><strong>Addresses:</strong> {localContact.addresses.join(', ')}</div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Experience History */}
           {contact.experience && contact.experience.length > 0 && (
@@ -204,137 +565,262 @@ const ContactDetailModal = ({ contact, onClose, onContactUpdate }) => {
             </div>
           </div>
 
-          {/* Add Custom Tag Section */}
-          <div className="card-section">
-            <h3>📝 Add Custom Tags</h3>
-            <div className="custom-tag-input">
-              <input 
-                type="text" 
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Add a custom tag (e.g., 'Hot Lead', 'Friend', 'Mentor')" 
-                className="tag-input"
-                disabled={isAddingTag}
-              />
-              <button 
-                className="add-tag-btn" 
-                onClick={handleAddTag}
-                disabled={isAddingTag || !newTag.trim()}
-              >
-                {isAddingTag ? 'Adding...' : 'Add Tag'}
-              </button>
+          {/* Save/Cancel Buttons for Edit Mode */}
+          {isEditing && (
+            <div className="card-section" style={{ borderTop: '2px solid #e5e5e5', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={cancelEditing}
+                  disabled={isSaving}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveChanges}
+                  disabled={isSaving}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Add Custom Tag Section */}
+          {!isEditing && (
+            <div className="card-section">
+              <h3>📝 Add Custom Tags</h3>
+              <div className="custom-tag-input">
+                <input 
+                  type="text" 
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Add a custom tag (e.g., 'Hot Lead', 'Friend', 'Mentor')" 
+                  className="tag-input"
+                  disabled={isAddingTag}
+                />
+                <button 
+                  className="add-tag-btn" 
+                  onClick={handleAddTag}
+                  disabled={isAddingTag || !newTag.trim()}
+                >
+                  {isAddingTag ? 'Adding...' : 'Add Tag'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Duplicate Detection Component
-const DuplicateDetection = ({ onClose }) => {
-  const [duplicates, setDuplicates] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [merging, setMerging] = useState(false);
+// Duplicate Resolution Modal Component
+const DuplicateResolutionModal = ({ potentialDuplicates, newContacts, onClose, onMergeDecisions }) => {
+  const [decisions, setDecisions] = useState(() => {
+    const initialDecisions = {};
+    potentialDuplicates.forEach((duplicate, index) => {
+      initialDecisions[index] = {
+        action: 'add', // default to adding as new
+        newContact: duplicate.newContact,
+        existingContactId: null
+      };
+    });
+    return initialDecisions;
+  });
 
-  const findDuplicates = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts/find-duplicates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setDuplicates(data.duplicates);
-      } else {
-        alert('Error finding duplicates: ' + data.message);
+  const handleDecisionChange = (index, action, existingContactId = null) => {
+    setDecisions(prev => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        action,
+        existingContactId: action === 'merge' ? existingContactId : null
       }
-    } catch (error) {
-      alert('Error finding duplicates: ' + error.message);
-    }
-    setLoading(false);
+    }));
   };
 
-  const mergeDuplicates = async (contactIds, mergedData) => {
-    setMerging(true);
-    try {
-      const response = await fetch('https://beetagged-app-53414697acd3.herokuapp.com/api/contacts/merge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactIds, mergedData })
+  const handleSubmit = () => {
+    const mergeDecisions = Object.values(decisions);
+    
+    // Also add decisions for new contacts (no duplicates)
+    newContacts.forEach(contact => {
+      mergeDecisions.push({
+        action: 'add',
+        newContact: contact,
+        existingContactId: null
       });
-      
-      const data = await response.json();
-      if (data.success) {
-        alert('Contacts merged successfully!');
-        findDuplicates();
-      } else {
-        alert('Error merging contacts: ' + data.message);
-      }
-    } catch (error) {
-      alert('Error merging contacts: ' + error.message);
-    }
-    setMerging(false);
+    });
+
+    onMergeDecisions(mergeDecisions);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="duplicate-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>🔍 Duplicate Detection</h2>
+    <div className="modal-overlay">
+      <div className="contact-card" style={{ maxWidth: '800px', maxHeight: '90vh' }}>
+        <div className="contact-card-header">
+          <h2>Resolve Duplicate Contacts</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
         
-        <div className="modal-content">
-          <button 
-            className="btn btn-primary" 
-            onClick={findDuplicates} 
-            disabled={loading}
-          >
-            {loading ? 'Analyzing Contacts...' : 'Find Duplicates'}
-          </button>
+        <div className="contact-card-content">
+          <div style={{ marginBottom: '20px' }}>
+            <p>We found {potentialDuplicates.length} potential duplicate(s) and {newContacts.length} new contact(s). 
+               Please choose how to handle each duplicate:</p>
+          </div>
 
-          {duplicates.length > 0 && (
-            <div className="duplicates-list">
-              <h3>Potential Duplicates Found:</h3>
-              {duplicates.map((group, i) => (
-                <div key={i} className="duplicate-group">
-                  <div className="duplicate-reason">
-                    <strong>Reason:</strong> {group.reason} 
-                    <span className="confidence">(Confidence: {Math.round(group.confidence * 100)}%)</span>
+          {potentialDuplicates.map((duplicate, index) => (
+            <div key={index} className="card-section" style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+              <h3>Potential Duplicate #{index + 1}</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                {/* New Contact */}
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#059669' }}>New Contact</h4>
+                  <div style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '6px' }}>
+                    <div><strong>{duplicate.newContact.name}</strong></div>
+                    {duplicate.newContact.email && <div>Email: {duplicate.newContact.email}</div>}
+                    {duplicate.newContact.company && <div>Company: {duplicate.newContact.company}</div>}
+                    {duplicate.newContact.position && <div>Position: {duplicate.newContact.position}</div>}
+                    {duplicate.newContact.location && <div>Location: {duplicate.newContact.location}</div>}
                   </div>
-                  
-                  <div className="duplicate-contacts">
-                    {group.contacts.map(contact => (
-                      <div key={contact._id} className="duplicate-contact">
-                        <strong>{contact.name}</strong>
-                        {contact.email && <div>Email: {contact.email}</div>}
-                        {contact.company && <div>Company: {contact.company}</div>}
-                      </div>
-                    ))}
-                  </div>
-
-                  <button 
-                    className="btn btn-success"
-                    onClick={() => mergeDuplicates(
-                      group.contacts.map(c => c._id),
-                      group.suggested_merge
-                    )}
-                    disabled={merging}
-                  >
-                    {merging ? 'Merging...' : 'Merge These Contacts'}
-                  </button>
                 </div>
-              ))}
+
+                {/* Existing Contacts */}
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#dc2626' }}>Existing Contact(s)</h4>
+                  {duplicate.existingContacts.map((existing, idx) => (
+                    <div key={idx} style={{ backgroundColor: '#fef2f2', padding: '12px', borderRadius: '6px', marginBottom: '8px' }}>
+                      <div><strong>{existing.name}</strong></div>
+                      {existing.email && <div>Email: {existing.email}</div>}
+                      {existing.company && <div>Company: {existing.company}</div>}
+                      {existing.position && <div>Position: {existing.position}</div>}
+                      {existing.location && <div>Location: {existing.location}</div>}
+                      
+                      <button
+                        className={`beetagged-button ${decisions[index]?.action === 'merge' && decisions[index]?.existingContactId === existing._id ? 'active' : ''}`}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          backgroundColor: decisions[index]?.action === 'merge' && decisions[index]?.existingContactId === existing._id ? '#059669' : '#6b7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => handleDecisionChange(index, 'merge', existing._id)}
+                      >
+                        Merge with this contact
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  className={`beetagged-button ${decisions[index]?.action === 'add' ? 'active' : ''}`}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: decisions[index]?.action === 'add' ? '#2196f3' : '#e5e5e5',
+                    color: decisions[index]?.action === 'add' ? 'white' : '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleDecisionChange(index, 'add')}
+                >
+                  Add as New Contact
+                </button>
+                
+                <button
+                  className={`beetagged-button ${decisions[index]?.action === 'skip' ? 'active' : ''}`}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: decisions[index]?.action === 'skip' ? '#dc2626' : '#e5e5e5',
+                    color: decisions[index]?.action === 'skip' ? 'white' : '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleDecisionChange(index, 'skip')}
+                >
+                  Skip This Contact
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {newContacts.length > 0 && (
+            <div className="card-section" style={{ border: '1px solid #10b981', borderRadius: '8px', padding: '16px', backgroundColor: '#f0fdf4' }}>
+              <h3 style={{ color: '#059669' }}>New Contacts (No Duplicates Found)</h3>
+              <p>These {newContacts.length} contact(s) will be added automatically:</p>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {newContacts.slice(0, 5).map((contact, idx) => (
+                  <div key={idx} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '4px' }}>
+                    <strong>{contact.name}</strong>
+                    {contact.company && ` - ${contact.company}`}
+                  </div>
+                ))}
+                {newContacts.length > 5 && (
+                  <div style={{ padding: '8px', fontStyle: 'italic', color: '#6b7280' }}>
+                    ... and {newContacts.length - 5} more contacts
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {duplicates.length === 0 && !loading && (
-            <p>No duplicates found. Your contacts look clean! 🎉</p>
-          )}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e5e5' }}>
+            <button
+              className="beetagged-button"
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              className="beetagged-button"
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              onClick={handleSubmit}
+            >
+              Apply Decisions
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -349,7 +835,9 @@ const BeeTaggedApp = () => {
   const [backendConnected, setBackendConnected] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
-  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [potentialDuplicates, setPotentialDuplicates] = useState([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [newContacts, setNewContacts] = useState([]);
 
   useEffect(() => {
     checkBackendHealth();
@@ -401,10 +889,21 @@ const BeeTaggedApp = () => {
     setUploadStatus('Uploading...');
     try {
       const result = await contactsAPI.importCSV(file);
-      setUploadStatus(`Success! Imported ${result.count} contacts`);
-      loadContacts(); // Reload contacts after import
-      setTimeout(() => setUploadStatus(''), 3000);
+      
+      if (result.hasDuplicates) {
+        // Show duplicate resolution UI
+        setPotentialDuplicates(result.potentialDuplicates || []);
+        setNewContacts(result.newContacts || []);
+        setShowDuplicateModal(true);
+        setUploadStatus(`Found ${result.potentialDuplicates?.length || 0} potential duplicates. Please review.`);
+      } else {
+        // Normal import success
+        setUploadStatus(`Success! Imported ${result.count || result.added || 0} contacts`);
+        loadContacts(); // Reload contacts after import
+        setTimeout(() => setUploadStatus(''), 3000);
+      }
     } catch (error) {
+      console.error('Upload error:', error);
       setUploadStatus('Upload failed. Please check file format.');
       setTimeout(() => setUploadStatus(''), 3000);
     }
@@ -426,6 +925,32 @@ const BeeTaggedApp = () => {
     setContacts(prev => updateContactInArray(prev));
     setSearchResults(prev => updateContactInArray(prev));
     setSelectedContact(updatedContact);
+  };
+
+  const handleMergeDecisions = async (mergeDecisions) => {
+    try {
+      setUploadStatus('Processing merge decisions...');
+      const result = await contactsAPI.mergeDuplicates(mergeDecisions);
+      
+      setShowDuplicateModal(false);
+      setPotentialDuplicates([]);
+      setNewContacts([]);
+      
+      setUploadStatus(`${result.message}`);
+      loadContacts(); // Reload contacts after merge
+      setTimeout(() => setUploadStatus(''), 5000);
+    } catch (error) {
+      console.error('Merge error:', error);
+      setUploadStatus('Failed to process merge decisions.');
+      setTimeout(() => setUploadStatus(''), 3000);
+    }
+  };
+
+  const closeDuplicateModal = () => {
+    setShowDuplicateModal(false);
+    setPotentialDuplicates([]);
+    setNewContacts([]);
+    setUploadStatus('');
   };
 
   return (
@@ -535,9 +1060,12 @@ const BeeTaggedApp = () => {
         />
       )}
       
-      {showDuplicates && (
-        <DuplicateDetection 
-          onClose={() => setShowDuplicates(false)} 
+      {showDuplicateModal && (
+        <DuplicateResolutionModal 
+          potentialDuplicates={potentialDuplicates}
+          newContacts={newContacts}
+          onClose={closeDuplicateModal}
+          onMergeDecisions={handleMergeDecisions}
         />
       )}
     </div>
