@@ -82,6 +82,15 @@ app.use(limiter);
 // Logging
 app.use(morgan('combined'));
 
+// Serve static files from dist directory (for Squarespace bundle)
+app.use('/dist', express.static('dist', {
+  setHeaders: (res, path) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  }
+}));
+
 // ===== MONGODB CONNECTION =====
 
 function connectMongoDB() {
