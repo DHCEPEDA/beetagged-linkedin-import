@@ -1825,6 +1825,240 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
   }
 });
 
+// POST-IMPORT DUPLICATE DETECTION - Separate from import process
+app.post('/api/contacts/detect-duplicates', async (req, res) => {
+  try {
+    console.log('🔍 === POST-IMPORT DUPLICATE DETECTION STARTED ===');
+    
+    const { batchFindDuplicates } = require('./services/batchDatabaseService');
+    const { options = {} } = req.body;
+    
+    // Get all contacts from database for duplicate analysis
+    console.log('📋 Fetching all contacts for duplicate analysis...');
+    const allContacts = await Contact.find({}).lean();
+    
+    if (allContacts.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No contacts found for duplicate detection',
+        stats: {
+          totalContacts: 0,
+          duplicateGroups: 0,
+          potentialMerges: 0
+        }
+      });
+    }
+    
+    console.log(`📊 Analyzing ${allContacts.length} contacts for duplicates...`);
+    
+    // Perform efficient duplicate detection
+    const duplicateAnalysis = await batchFindDuplicates(allContacts, Contact);
+    
+    // Group duplicates for easier review
+    const duplicateGroups = [];
+    
+    // Email-based duplicates
+    if (duplicateAnalysis.emailDuplicates.length > 0) {
+      const emailGroups = {};
+      duplicateAnalysis.emailDuplicates.forEach(dup => {
+        const email = dup.existingContact.email.toLowerCase();
+        if (!emailGroups[email]) {
+          emailGroups[email] = {
+            type: 'email_match',
+            matchValue: email,
+            contacts: [dup.existingContact]
+          };
+        }
+        emailGroups[email].contacts.push(dup.newContact);
+      });
+      
+      Object.values(emailGroups).forEach(group => {
+        if (group.contacts.length > 1) {
+          duplicateGroups.push(group);
+        }
+      });
+    }
+    
+    // Phone-based duplicates
+    if (duplicateAnalysis.phoneDuplicates.length > 0) {
+      const phoneGroups = {};
+      duplicateAnalysis.phoneDuplicates.forEach(dup => {
+        const phone = dup.newContact.phone || dup.existingContact.phone;
+        const normalizedPhone = phone.replace(/\D/g, '');
+        if (!phoneGroups[normalizedPhone]) {
+          phoneGroups[normalizedPhone] = {
+            type: 'phone_match',
+            matchValue: phone,
+            contacts: [dup.existingContact]
+          };
+        }
+        phoneGroups[normalizedPhone].contacts.push(dup.newContact);
+      });
+      
+      Object.values(phoneGroups).forEach(group => {
+        if (group.contacts.length > 1) {
+          duplicateGroups.push(group);
+        }
+      });
+    }
+    
+    // Generate summary
+    const summary = {
+      success: true,
+      stats: {
+        totalContacts: allContacts.length,
+        duplicateGroups: duplicateGroups.length,
+        emailMatches: duplicateAnalysis.emailDuplicates.length,
+        phoneMatches: duplicateAnalysis.phoneDuplicates.length,
+        potentialMerges: duplicateGroups.reduce((sum, group) => sum + (group.contacts.length - 1), 0)
+      },
+      duplicateGroups: duplicateGroups.slice(0, 50), // Limit to first 50 groups for performance
+      message: duplicateGroups.length > 0 
+        ? `Found ${duplicateGroups.length} duplicate groups affecting ${summary.stats.potentialMerges} contacts` 
+        : 'No duplicates detected in your contact database',
+      timestamp: new Date()
+    };
+    
+    console.log(`🎯 Duplicate Detection Complete:`);
+    console.log(`   📊 Total contacts analyzed: ${summary.stats.totalContacts}`);
+    console.log(`   👥 Duplicate groups found: ${summary.stats.duplicateGroups}`);
+    console.log(`   📧 Email matches: ${summary.stats.emailMatches}`);
+    console.log(`   📞 Phone matches: ${summary.stats.phoneMatches}`);
+    console.log(`   🔄 Potential merges: ${summary.stats.potentialMerges}`);
+    
+    res.json(summary);
+    
+  } catch (error) {
+    console.error('❌ Duplicate detection failed:', error);
+    res.status(500).json({
+      success: false,
+      message: `Duplicate detection failed: ${error.message}`,
+      error: error.name,
+      timestamp: new Date()
+    });
+  }
+});
+
+// BULK MERGE DUPLICATES - Process multiple merges efficiently
+app.post('/api/contacts/bulk-merge', async (req, res) => {
+  try {
+    console.log('🔄 === BULK MERGE DUPLICATES STARTED ===');
+    
+    const { mergeGroups } = req.body;
+    const { batchUpdateContacts, mergeContactData } = require('./services/batchDatabaseService');
+    
+    if (!mergeGroups || !Array.isArray(mergeGroups)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Merge groups array is required'
+      });
+    }
+    
+    console.log(`🔄 Processing ${mergeGroups.length} merge groups...`);
+    
+    let results = {
+      processed: 0,
+      merged: 0,
+      deleted: 0,
+      failed: 0,
+      errors: []
+    };
+    
+    const updates = [];
+    const deletions = [];
+    
+    // Process each merge group
+    for (const group of mergeGroups) {
+      try {
+        if (!group.contacts || group.contacts.length < 2) {
+          results.failed++;
+          continue;
+        }
+        
+        // Use first contact as the master record
+        const masterContact = group.contacts[0];
+        const duplicateContacts = group.contacts.slice(1);
+        
+        // Merge all duplicates into master
+        let mergedData = { ...masterContact };
+        for (const duplicate of duplicateContacts) {
+          mergedData = mergeContactData(mergedData, duplicate);
+        }
+        
+        // Prepare update for master contact
+        updates.push({
+          _id: masterContact._id,
+          data: {
+            ...mergedData,
+            updatedAt: new Date(),
+            mergeHistory: [
+              ...(masterContact.mergeHistory || []),
+              {
+                timestamp: new Date(),
+                action: 'bulk_merge',
+                mergedContactIds: duplicateContacts.map(c => c._id),
+                duplicateCount: duplicateContacts.length
+              }
+            ]
+          }
+        });
+        
+        // Mark duplicates for deletion
+        duplicateContacts.forEach(contact => {
+          deletions.push(contact._id);
+        });
+        
+        results.processed++;
+        
+      } catch (error) {
+        console.error(`Error processing merge group:`, error);
+        results.failed++;
+        results.errors.push({
+          group: results.processed,
+          error: error.message
+        });
+      }
+    }
+    
+    // Execute batch operations
+    if (updates.length > 0) {
+      const updateResult = await batchUpdateContacts(updates, Contact);
+      results.merged = updateResult.updated;
+    }
+    
+    if (deletions.length > 0) {
+      const deleteResult = await Contact.deleteMany({
+        _id: { $in: deletions }
+      });
+      results.deleted = deleteResult.deletedCount;
+    }
+    
+    const summary = {
+      success: true,
+      results,
+      message: `Bulk merge complete: ${results.merged} contacts updated, ${results.deleted} duplicates removed`,
+      timestamp: new Date()
+    };
+    
+    console.log(`🎉 Bulk Merge Complete:`);
+    console.log(`   🔄 Groups processed: ${results.processed}`);
+    console.log(`   ✅ Contacts merged: ${results.merged}`);
+    console.log(`   🗑️  Duplicates deleted: ${results.deleted}`);
+    console.log(`   ❌ Failed operations: ${results.failed}`);
+    
+    res.json(summary);
+    
+  } catch (error) {
+    console.error('❌ Bulk merge failed:', error);
+    res.status(500).json({
+      success: false,
+      message: `Bulk merge failed: ${error.message}`,
+      error: error.name,
+      timestamp: new Date()
+    });
+  }
+});
+
 // API endpoint to handle merge decisions (protected)
 app.post('/api/contacts/merge', requireAuth, validateMergeRequest, async (req, res) => {
   try {
