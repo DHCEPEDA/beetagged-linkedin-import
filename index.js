@@ -82,6 +82,15 @@ app.use(limiter);
 // Logging
 app.use(morgan('combined'));
 
+// Serve static files from dist directory (for Squarespace bundle)
+app.use('/dist', express.static('dist', {
+  setHeaders: (res, path) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  }
+}));
+
 // ===== MONGODB CONNECTION =====
 
 function connectMongoDB() {
@@ -1691,262 +1700,364 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
-// LinkedIn CSV import - accept any file field
+// STREAMLINED CSV IMPORT - Uses unified processor and batch operations
 app.post('/api/import/linkedin', upload.any(), async (req, res) => {
   try {
-    console.log('=== LinkedIn CSV Import Started ===');
-    console.log('Files received:', req.files);
+    console.log('🚀 === STREAMLINED CSV IMPORT STARTED ===');
     
-    console.log('Files array:', req.files);
-    
-    // Get the first uploaded file (upload.any() provides an array)
-    const linkedinFile = req.files && req.files.length > 0 ? req.files[0] : null;
-    
-    if (!linkedinFile) {
+    // Validate uploaded files
+    const uploadedFiles = req.files || [];
+    if (uploadedFiles.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: `At least one CSV file is required. Received ${req.files ? req.files.length : 0} files.`
+        message: 'At least one CSV file is required' 
       });
     }
     
-    console.log('LinkedIn file:', !!linkedinFile);
-
-    // Validate file type
-    if (!linkedinFile.originalname?.toLowerCase().endsWith('.csv')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `${linkedinFile.originalname} is not a CSV file. LinkedIn exports are in CSV format.` 
-      });
-    }
-
-    // Parse CSV file
-    const csvData = linkedinFile.buffer.toString('utf8');
-    const lines = csvData.split(/\r?\n/).filter(line => line.trim());
-    console.log('Total lines found:', lines.length);
+    console.log(`📁 Processing ${uploadedFiles.length} file(s)`);
     
-    if (lines.length < 2) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
-      });
-    }
+    // Import services
+    const { processAnyCSV } = require('./services/unifiedCsvProcessor');
+    const { batchInsertContacts, batchFindDuplicates } = require('./services/batchDatabaseService');
     
-    // Process CSV with enhanced LinkedIn format support
-    const mergedContacts = processSingleCSV(lines);
+    let allContacts = [];
+    let processingStats = {
+      filesProcessed: 0,
+      totalRows: 0,
+      successfulContacts: 0,
+      skippedRows: 0,
+      errors: []
+    };
     
-    if (mergedContacts.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No valid contacts found in the uploaded files.' 
-      });
-    }
-
-    // Check for potential duplicates and handle automatic merges
-    const userId = req.body.userId || null;
-    const newContacts = [];
-    const potentialDuplicates = [];
-    let automaticMergeCount = 0;
-    
-    console.log(`Checking ${mergedContacts.length} contacts for duplicates...`);
-    
-    for (const contactData of mergedContacts) {
-      const duplicateAnalysis = await findPotentialDuplicates(contactData, userId);
-      
-      // Handle automatic merges (exact email matches)
-      if (duplicateAnalysis.automaticMerges.length > 0) {
-        console.log(`Automatically merging "${contactData.name}" with existing contact (email match)`);
-        
-        // Merge with the first matching contact (highest priority)
-        const existingContact = duplicateAnalysis.automaticMerges[0];
-        try {
-          const mergedContactData = mergeContactData(existingContact, {
-            ...contactData,
-            userId: userId,
-            source: contactData.source || 'contacts-csv'
-          });
-          
-          await Contact.updateOne(
-            { _id: existingContact._id, userId: userId },
-            { 
-              $set: mergedContactData,
-              $push: {
-                mergeHistory: {
-                  timestamp: new Date(),
-                  action: 'merge',
-                  sourceContactId: null,
-                  sourceData: 'automatic-email-merge',
-                  mergedFields: Object.keys(contactData)
-                }
-              }
-            }
-          );
-          
-          automaticMergeCount++;
-          console.log(`Successfully auto-merged contact: ${contactData.name}`);
-        } catch (error) {
-          console.error(`Failed to auto-merge contact ${contactData.name}:`, error);
-          // If automatic merge fails, add to new contacts instead
-          newContacts.push(contactData);
-        }
-        
-      } else if (duplicateAnalysis.manualReview.length > 0) {
-        // Add to manual review if name-based duplicates found
-        potentialDuplicates.push({
-          newContact: contactData,
-          existingContacts: duplicateAnalysis.manualReview
-        });
-        console.log(`Found ${duplicateAnalysis.manualReview.length} potential name-based duplicates for: ${contactData.name}`);
-        
-      } else {
-        // No duplicates found, add to new contacts
-        newContacts.push(contactData);
+    // STEP 1: Process all CSV files with unified processor
+    for (const file of uploadedFiles) {
+      if (!file.originalname?.toLowerCase().endsWith('.csv')) {
+        console.log(`⚠️  Skipping non-CSV file: ${file.originalname}`);
+        continue;
       }
-    }
-    
-    // If there are potential duplicates, return them for user decision
-    if (potentialDuplicates.length > 0) {
-      const message = automaticMergeCount > 0 
-        ? `Automatically merged ${automaticMergeCount} contact(s) with matching emails. Found ${potentialDuplicates.length} potential name-based duplicate(s) that need your review.`
-        : `Found ${potentialDuplicates.length} potential duplicate(s). Please review and decide whether to merge or keep separate.`;
-        
-      return res.json({
-        success: true,
-        hasDuplicates: true,
-        newContacts: newContacts,
-        potentialDuplicates: potentialDuplicates,
-        automaticMerges: automaticMergeCount,
-        message: message
-      });
-    }
-
-    // Enhanced processing with AI-powered insights for new contacts only
-    let insertedCount = 0;
-    let duplicateCount = 0;
-    let contactsWithCompany = 0;
-    let contactsWithEmail = 0;
-    let embeddingCount = 0;
-    
-    for (const contactData of newContacts) {
-      if (contactData.company) contactsWithCompany++;
-      if (contactData.email) contactsWithEmail++;
       
       try {
-        // Enhance contact with AI-powered insights
-        const enhancedContact = linkedinProcessor.enhanceContact(contactData);
+        console.log(`📄 Processing file: ${file.originalname}`);
         
-        // Generate embedding for semantic search (if OpenAI available)
-        if (process.env.OPENAI_API_KEY && enhancedContact.searchableText) {
-          try {
-            const embedding = await generateEmbedding(enhancedContact.searchableText);
-            if (embedding) {
-              enhancedContact.embedding = embedding;
-              embeddingCount++;
-            }
-          } catch (embeddingError) {
-            console.log(`Skipping embedding for ${enhancedContact.name}: ${embeddingError.message}`);
-          }
-        }
-        
-        // Check for existing contact by name
-        const existingContact = await Contact.findOne({ 
-          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        const csvResult = await processAnyCSV(file.buffer, {
+          filename: file.originalname
         });
         
-        if (!existingContact) {
-          // Create new enhanced contact
-          const contact = new Contact({
-            ...enhancedContact,
-            name: contactData.name,
-            email: contactData.email,
-            phone: contactData.phone,
-            company: contactData.company,
-            position: contactData.position,
-            location: contactData.location,
-            source: 'linkedin_import',
-            connectedOn: contactData.connectedOn,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          await contact.save();
-          insertedCount++;
-        } else {
-          // Update existing contact with enhanced data
-          const updates = {
-            ...enhancedContact,
-            updatedAt: new Date()
-          };
-          if (contactData.email && !existingContact.email) updates.email = contactData.email;
-          if (contactData.company && !existingContact.company) updates.company = contactData.company;
-          if (contactData.position && !existingContact.position) updates.position = contactData.position;
-          if (contactData.location && !existingContact.location) updates.location = contactData.location;
-          if (contactData.connectedOn && !existingContact.connectedOn) updates.connectedOn = contactData.connectedOn;
-          
-          if (Object.keys(updates).length > 0) {
-            await Contact.updateOne(
-              { _id: existingContact._id, userId: userId },
-              { $set: updates }
-            );
-            console.log(`Enhanced existing contact: ${contactData.name} with AI insights`);
-          }
-          duplicateCount++;
+        allContacts.push(...csvResult.contacts);
+        processingStats.filesProcessed++;
+        processingStats.totalRows += csvResult.stats.processed;
+        processingStats.successfulContacts += csvResult.stats.successful;
+        processingStats.skippedRows += csvResult.stats.skipped;
+        
+        if (csvResult.errors.length > 0) {
+          processingStats.errors.push(...csvResult.errors);
         }
-      } catch (error) {
-        console.error(`Error saving enhanced contact ${contactData.name}:`, error);
+        
+        console.log(`✅ File processed: ${csvResult.contacts.length} contacts extracted`);
+        
+      } catch (fileError) {
+        console.error(`❌ Error processing ${file.originalname}:`, fileError);
+        processingStats.errors.push({
+          file: file.originalname,
+          error: fileError.message
+        });
       }
     }
-
-    const totalContacts = await Contact.countDocuments();
-    console.log(`=== Import Complete ===`);
-    console.log(`Processed: ${mergedContacts.length}`);
-    console.log(`Inserted: ${insertedCount}`);
-    console.log(`Enhanced/Skipped: ${duplicateCount}`);
-    console.log(`Automatic Merges: ${automaticMergeCount}`);
-    console.log(`Total contacts in DB: ${totalContacts}`);
-
-    // Build success message including automatic merges
-    let message = '';
-    if (insertedCount > 0) {
-      message = `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! `;
-      if (automaticMergeCount > 0) {
-        message += `Automatically merged ${automaticMergeCount} contact(s) with matching emails. `;
-      }
-      if (duplicateCount > 0) {
-        message += `Enhanced ${duplicateCount} existing contacts. `;
-      }
-      if (embeddingCount > 0) {
-        message += `Generated ${embeddingCount} semantic embeddings. `;
-      }
-      message += `Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`;
-    } else if (automaticMergeCount > 0) {
-      message = `✅ Automatically merged ${automaticMergeCount} contact(s) with matching emails! `;
-      if (duplicateCount > 0) {
-        message += `Enhanced ${duplicateCount} existing contacts with AI-powered insights. `;
-      }
-      message += `No new contacts needed to be added - all contacts were successfully merged with existing records.`;
-    } else if (duplicateCount > 0) {
-      message = `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`;
-    } else {
-      message = `❌ No valid contacts found in the uploaded files.`;
+    
+    if (allContacts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid contacts found in uploaded files',
+        stats: processingStats
+      });
     }
-
-    res.json({
-      success: true,
-      count: insertedCount,
-      processed: mergedContacts.length,
-      enhanced: duplicateCount,
-      automaticMerges: automaticMergeCount,
-      totalContacts: totalContacts,
-      embeddings: embeddingCount,
-      ai_features: process.env.OPENAI_API_KEY ? 'enabled' : 'disabled',
-      message: message,
-      hasDuplicates: false
+    
+    console.log(`🎯 Total contacts extracted: ${allContacts.length}`);
+    
+    // STEP 2: Import all contacts using batch operations (no duplicate checking during import)
+    console.log(`💾 Starting batch import...`);
+    
+    const importResult = await batchInsertContacts(allContacts, Contact, {
+      batchSize: 1000
     });
-
+    
+    // STEP 3: Generate import summary
+    const importId = Date.now().toString();
+    const summary = {
+      importId,
+      success: true,
+      stats: {
+        filesProcessed: processingStats.filesProcessed,
+        totalRowsProcessed: processingStats.totalRows,
+        contactsExtracted: allContacts.length,
+        contactsInserted: importResult.inserted,
+        duplicatesSkipped: importResult.duplicates,
+        failedInserts: importResult.failed,
+        processingErrors: processingStats.errors.length
+      },
+      message: `✅ Import complete! Processed ${processingStats.filesProcessed} file(s) and extracted ${allContacts.length} contacts. Successfully imported ${importResult.inserted} new contacts.`,
+      timestamp: new Date(),
+      hasPostImportDuplicates: importResult.duplicates > 0
+    };
+    
+    // If there were duplicates, suggest post-import duplicate detection
+    if (importResult.duplicates > 0) {
+      summary.duplicateMessage = `Found ${importResult.duplicates} potential duplicates during import. Use the duplicate detection tool to review and merge similar contacts.`;
+    }
+    
+    console.log(`🎉 Import Summary:`);
+    console.log(`   📊 Files processed: ${summary.stats.filesProcessed}`);
+    console.log(`   📋 Contacts extracted: ${summary.stats.contactsExtracted}`);
+    console.log(`   ✅ Successfully imported: ${summary.stats.contactsInserted}`);
+    console.log(`   🔄 Duplicates detected: ${summary.stats.duplicatesSkipped}`);
+    console.log(`   ❌ Failed imports: ${summary.stats.failedInserts}`);
+    
+    res.json(summary);
+    
   } catch (error) {
-    console.error('=== Import Error ===', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    console.error('💥 Import process failed:', error);
+    res.status(500).json({
+      success: false,
+      message: `Import failed: ${error.message}`,
+      error: error.name,
+      timestamp: new Date()
+    });
+  }
+});
+
+// POST-IMPORT DUPLICATE DETECTION - Separate from import process
+app.post('/api/contacts/detect-duplicates', async (req, res) => {
+  try {
+    console.log('🔍 === POST-IMPORT DUPLICATE DETECTION STARTED ===');
+    
+    const { batchFindDuplicates } = require('./services/batchDatabaseService');
+    const { options = {} } = req.body;
+    
+    // Get all contacts from database for duplicate analysis
+    console.log('📋 Fetching all contacts for duplicate analysis...');
+    const allContacts = await Contact.find({}).lean();
+    
+    if (allContacts.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No contacts found for duplicate detection',
+        stats: {
+          totalContacts: 0,
+          duplicateGroups: 0,
+          potentialMerges: 0
+        }
+      });
+    }
+    
+    console.log(`📊 Analyzing ${allContacts.length} contacts for duplicates...`);
+    
+    // Perform efficient duplicate detection
+    const duplicateAnalysis = await batchFindDuplicates(allContacts, Contact);
+    
+    // Group duplicates for easier review
+    const duplicateGroups = [];
+    
+    // Email-based duplicates
+    if (duplicateAnalysis.emailDuplicates.length > 0) {
+      const emailGroups = {};
+      duplicateAnalysis.emailDuplicates.forEach(dup => {
+        const email = dup.existingContact.email.toLowerCase();
+        if (!emailGroups[email]) {
+          emailGroups[email] = {
+            type: 'email_match',
+            matchValue: email,
+            contacts: [dup.existingContact]
+          };
+        }
+        emailGroups[email].contacts.push(dup.newContact);
+      });
+      
+      Object.values(emailGroups).forEach(group => {
+        if (group.contacts.length > 1) {
+          duplicateGroups.push(group);
+        }
+      });
+    }
+    
+    // Phone-based duplicates
+    if (duplicateAnalysis.phoneDuplicates.length > 0) {
+      const phoneGroups = {};
+      duplicateAnalysis.phoneDuplicates.forEach(dup => {
+        const phone = dup.newContact.phone || dup.existingContact.phone;
+        const normalizedPhone = phone.replace(/\D/g, '');
+        if (!phoneGroups[normalizedPhone]) {
+          phoneGroups[normalizedPhone] = {
+            type: 'phone_match',
+            matchValue: phone,
+            contacts: [dup.existingContact]
+          };
+        }
+        phoneGroups[normalizedPhone].contacts.push(dup.newContact);
+      });
+      
+      Object.values(phoneGroups).forEach(group => {
+        if (group.contacts.length > 1) {
+          duplicateGroups.push(group);
+        }
+      });
+    }
+    
+    // Calculate potential merges
+    const potentialMerges = duplicateGroups.reduce((sum, group) => sum + (group.contacts.length - 1), 0);
+    
+    // Generate summary
+    const summary = {
+      success: true,
+      stats: {
+        totalContacts: allContacts.length,
+        duplicateGroups: duplicateGroups.length,
+        emailMatches: duplicateAnalysis.emailDuplicates.length,
+        phoneMatches: duplicateAnalysis.phoneDuplicates.length,
+        potentialMerges: potentialMerges
+      },
+      duplicateGroups: duplicateGroups.slice(0, 50), // Limit to first 50 groups for performance
+      message: duplicateGroups.length > 0 
+        ? `Found ${duplicateGroups.length} duplicate groups affecting ${potentialMerges} contacts` 
+        : 'No duplicates detected in your contact database',
+      timestamp: new Date()
+    };
+    
+    console.log(`🎯 Duplicate Detection Complete:`);
+    console.log(`   📊 Total contacts analyzed: ${summary.stats.totalContacts}`);
+    console.log(`   👥 Duplicate groups found: ${summary.stats.duplicateGroups}`);
+    console.log(`   📧 Email matches: ${summary.stats.emailMatches}`);
+    console.log(`   📞 Phone matches: ${summary.stats.phoneMatches}`);
+    console.log(`   🔄 Potential merges: ${summary.stats.potentialMerges}`);
+    
+    res.json(summary);
+    
+  } catch (error) {
+    console.error('❌ Duplicate detection failed:', error);
+    res.status(500).json({
+      success: false,
+      message: `Duplicate detection failed: ${error.message}`,
+      error: error.name,
+      timestamp: new Date()
+    });
+  }
+});
+
+// BULK MERGE DUPLICATES - Process multiple merges efficiently
+app.post('/api/contacts/bulk-merge', async (req, res) => {
+  try {
+    console.log('🔄 === BULK MERGE DUPLICATES STARTED ===');
+    
+    const { mergeGroups } = req.body;
+    const { batchUpdateContacts, mergeContactData } = require('./services/batchDatabaseService');
+    
+    if (!mergeGroups || !Array.isArray(mergeGroups)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Merge groups array is required'
+      });
+    }
+    
+    console.log(`🔄 Processing ${mergeGroups.length} merge groups...`);
+    
+    let results = {
+      processed: 0,
+      merged: 0,
+      deleted: 0,
+      failed: 0,
+      errors: []
+    };
+    
+    const updates = [];
+    const deletions = [];
+    
+    // Process each merge group
+    for (const group of mergeGroups) {
+      try {
+        if (!group.contacts || group.contacts.length < 2) {
+          results.failed++;
+          continue;
+        }
+        
+        // Use first contact as the master record
+        const masterContact = group.contacts[0];
+        const duplicateContacts = group.contacts.slice(1);
+        
+        // Merge all duplicates into master
+        let mergedData = { ...masterContact };
+        for (const duplicate of duplicateContacts) {
+          mergedData = mergeContactData(mergedData, duplicate);
+        }
+        
+        // Prepare update for master contact
+        updates.push({
+          _id: masterContact._id,
+          data: {
+            ...mergedData,
+            updatedAt: new Date(),
+            mergeHistory: [
+              ...(masterContact.mergeHistory || []),
+              {
+                timestamp: new Date(),
+                action: 'bulk_merge',
+                mergedContactIds: duplicateContacts.map(c => c._id),
+                duplicateCount: duplicateContacts.length
+              }
+            ]
+          }
+        });
+        
+        // Mark duplicates for deletion
+        duplicateContacts.forEach(contact => {
+          deletions.push(contact._id);
+        });
+        
+        results.processed++;
+        
+      } catch (error) {
+        console.error(`Error processing merge group:`, error);
+        results.failed++;
+        results.errors.push({
+          group: results.processed,
+          error: error.message
+        });
+      }
+    }
+    
+    // Execute batch operations
+    if (updates.length > 0) {
+      const updateResult = await batchUpdateContacts(updates, Contact);
+      results.merged = updateResult.updated;
+    }
+    
+    if (deletions.length > 0) {
+      const deleteResult = await Contact.deleteMany({
+        _id: { $in: deletions }
+      });
+      results.deleted = deleteResult.deletedCount;
+    }
+    
+    const summary = {
+      success: true,
+      results,
+      message: `Bulk merge complete: ${results.merged} contacts updated, ${results.deleted} duplicates removed`,
+      timestamp: new Date()
+    };
+    
+    console.log(`🎉 Bulk Merge Complete:`);
+    console.log(`   🔄 Groups processed: ${results.processed}`);
+    console.log(`   ✅ Contacts merged: ${results.merged}`);
+    console.log(`   🗑️  Duplicates deleted: ${results.deleted}`);
+    console.log(`   ❌ Failed operations: ${results.failed}`);
+    
+    res.json(summary);
+    
+  } catch (error) {
+    console.error('❌ Bulk merge failed:', error);
+    res.status(500).json({
+      success: false,
+      message: `Bulk merge failed: ${error.message}`,
+      error: error.name,
+      timestamp: new Date()
     });
   }
 });
@@ -2055,112 +2166,8 @@ app.post('/api/contacts/merge', requireAuth, validateMergeRequest, async (req, r
   }
 });
 
-// Facebook OAuth endpoints
-
-// Facebook OAuth initiation
-app.get('/api/facebook/auth', (req, res) => {
-  const fbAppId = process.env.FACEBOOK_APP_ID;
-  const redirectUri = req.get('origin') + '/api/facebook/callback';
-  
-  const params = new URLSearchParams({
-    client_id: fbAppId,
-    redirect_uri: redirectUri,
-    scope: 'public_profile,email,user_friends',
-    response_type: 'code',
-    state: 'beetagged_facebook_auth'
-  });
-  
-  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
-  console.log('Facebook auth URL:', authUrl);
-  
-  res.json({ authUrl });
-});
-
-// Facebook OAuth callback
-app.get('/api/facebook/callback', async (req, res) => {
-  const { code, error, error_description } = req.query;
-  
-  if (error) {
-    console.error('Facebook OAuth error:', error, error_description);
-    return res.redirect('/?facebook_error=' + encodeURIComponent(error_description || error));
-  }
-  
-  try {
-    const fbAppId = process.env.FACEBOOK_APP_ID;
-    const fbAppSecret = process.env.FACEBOOK_APP_SECRET;
-    const redirectUri = req.get('origin') + '/api/facebook/callback';
-    
-    // Exchange code for access token
-    const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
-      params: {
-        client_id: fbAppId,
-        client_secret: fbAppSecret,
-        redirect_uri: redirectUri,
-        code: code
-      }
-    });
-    
-    const accessToken = tokenResponse.data.access_token;
-    console.log('Facebook access token obtained');
-    
-    // Get user profile
-    const profileResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
-      params: {
-        fields: 'id,name,email,link',
-        access_token: accessToken
-      }
-    });
-    
-    const profile = profileResponse.data;
-    console.log('Facebook profile obtained:', profile.name);
-    
-    // Import Facebook data
-    const importResult = await importFacebookData(accessToken, profile);
-    
-    // Redirect back to frontend with success
-    res.redirect('/?facebook_success=' + encodeURIComponent(JSON.stringify({
-      profile: profile.name,
-      count: importResult.count,
-      friends: importResult.friendsCount
-    })));
-    
-  } catch (error) {
-    console.error('Facebook callback error:', error.response?.data || error.message);
-    res.redirect('/?facebook_error=' + encodeURIComponent('Failed to process Facebook login'));
-  }
-});
-
-// Enhanced Facebook import with friends support
-app.post('/api/facebook/import', async (req, res) => {
-  try {
-    console.log('=== Facebook Import Started ===');
-    const { accessToken, userID, profile } = req.body;
-    
-    if (!accessToken) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Facebook access token is required' 
-      });
-    }
-    
-    const importResult = await importFacebookData(accessToken, profile);
-    
-    res.json({
-      success: true,
-      count: importResult.count,
-      friendsCount: importResult.friendsCount,
-      totalContacts: importResult.totalContacts,
-      message: importResult.message
-    });
-
-  } catch (error) {
-    console.error('=== Facebook Import Error ===', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Facebook import failed: ${error.message}`
-    });
-  }
-});
+// NOTE: Duplicate Facebook OAuth endpoints removed to avoid confusion
+// The original Facebook endpoints (lines 1376-1500) are maintained for functionality
 
 // Facebook data import helper function
 async function importFacebookData(accessToken, userProfile) {
