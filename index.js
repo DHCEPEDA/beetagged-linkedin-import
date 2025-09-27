@@ -1700,262 +1700,127 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
-// LinkedIn CSV import - accept any file field
+// STREAMLINED CSV IMPORT - Uses unified processor and batch operations
 app.post('/api/import/linkedin', upload.any(), async (req, res) => {
   try {
-    console.log('=== LinkedIn CSV Import Started ===');
-    console.log('Files received:', req.files);
+    console.log('🚀 === STREAMLINED CSV IMPORT STARTED ===');
     
-    console.log('Files array:', req.files);
-    
-    // Get the first uploaded file (upload.any() provides an array)
-    const linkedinFile = req.files && req.files.length > 0 ? req.files[0] : null;
-    
-    if (!linkedinFile) {
+    // Validate uploaded files
+    const uploadedFiles = req.files || [];
+    if (uploadedFiles.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: `At least one CSV file is required. Received ${req.files ? req.files.length : 0} files.`
+        message: 'At least one CSV file is required' 
       });
     }
     
-    console.log('LinkedIn file:', !!linkedinFile);
-
-    // Validate file type
-    if (!linkedinFile.originalname?.toLowerCase().endsWith('.csv')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `${linkedinFile.originalname} is not a CSV file. LinkedIn exports are in CSV format.` 
-      });
-    }
-
-    // Parse CSV file
-    const csvData = linkedinFile.buffer.toString('utf8');
-    const lines = csvData.split(/\r?\n/).filter(line => line.trim());
-    console.log('Total lines found:', lines.length);
+    console.log(`📁 Processing ${uploadedFiles.length} file(s)`);
     
-    if (lines.length < 2) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'CSV file appears to be empty or only contains headers. Please check your LinkedIn export.' 
-      });
-    }
+    // Import services
+    const { processAnyCSV } = require('./services/unifiedCsvProcessor');
+    const { batchInsertContacts, batchFindDuplicates } = require('./services/batchDatabaseService');
     
-    // Process CSV with enhanced LinkedIn format support
-    const mergedContacts = processSingleCSV(lines);
+    let allContacts = [];
+    let processingStats = {
+      filesProcessed: 0,
+      totalRows: 0,
+      successfulContacts: 0,
+      skippedRows: 0,
+      errors: []
+    };
     
-    if (mergedContacts.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No valid contacts found in the uploaded files.' 
-      });
-    }
-
-    // Check for potential duplicates and handle automatic merges
-    const userId = req.body.userId || null;
-    const newContacts = [];
-    const potentialDuplicates = [];
-    let automaticMergeCount = 0;
-    
-    console.log(`Checking ${mergedContacts.length} contacts for duplicates...`);
-    
-    for (const contactData of mergedContacts) {
-      const duplicateAnalysis = await findPotentialDuplicates(contactData, userId);
-      
-      // Handle automatic merges (exact email matches)
-      if (duplicateAnalysis.automaticMerges.length > 0) {
-        console.log(`Automatically merging "${contactData.name}" with existing contact (email match)`);
-        
-        // Merge with the first matching contact (highest priority)
-        const existingContact = duplicateAnalysis.automaticMerges[0];
-        try {
-          const mergedContactData = mergeContactData(existingContact, {
-            ...contactData,
-            userId: userId,
-            source: contactData.source || 'contacts-csv'
-          });
-          
-          await Contact.updateOne(
-            { _id: existingContact._id, userId: userId },
-            { 
-              $set: mergedContactData,
-              $push: {
-                mergeHistory: {
-                  timestamp: new Date(),
-                  action: 'merge',
-                  sourceContactId: null,
-                  sourceData: 'automatic-email-merge',
-                  mergedFields: Object.keys(contactData)
-                }
-              }
-            }
-          );
-          
-          automaticMergeCount++;
-          console.log(`Successfully auto-merged contact: ${contactData.name}`);
-        } catch (error) {
-          console.error(`Failed to auto-merge contact ${contactData.name}:`, error);
-          // If automatic merge fails, add to new contacts instead
-          newContacts.push(contactData);
-        }
-        
-      } else if (duplicateAnalysis.manualReview.length > 0) {
-        // Add to manual review if name-based duplicates found
-        potentialDuplicates.push({
-          newContact: contactData,
-          existingContacts: duplicateAnalysis.manualReview
-        });
-        console.log(`Found ${duplicateAnalysis.manualReview.length} potential name-based duplicates for: ${contactData.name}`);
-        
-      } else {
-        // No duplicates found, add to new contacts
-        newContacts.push(contactData);
+    // STEP 1: Process all CSV files with unified processor
+    for (const file of uploadedFiles) {
+      if (!file.originalname?.toLowerCase().endsWith('.csv')) {
+        console.log(`⚠️  Skipping non-CSV file: ${file.originalname}`);
+        continue;
       }
-    }
-    
-    // If there are potential duplicates, return them for user decision
-    if (potentialDuplicates.length > 0) {
-      const message = automaticMergeCount > 0 
-        ? `Automatically merged ${automaticMergeCount} contact(s) with matching emails. Found ${potentialDuplicates.length} potential name-based duplicate(s) that need your review.`
-        : `Found ${potentialDuplicates.length} potential duplicate(s). Please review and decide whether to merge or keep separate.`;
-        
-      return res.json({
-        success: true,
-        hasDuplicates: true,
-        newContacts: newContacts,
-        potentialDuplicates: potentialDuplicates,
-        automaticMerges: automaticMergeCount,
-        message: message
-      });
-    }
-
-    // Enhanced processing with AI-powered insights for new contacts only
-    let insertedCount = 0;
-    let duplicateCount = 0;
-    let contactsWithCompany = 0;
-    let contactsWithEmail = 0;
-    let embeddingCount = 0;
-    
-    for (const contactData of newContacts) {
-      if (contactData.company) contactsWithCompany++;
-      if (contactData.email) contactsWithEmail++;
       
       try {
-        // Enhance contact with AI-powered insights
-        const enhancedContact = linkedinProcessor.enhanceContact(contactData);
+        console.log(`📄 Processing file: ${file.originalname}`);
         
-        // Generate embedding for semantic search (if OpenAI available)
-        if (process.env.OPENAI_API_KEY && enhancedContact.searchableText) {
-          try {
-            const embedding = await generateEmbedding(enhancedContact.searchableText);
-            if (embedding) {
-              enhancedContact.embedding = embedding;
-              embeddingCount++;
-            }
-          } catch (embeddingError) {
-            console.log(`Skipping embedding for ${enhancedContact.name}: ${embeddingError.message}`);
-          }
-        }
-        
-        // Check for existing contact by name
-        const existingContact = await Contact.findOne({ 
-          name: { $regex: new RegExp(`^${contactData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        const csvResult = await processAnyCSV(file.buffer, {
+          filename: file.originalname
         });
         
-        if (!existingContact) {
-          // Create new enhanced contact
-          const contact = new Contact({
-            ...enhancedContact,
-            name: contactData.name,
-            email: contactData.email,
-            phone: contactData.phone,
-            company: contactData.company,
-            position: contactData.position,
-            location: contactData.location,
-            source: 'linkedin_import',
-            connectedOn: contactData.connectedOn,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          await contact.save();
-          insertedCount++;
-        } else {
-          // Update existing contact with enhanced data
-          const updates = {
-            ...enhancedContact,
-            updatedAt: new Date()
-          };
-          if (contactData.email && !existingContact.email) updates.email = contactData.email;
-          if (contactData.company && !existingContact.company) updates.company = contactData.company;
-          if (contactData.position && !existingContact.position) updates.position = contactData.position;
-          if (contactData.location && !existingContact.location) updates.location = contactData.location;
-          if (contactData.connectedOn && !existingContact.connectedOn) updates.connectedOn = contactData.connectedOn;
-          
-          if (Object.keys(updates).length > 0) {
-            await Contact.updateOne(
-              { _id: existingContact._id, userId: userId },
-              { $set: updates }
-            );
-            console.log(`Enhanced existing contact: ${contactData.name} with AI insights`);
-          }
-          duplicateCount++;
+        allContacts.push(...csvResult.contacts);
+        processingStats.filesProcessed++;
+        processingStats.totalRows += csvResult.stats.processed;
+        processingStats.successfulContacts += csvResult.stats.successful;
+        processingStats.skippedRows += csvResult.stats.skipped;
+        
+        if (csvResult.errors.length > 0) {
+          processingStats.errors.push(...csvResult.errors);
         }
-      } catch (error) {
-        console.error(`Error saving enhanced contact ${contactData.name}:`, error);
+        
+        console.log(`✅ File processed: ${csvResult.contacts.length} contacts extracted`);
+        
+      } catch (fileError) {
+        console.error(`❌ Error processing ${file.originalname}:`, fileError);
+        processingStats.errors.push({
+          file: file.originalname,
+          error: fileError.message
+        });
       }
     }
-
-    const totalContacts = await Contact.countDocuments();
-    console.log(`=== Import Complete ===`);
-    console.log(`Processed: ${mergedContacts.length}`);
-    console.log(`Inserted: ${insertedCount}`);
-    console.log(`Enhanced/Skipped: ${duplicateCount}`);
-    console.log(`Automatic Merges: ${automaticMergeCount}`);
-    console.log(`Total contacts in DB: ${totalContacts}`);
-
-    // Build success message including automatic merges
-    let message = '';
-    if (insertedCount > 0) {
-      message = `✅ Successfully imported ${insertedCount} new contacts with AI-powered insights! `;
-      if (automaticMergeCount > 0) {
-        message += `Automatically merged ${automaticMergeCount} contact(s) with matching emails. `;
-      }
-      if (duplicateCount > 0) {
-        message += `Enhanced ${duplicateCount} existing contacts. `;
-      }
-      if (embeddingCount > 0) {
-        message += `Generated ${embeddingCount} semantic embeddings. `;
-      }
-      message += `Data includes: ${contactsWithCompany > 0 ? `${contactsWithCompany} companies, ` : ''}${contactsWithEmail > 0 ? `${contactsWithEmail} emails, ` : ''}skills extraction, expertise analysis, and career stage detection.`;
-    } else if (automaticMergeCount > 0) {
-      message = `✅ Automatically merged ${automaticMergeCount} contact(s) with matching emails! `;
-      if (duplicateCount > 0) {
-        message += `Enhanced ${duplicateCount} existing contacts with AI-powered insights. `;
-      }
-      message += `No new contacts needed to be added - all contacts were successfully merged with existing records.`;
-    } else if (duplicateCount > 0) {
-      message = `⚠️ No new contacts added, but enhanced ${duplicateCount} existing contacts with AI-powered insights and additional data.`;
-    } else {
-      message = `❌ No valid contacts found in the uploaded files.`;
+    
+    if (allContacts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid contacts found in uploaded files',
+        stats: processingStats
+      });
     }
-
-    res.json({
-      success: true,
-      count: insertedCount,
-      processed: mergedContacts.length,
-      enhanced: duplicateCount,
-      automaticMerges: automaticMergeCount,
-      totalContacts: totalContacts,
-      embeddings: embeddingCount,
-      ai_features: process.env.OPENAI_API_KEY ? 'enabled' : 'disabled',
-      message: message,
-      hasDuplicates: false
+    
+    console.log(`🎯 Total contacts extracted: ${allContacts.length}`);
+    
+    // STEP 2: Import all contacts using batch operations (no duplicate checking during import)
+    console.log(`💾 Starting batch import...`);
+    
+    const importResult = await batchInsertContacts(allContacts, Contact, {
+      batchSize: 1000
     });
-
+    
+    // STEP 3: Generate import summary
+    const importId = Date.now().toString();
+    const summary = {
+      importId,
+      success: true,
+      stats: {
+        filesProcessed: processingStats.filesProcessed,
+        totalRowsProcessed: processingStats.totalRows,
+        contactsExtracted: allContacts.length,
+        contactsInserted: importResult.inserted,
+        duplicatesSkipped: importResult.duplicates,
+        failedInserts: importResult.failed,
+        processingErrors: processingStats.errors.length
+      },
+      message: `✅ Import complete! Processed ${processingStats.filesProcessed} file(s) and extracted ${allContacts.length} contacts. Successfully imported ${importResult.inserted} new contacts.`,
+      timestamp: new Date(),
+      hasPostImportDuplicates: importResult.duplicates > 0
+    };
+    
+    // If there were duplicates, suggest post-import duplicate detection
+    if (importResult.duplicates > 0) {
+      summary.duplicateMessage = `Found ${importResult.duplicates} potential duplicates during import. Use the duplicate detection tool to review and merge similar contacts.`;
+    }
+    
+    console.log(`🎉 Import Summary:`);
+    console.log(`   📊 Files processed: ${summary.stats.filesProcessed}`);
+    console.log(`   📋 Contacts extracted: ${summary.stats.contactsExtracted}`);
+    console.log(`   ✅ Successfully imported: ${summary.stats.contactsInserted}`);
+    console.log(`   🔄 Duplicates detected: ${summary.stats.duplicatesSkipped}`);
+    console.log(`   ❌ Failed imports: ${summary.stats.failedInserts}`);
+    
+    res.json(summary);
+    
   } catch (error) {
-    console.error('=== Import Error ===', error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Upload failed: ${error.message}. Please try again or check your CSV format.`
+    console.error('💥 Import process failed:', error);
+    res.status(500).json({
+      success: false,
+      message: `Import failed: ${error.message}`,
+      error: error.name,
+      timestamp: new Date()
     });
   }
 });
