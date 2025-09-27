@@ -1902,6 +1902,9 @@ app.post('/api/contacts/detect-duplicates', async (req, res) => {
       });
     }
     
+    // Calculate potential merges
+    const potentialMerges = duplicateGroups.reduce((sum, group) => sum + (group.contacts.length - 1), 0);
+    
     // Generate summary
     const summary = {
       success: true,
@@ -1910,11 +1913,11 @@ app.post('/api/contacts/detect-duplicates', async (req, res) => {
         duplicateGroups: duplicateGroups.length,
         emailMatches: duplicateAnalysis.emailDuplicates.length,
         phoneMatches: duplicateAnalysis.phoneDuplicates.length,
-        potentialMerges: duplicateGroups.reduce((sum, group) => sum + (group.contacts.length - 1), 0)
+        potentialMerges: potentialMerges
       },
       duplicateGroups: duplicateGroups.slice(0, 50), // Limit to first 50 groups for performance
       message: duplicateGroups.length > 0 
-        ? `Found ${duplicateGroups.length} duplicate groups affecting ${summary.stats.potentialMerges} contacts` 
+        ? `Found ${duplicateGroups.length} duplicate groups affecting ${potentialMerges} contacts` 
         : 'No duplicates detected in your contact database',
       timestamp: new Date()
     };
