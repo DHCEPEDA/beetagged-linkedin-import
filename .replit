@@ -18,19 +18,7 @@ args = "ViteDev"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "BuildSquarespaceBundle"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "RebuildSquarespaceBundle"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Backend"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "FinalRebuildSquarespaceBundle"
 
 [[workflows.workflow]]
 name = "ViteDev"
@@ -42,22 +30,6 @@ args = "vite dev --host 0.0.0.0 --port 3000"
 waitForPort = 3000
 
 [[workflows.workflow]]
-name = "BuildSquarespaceBundle"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx webpack --config webpack.squarespace.config.js"
-
-[[workflows.workflow]]
-name = "RebuildSquarespaceBundle"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx webpack --config webpack.squarespace.config.js"
-
-[[workflows.workflow]]
 name = "Backend"
 author = "agent"
 
@@ -65,14 +37,6 @@ author = "agent"
 task = "shell.exec"
 args = "NODE_ENV=development PORT=5000 node index.js"
 waitForPort = 5000
-
-[[workflows.workflow]]
-name = "FinalRebuildSquarespaceBundle"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx webpack --config webpack.squarespace.config.js"
 
 [deployment]
 run = ["sh", "-c", "node index.js"]

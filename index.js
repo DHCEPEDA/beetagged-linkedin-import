@@ -30,8 +30,7 @@ app.use(cors({
   origin: function (origin, callback) {
     const prodOrigins = [
       'https://www.beetagged.com',
-      'https://beetagged.com',
-      'https://beetagged.squarespace.com'
+      'https://beetagged.com'
     ];
     
     const devOrigins = [
@@ -48,9 +47,12 @@ app.use(cors({
       allowedOrigins = [...prodOrigins, ...devOrigins];
     }
     
-    // Check for exact origin match or replit dev domains
-    const isAllowed = !origin || // Same origin requests
+    // Check for exact origin match, Squarespace domains, or replit dev domains
+    const isAllowed = !origin || // Same origin requests (server-to-server)
       allowedOrigins.includes(origin) ||
+      (origin && origin.includes('.squarespace.com')) || // Allow all Squarespace domains
+      (origin && origin.includes('.squarespace-cdn.com')) || // Squarespace CDN
+      (origin && origin.includes('static1.squarespace.com')) || // Squarespace static assets
       (process.env.NODE_ENV !== 'production' && origin && (
         origin.includes('.replit.dev') || 
         origin.includes('.repl.co')
@@ -65,7 +67,7 @@ app.use(cors({
   },
   credentials: false,
   methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept']
 }));
 
 // Trust proxy for Heroku
