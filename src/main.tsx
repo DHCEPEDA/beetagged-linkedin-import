@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import BeeTaggedApp from './SquarespaceApp'
+// @ts-ignore
+import BeeTaggedApp from './SquarespaceApp.jsx'
 import './beetagged-styles.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
