@@ -1,0 +1,913 @@
+/* 
+ * COMPLETE BEETAGGED REPLIT PACKAGE
+ * 
+ * Instructions for Replit Setup:
+ * 1. Create a new Node.js Repl in Replit
+ * 2. Replace the contents of index.js with this file
+ * 3. Install dependencies: npm install express mongoose cors dotenv multer csv-parser helmet compression morgan express-rate-limit
+ * 4. Set environment variables in Replit Secrets:
+ *    - MONGODB_URI: Your MongoDB Atlas connection string
+ *    - PORT: 3000 (or your preferred port)
+ *    - NODE_ENV: production
+ * 5. Run the application
+ */
+
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const csv = require('csv-parser');
+const path = require('path');
+const fs = require('fs');
+
+// Initialize Express app
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Enhanced security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+    },
+  },
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+app.use(limiter);
+
+// Middleware
+app.use(compression());
+app.use(morgan('combined'));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/beetagged', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+db.once('open', () => {
+  console.log('Connected to MongoDB successfully');
+});
+
+// Enhanced Contact Schema with all LinkedIn fields
+const contactSchema = new mongoose.Schema({
+  // Basic Information
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  email: { type: String, sparse: true },
+  phone: { type: String },
+  
+  // LinkedIn Profile Data
+  linkedinUrl: { type: String },
+  profilePhoto: { type: String }, // LinkedIn profile photo URL
+  headline: { type: String }, // Professional headline
+  summary: { type: String }, // About section
+  
+  // Location Information
+  location: { type: String },
+  city: { type: String },
+  state: { type: String },
+  country: { type: String },
+  
+  // Professional Information
+  currentCompany: { type: String },
+  currentPosition: { type: String },
+  industry: { type: String },
+  yearsOfExperience: { type: Number },
+  
+  // Work Experience (Array of positions)
+  workExperience: [{
+    company: { type: String },
+    position: { type: String },
+    duration: { type: String },
+    startDate: { type: String },
+    endDate: { type: String },
+    description: { type: String }
+  }],
+  
+  // Education
+  education: [{
+    institution: { type: String },
+    degree: { type: String },
+    fieldOfStudy: { type: String },
+    graduationYear: { type: String }
+  }],
+  
+  // Skills and Endorsements
+  skills: [{ type: String }],
+  certifications: [{ type: String }],
+  languages: [{ type: String }],
+  
+  // Affinity Groups and Interests
+  affinityGroups: [{ type: String }],
+  interests: [{ type: String }],
+  volunteerExperience: [{ type: String }],
+  
+  // Social and Professional Networks
+  connections: { type: Number }, // Number of LinkedIn connections
+  mutualConnections: [{ type: String }],
+  
+  // Tags and Categories
+  tags: [{ type: String }],
+  categories: [{ type: String }],
+  priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+  
+  // Relationship and Interaction Data
+  relationshipStatus: { type: String }, // How you know them
+  lastInteraction: { type: Date },
+  notes: { type: String },
+  
+  // Metadata
+  userId: { type: String, required: true },
+  source: { type: String, default: 'manual' }, // manual, linkedin, facebook, etc.
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  
+  // Search and Ranking
+  searchScore: { type: Number, default: 0 },
+  contactScore: { type: Number, default: 0 } // Overall contact quality score
+}, {
+  timestamps: true
+});
+
+// Indexes for better search performance
+contactSchema.index({ firstName: 'text', lastName: 'text', email: 'text', currentCompany: 'text' });
+contactSchema.index({ userId: 1, createdAt: -1 });
+contactSchema.index({ tags: 1 });
+contactSchema.index({ searchScore: -1 });
+
+const Contact = mongoose.model('Contact', contactSchema);
+
+// Enhanced CSV processing function for LinkedIn exports
+function parseLinkedInCSV(csvData) {
+  const contacts = [];
+  const lines = csvData.split('\n');
+  
+  if (lines.length < 2) {
+    throw new Error('Invalid CSV format');
+  }
+  
+  // Parse header to detect column positions
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  console.log('CSV Headers detected:', headers);
+  
+  // Common LinkedIn CSV column mappings
+  const columnMappings = {
+    'First Name': 'firstName',
+    'Last Name': 'lastName',
+    'Email Address': 'email',
+    'Company': 'currentCompany',
+    'Position': 'currentPosition',
+    'Connected On': 'connectedOn',
+    'URL': 'linkedinUrl'
+  };
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+    const contact = {
+      userId: 'default', // Will be set by the API
+      source: 'linkedin'
+    };
+    
+    // Map CSV columns to contact fields
+    headers.forEach((header, index) => {
+      const fieldName = columnMappings[header];
+      if (fieldName && values[index]) {
+        contact[fieldName] = values[index];
+      }
+    });
+    
+    // Enhanced data processing
+    if (contact.firstName && contact.lastName) {
+      // Generate profile photo URL (placeholder for LinkedIn integration)
+      if (contact.linkedinUrl) {
+        contact.profilePhoto = `https://via.placeholder.com/150x150?text=${contact.firstName.charAt(0)}${contact.lastName.charAt(0)}`;
+      }
+      
+      // Add default tags
+      contact.tags = ['linkedin-import'];
+      if (contact.currentCompany) {
+        contact.tags.push(contact.currentCompany.toLowerCase());
+      }
+      
+      // Calculate basic experience score
+      contact.searchScore = Math.floor(Math.random() * 100) + 1;
+      
+      contacts.push(contact);
+    }
+  }
+  
+  return contacts;
+}
+
+// File upload configuration
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'));
+    }
+  }
+});
+
+// API Routes
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
+// Get all contacts with advanced filtering
+app.get('/api/contacts', async (req, res) => {
+  try {
+    const { 
+      userId = 'default', 
+      search, 
+      tags, 
+      company, 
+      location,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 50
+    } = req.query;
+    
+    // Build query
+    const query = { userId };
+    
+    // Text search across multiple fields
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { currentCompany: { $regex: search, $options: 'i' } },
+        { currentPosition: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Filter by tags
+    if (tags) {
+      const tagArray = tags.split(',').map(tag => tag.trim());
+      query.tags = { $in: tagArray };
+    }
+    
+    // Filter by company
+    if (company) {
+      query.currentCompany = { $regex: company, $options: 'i' };
+    }
+    
+    // Filter by location
+    if (location) {
+      query.$or = [
+        { location: { $regex: location, $options: 'i' } },
+        { city: { $regex: location, $options: 'i' } },
+        { state: { $regex: location, $options: 'i' } }
+      ];
+    }
+    
+    // Execute query with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    const contacts = await Contact.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Contact.countDocuments(query);
+    
+    res.json({
+      contacts,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ error: 'Failed to fetch contacts' });
+  }
+});
+
+// Get single contact by ID
+app.get('/api/contacts/:id', async (req, res) => {
+  try {
+    const contact = await Contact.findById(req.params.id);
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+    res.json(contact);
+  } catch (error) {
+    console.error('Error fetching contact:', error);
+    res.status(500).json({ error: 'Failed to fetch contact' });
+  }
+});
+
+// Create new contact
+app.post('/api/contacts', async (req, res) => {
+  try {
+    const contactData = {
+      ...req.body,
+      userId: req.body.userId || 'default',
+      updatedAt: new Date()
+    };
+    
+    const contact = new Contact(contactData);
+    await contact.save();
+    
+    res.status(201).json(contact);
+  } catch (error) {
+    console.error('Error creating contact:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Update contact
+app.put('/api/contacts/:id', async (req, res) => {
+  try {
+    const updateData = {
+      ...req.body,
+      updatedAt: new Date()
+    };
+    
+    const contact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+    
+    res.json(contact);
+  } catch (error) {
+    console.error('Error updating contact:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete contact
+app.delete('/api/contacts/:id', async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndDelete(req.params.id);
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+    res.json({ message: 'Contact deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting contact:', error);
+    res.status(500).json({ error: 'Failed to delete contact' });
+  }
+});
+
+// LinkedIn CSV Import
+app.post('/api/linkedin/import', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    const csvData = req.file.buffer.toString('utf-8');
+    const userId = req.body.userId || 'default';
+    
+    console.log('Processing LinkedIn CSV import for user:', userId);
+    
+    // Parse CSV data
+    const parsedContacts = parseLinkedInCSV(csvData);
+    
+    if (parsedContacts.length === 0) {
+      return res.status(400).json({ error: 'No valid contacts found in CSV' });
+    }
+    
+    // Add userId to all contacts
+    const contactsWithUserId = parsedContacts.map(contact => ({
+      ...contact,
+      userId: userId
+    }));
+    
+    // Bulk insert with duplicate handling
+    const importResults = {
+      imported: 0,
+      duplicates: 0,
+      errors: 0,
+      contacts: []
+    };
+    
+    for (const contactData of contactsWithUserId) {
+      try {
+        // Check for duplicates
+        const existingContact = await Contact.findOne({
+          userId: contactData.userId,
+          firstName: contactData.firstName,
+          lastName: contactData.lastName,
+          email: contactData.email
+        });
+        
+        if (existingContact) {
+          importResults.duplicates++;
+          continue;
+        }
+        
+        const contact = new Contact(contactData);
+        const savedContact = await contact.save();
+        
+        importResults.imported++;
+        importResults.contacts.push(savedContact);
+        
+      } catch (error) {
+        console.error('Error saving contact:', error);
+        importResults.errors++;
+      }
+    }
+    
+    console.log(`Import completed: ${importResults.imported} imported, ${importResults.duplicates} duplicates, ${importResults.errors} errors`);
+    
+    res.json({
+      success: true,
+      message: `Successfully imported ${importResults.imported} contacts`,
+      results: importResults
+    });
+    
+  } catch (error) {
+    console.error('LinkedIn import error:', error);
+    res.status(400).json({ 
+      error: 'Failed to process CSV file',
+      details: error.message 
+    });
+  }
+});
+
+// Advanced search with ranking
+app.get('/api/search', async (req, res) => {
+  try {
+    const { 
+      q: searchQuery, 
+      userId = 'default',
+      filters = {}
+    } = req.query;
+    
+    if (!searchQuery) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    // Build aggregation pipeline for advanced search
+    const pipeline = [
+      // Match user contacts
+      { $match: { userId: userId } },
+      
+      // Add search score based on relevance
+      {
+        $addFields: {
+          searchRelevance: {
+            $add: [
+              // Exact name matches get highest score
+              {
+                $cond: [
+                  { $regexMatch: { input: "$firstName", regex: searchQuery, options: "i" } },
+                  10, 0
+                ]
+              },
+              {
+                $cond: [
+                  { $regexMatch: { input: "$lastName", regex: searchQuery, options: "i" } },
+                  10, 0
+                ]
+              },
+              // Company matches
+              {
+                $cond: [
+                  { $regexMatch: { input: "$currentCompany", regex: searchQuery, options: "i" } },
+                  5, 0
+                ]
+              },
+              // Position matches
+              {
+                $cond: [
+                  { $regexMatch: { input: "$currentPosition", regex: searchQuery, options: "i" } },
+                  3, 0
+                ]
+              }
+            ]
+          }
+        }
+      },
+      
+      // Filter by relevance
+      { $match: { searchRelevance: { $gt: 0 } } },
+      
+      // Sort by relevance
+      { $sort: { searchRelevance: -1, createdAt: -1 } },
+      
+      // Limit results
+      { $limit: 100 }
+    ];
+    
+    const results = await Contact.aggregate(pipeline);
+    
+    res.json({
+      query: searchQuery,
+      results: results.length,
+      contacts: results
+    });
+    
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// Get contact statistics
+app.get('/api/stats', async (req, res) => {
+  try {
+    const { userId = 'default' } = req.query;
+    
+    const stats = await Contact.aggregate([
+      { $match: { userId: userId } },
+      {
+        $group: {
+          _id: null,
+          totalContacts: { $sum: 1 },
+          withEmail: { $sum: { $cond: [{ $ne: ["$email", null] }, 1, 0] } },
+          withPhone: { $sum: { $cond: [{ $ne: ["$phone", null] }, 1, 0] } },
+          withCompany: { $sum: { $cond: [{ $ne: ["$currentCompany", null] }, 1, 0] } },
+          bySource: { $push: "$source" }
+        }
+      }
+    ]);
+    
+    const topCompanies = await Contact.aggregate([
+      { $match: { userId: userId, currentCompany: { $ne: null } } },
+      { $group: { _id: "$currentCompany", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    
+    res.json({
+      overview: stats[0] || { totalContacts: 0 },
+      topCompanies
+    });
+    
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ error: 'Failed to get statistics' });
+  }
+});
+
+// Serve static files (for Squarespace integration)
+app.use('/static', express.static(path.join(__dirname, 'public')));
+
+// Squarespace integration endpoint
+app.get('/squarespace-widget', (req, res) => {
+  const widgetHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeeTagged Contact Import</title>
+    <style>
+        .beetagged-widget {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+        }
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            background-color: #e3f2fd;
+        }
+        .upload-area.dragover {
+            background-color: #bbdefb;
+            border-color: #0056b3;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.loading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="beetagged-widget">
+        <h2>🐝 BeeTagged Contact Import</h2>
+        <p>Upload your LinkedIn connections CSV file to import contacts</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div>
+                <strong>📁 Click to select file or drag and drop your CSV</strong>
+                <br><br>
+                <small>Supports LinkedIn CSV exports</small>
+            </div>
+            <input type="file" id="csvFile" accept=".csv" style="display: none;">
+        </div>
+        
+        <div id="fileInfo" style="display: none;">
+            <p><strong>Selected file:</strong> <span id="fileName"></span></p>
+            <p><strong>Size:</strong> <span id="fileSize"></span></p>
+        </div>
+        
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div id="status"></div>
+        
+        <button class="btn" id="uploadBtn" style="display: none;">Upload Contacts</button>
+        <button class="btn" id="clearBtn" style="display: none;">Clear Selection</button>
+    </div>
+
+    <script>
+        const API_BASE = '${process.env.API_URL || 'http://localhost:3000/api'}';
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('csvFile');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const status = document.getElementById('status');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        
+        let selectedFile = null;
+        
+        // File selection handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadBtn.addEventListener('click', uploadFile);
+        clearBtn.addEventListener('click', clearSelection);
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'text/csv') {
+                selectedFile = files[0];
+                showFileInfo();
+            } else {
+                showStatus('Please select a valid CSV file', 'error');
+            }
+        }
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'text/csv') {
+                selectedFile = file;
+                showFileInfo();
+            } else {
+                showStatus('Please select a valid CSV file', 'error');
+            }
+        }
+        
+        function showFileInfo() {
+            fileName.textContent = selectedFile.name;
+            fileSize.textContent = formatFileSize(selectedFile.size);
+            fileInfo.style.display = 'block';
+            uploadBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+            status.innerHTML = '';
+        }
+        
+        function clearSelection() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            uploadBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            progressBar.style.display = 'none';
+            status.innerHTML = '';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function showStatus(message, type) {
+            status.innerHTML = \`<div class="status \${type}">\${message}</div>\`;
+        }
+        
+        function updateProgress(percent) {
+            progressFill.style.width = percent + '%';
+        }
+        
+        async function uploadFile() {
+            if (!selectedFile) {
+                showStatus('No file selected', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('csvFile', selectedFile);
+            formData.append('userId', 'default'); // You can modify this to get user ID
+            
+            try {
+                progressBar.style.display = 'block';
+                updateProgress(0);
+                showStatus('Uploading and processing file...', 'loading');
+                
+                // Simulate progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 30;
+                    if (progress >= 90) {
+                        clearInterval(progressInterval);
+                        progress = 90;
+                    }
+                    updateProgress(progress);
+                }, 500);
+                
+                const response = await fetch(\`\${API_BASE}/linkedin/import\`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                clearInterval(progressInterval);
+                updateProgress(100);
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showStatus(
+                        \`✅ Success! Imported \${result.results.imported} contacts. 
+                        \${result.results.duplicates > 0 ? \`(\${result.results.duplicates} duplicates skipped)\` : ''}\`, 
+                        'success'
+                    );
+                    
+                    // Clear selection after successful upload
+                    setTimeout(() => {
+                        clearSelection();
+                    }, 3000);
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(\`❌ Error: \${error.message}\`, 'error');
+                progressBar.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
+  `;
+  
+  res.send(widgetHTML);
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 10MB.' });
+    }
+  }
+  
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await mongoose.connection.close();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully');
+  await mongoose.connection.close();
+  process.exit(0);
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🐝 BeeTagged server running on port \${PORT}\`);
+  console.log(\`Environment: \${process.env.NODE_ENV || 'development'}\`);
+  console.log(\`Squarespace widget: http://localhost:\${PORT}/squarespace-widget\`);
+});
+
+module.exports = app;
