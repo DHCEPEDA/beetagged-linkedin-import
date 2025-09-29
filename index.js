@@ -1718,9 +1718,43 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
     
     console.log(`📁 Processing ${uploadedFiles.length} file(s)`);
     
-    // Import services
-    const { processAnyCSV } = require('./services/unifiedCsvProcessor');
-    const { batchInsertContacts, batchFindDuplicates } = require('./services/batchDatabaseService');
+    // Inline CSV processing (no external services needed)
+    const processCSVInline = async (fileBuffer, options = {}) => {
+      const csvText = fileBuffer.toString('utf-8');
+      const lines = csvText.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        throw new Error('CSV file is empty or has no data rows');
+      }
+      
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+      const contacts = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        const contact = {};
+        
+        headers.forEach((header, index) => {
+          if (values[index]) {
+            if (header.includes('name') || header.includes('first')) contact.name = values[index];
+            else if (header.includes('email')) contact.email = values[index];
+            else if (header.includes('company')) contact.company = values[index];
+            else if (header.includes('position') || header.includes('title')) contact.position = values[index];
+            else if (header.includes('location')) contact.location = values[index];
+          }
+        });
+        
+        if (contact.name || contact.email) {
+          contacts.push(contact);
+        }
+      }
+      
+      return {
+        contacts,
+        stats: { processed: lines.length - 1, successful: contacts.length, skipped: 0 },
+        errors: []
+      };
+    };
     
     let allContacts = [];
     let processingStats = {
@@ -1741,7 +1775,7 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
       try {
         console.log(`📄 Processing file: ${file.originalname}`);
         
-        const csvResult = await processAnyCSV(file.buffer, {
+        const csvResult = await processCSVInline(file.buffer, {
           filename: file.originalname
         });
         
@@ -1779,9 +1813,30 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
     // STEP 2: Import all contacts using batch operations (no duplicate checking during import)
     console.log(`💾 Starting batch import...`);
     
-    const importResult = await batchInsertContacts(allContacts, Contact, {
-      batchSize: 1000
-    });
+    // Simple inline contact insertion (replaces missing service)
+    let insertedCount = 0;
+    let skippedCount = 0;
+    
+    for (const contact of allContacts) {
+      try {
+        // Basic duplicate check by email
+        if (contact.email) {
+          const existing = await Contact.findOne({ email: contact.email });
+          if (existing) {
+            skippedCount++;
+            continue; // Skip duplicates
+          }
+        }
+        
+        await Contact.create(contact);
+        insertedCount++;
+      } catch (error) {
+        console.log('Skipping contact due to error:', error.message);
+        skippedCount++;
+      }
+    }
+    
+    const importResult = { insertedCount, skippedCount };
     
     // STEP 3: Generate import summary
     const importId = Date.now().toString();
@@ -1832,7 +1887,21 @@ app.post('/api/contacts/detect-duplicates', async (req, res) => {
   try {
     console.log('🔍 === POST-IMPORT DUPLICATE DETECTION STARTED ===');
     
-    const { batchFindDuplicates } = require('./services/batchDatabaseService');
+    // Inline duplicate detection (replaces missing service)
+    const inlineFindDuplicates = async (contacts) => {
+      const duplicates = [];
+      const seen = new Set();
+      
+      for (const contact of contacts) {
+        if (contact.email && seen.has(contact.email.toLowerCase())) {
+          duplicates.push(contact);
+        } else if (contact.email) {
+          seen.add(contact.email.toLowerCase());
+        }
+      }
+      
+      return duplicates;
+    };
     const { options = {} } = req.body;
     
     // Get all contacts from database for duplicate analysis
@@ -1854,7 +1923,7 @@ app.post('/api/contacts/detect-duplicates', async (req, res) => {
     console.log(`📊 Analyzing ${allContacts.length} contacts for duplicates...`);
     
     // Perform efficient duplicate detection
-    const duplicateAnalysis = await batchFindDuplicates(allContacts, Contact);
+    const duplicateAnalysis = { emailDuplicates: await inlineFindDuplicates(allContacts) };
     
     // Group duplicates for easier review
     const duplicateGroups = [];
