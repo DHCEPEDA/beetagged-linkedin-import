@@ -1,70 +1,83 @@
-# BeeTagged - Professional Contact Management Platform
+# Overview
 
-## Overview
-BeeTagged is a production-ready, AI-powered professional contact management platform. It facilitates multi-source data integration (LinkedIn CSV, Facebook OAuth), semantic search, and comprehensive contact management. The platform is deployed on Heroku and designed for scalability, privacy compliance, and efficient social contact architecture. Its core purpose is to provide intelligent contact insights and streamline professional networking through advanced data processing and AI capabilities.
+BeeTagged is a professional contact management platform that uses AI-powered search capabilities to help users manage and search through their professional networks. The application combines React frontend components with an Express.js backend, featuring natural language search, LinkedIn CSV import functionality, and a comprehensive contact management system. The platform is production-ready and optimized for Heroku deployment with MongoDB Atlas integration.
 
-## User Preferences
+# User Preferences
+
 Preferred communication style: Simple, everyday language.
-Always provide exact files and deployment locations after making changes.
 
-## System Architecture
+# System Architecture
 
-### Frontend Architecture
-- **Framework**: React 19 with TypeScript and Vite.
-- **Styling**: TailwindCSS for component styling.
-- **Deployment**: Dual build system for standalone web app and Squarespace widget integration.
-- **State Management**: React Query for server state management.
-- **Build Tools**: Vite for development and Webpack for Squarespace bundle generation.
-- **UI/UX**: Baseball card style detailed contact views with modal popups; dual CSV import with intelligent duplicate consolidation prompts.
+## Frontend Architecture
 
-### Backend Architecture
-- **Framework**: Express.js with Node.js.
-- **Database**: MongoDB with Mongoose ODM for contact data persistence.
-- **Authentication**: Stateless design with Facebook, LinkedIn, and Gmail OAuth integrations.
-- **API Design**: RESTful endpoints with CORS enabled, incorporating rate limiting and error handling.
-- **File Processing**: Multer for CSV file uploads.
-- **Security**: Helmet for security headers and HTTPS enforcement.
+The frontend is built with React 19 and TypeScript, using Vite as the build tool and development server. The architecture follows modern React patterns with:
 
-### Data Storage & Processing
-- **Primary Database**: MongoDB Atlas for production contact storage.
-- **Contact Schema**: Multi-modal contact model supporting social profiles, embeddings, and metadata.
-- **Vector Search**: Text search indexes with semantic capabilities for natural language queries (OpenAI embedding-based).
-- **Data Processing Pipeline**: Contact matching, enrichment (AI-powered skill extraction, career stage analysis), and vector embedding.
-- **Contact Matching**: Primary identifiers (phone/email), social integration, fuzzy matching, and data enrichment.
+- **Component-based Design**: Modular React components with TypeScript support for type safety
+- **Styling Strategy**: TailwindCSS for utility-first styling combined with custom CSS for specific BeeTagged branding
+- **Build System**: Vite for fast development and optimized production builds, configured to output to `dist-vite` directory
+- **State Management**: React Query (@tanstack/react-query) for server state management and caching
+- **Development Tools**: Hot module replacement and TypeScript compilation for improved developer experience
 
-### Search and AI Integration
-- **Natural Language Search**: Semantic query processing with intent recognition and entity extraction.
-- **AI-Powered Features**: OpenAI integration for contact ranking and relationship insights.
-- **Vector Capabilities**: Text embeddings for similarity search.
-- **Search Modes**: Dual modes supporting traditional text search with semantic search fallback.
+The frontend supports both development and production environments with automatic backend URL detection based on the deployment context.
 
-### Import and Integration Systems
-- **LinkedIn Import**: Enhanced CSV parsing with dual-file support (connections and contacts) and intelligent duplicate detection.
-- **Contacts CSV Import**: Full support for generic "Contacts" CSV format with fields: source, firstname, lastname, companies, title, emails, phone numbers, created at, addresses, sites, instantmessagehandles, fullname, birthday, location, bookmarkedat, and profiles.
-- **Multi-Format CSV Processing**: Automatic detection and handling of both LinkedIn and Contacts CSV formats with intelligent field mapping.
-- **Facebook Integration**: OAuth flow and contact import capabilities with enhanced friend access (`user_friends` permission).
-- **Authentication Integration**: Complete OAuth system for LinkedIn, Gmail, and Facebook with real-time status indicators.
+## Backend Architecture
 
-## External Dependencies
+The backend is an Express.js application following RESTful API principles:
 
-### Core Services
-- **MongoDB Atlas**: Cloud database service.
-- **Heroku**: Primary hosting platform for backend API.
-- **OpenAI API**: AI-powered search and contact ranking features.
+- **Framework**: Express.js with comprehensive middleware stack including Helmet for security, CORS for cross-origin requests, and rate limiting
+- **File Processing**: Multer for file uploads with CSV parsing capabilities for LinkedIn data import
+- **Database Layer**: Mongoose ODM for MongoDB interactions, providing schema validation and query abstraction
+- **Security**: Multi-layer security with Helmet, rate limiting (1000 requests per 15 minutes), and CORS configuration
+- **Logging**: Morgan for HTTP request logging and compression middleware for response optimization
 
-### Third-Party APIs
-- **LinkedIn**: Primarily via CSV exports (no direct API integration).
-- **Facebook Graph API**: OAuth authentication and contact import.
-- **Squarespace**: Widget embedding platform.
+## Data Storage
 
-### Development and Build Tools
-- **Vite**: Frontend build tool and development server.
-- **Webpack**: Bundle generation for Squarespace widget.
-- **TailwindCSS**: CSS framework.
-- **TypeScript**: Language for type safety.
+The application uses MongoDB as the primary database:
 
-### Security and Performance
-- **Helmet**: Security middleware.
-- **CORS**: Cross-origin resource sharing.
-- **Rate Limiting**: API request throttling.
-- **Compression**: Response compression.
+- **Database**: MongoDB with Mongoose ODM for schema management and data validation
+- **Connection**: MongoDB Atlas cloud database with connection string stored in environment variables
+- **Collections**: Contact management with support for LinkedIn data import and natural language search indexing
+- **File Processing**: CSV data processing for LinkedIn Connections and Contacts import with data merging capabilities
+
+## API Design
+
+RESTful API structure with specialized endpoints:
+
+- **Contact Management**: CRUD operations for contact data with pagination support
+- **Search Functionality**: Natural language search endpoint with AI-powered query processing
+- **Data Import**: LinkedIn CSV file processing with dual-file support (Connections and Contacts)
+- **Health Monitoring**: Health check endpoints for deployment monitoring
+
+# External Dependencies
+
+## Core Framework Dependencies
+
+- **React Ecosystem**: React 19, React DOM, and React Query for frontend state management
+- **Node.js Backend**: Express.js with security middleware (Helmet, CORS, rate limiting)
+- **Database**: MongoDB Atlas with Mongoose ODM for data persistence
+- **Build Tools**: Vite for frontend bundling, TypeScript for type safety
+
+## AI and Search Integration
+
+- **OpenAI Integration**: OpenAI SDK for natural language processing and semantic search capabilities
+- **Similarity Computing**: Cosine similarity computation for contact matching and search relevance
+
+## File Processing and Data Import
+
+- **File Upload**: Multer for handling multipart form data and file uploads
+- **CSV Processing**: CSV-parser for LinkedIn data import functionality
+- **Data Merging**: Custom logic for combining LinkedIn Connections and Contacts CSV files
+
+## Development and Production Tools
+
+- **Security**: Helmet for HTTP security headers, express-rate-limit for API protection
+- **Logging**: Morgan for HTTP request logging in production environments
+- **Performance**: Compression middleware for response optimization
+- **Styling**: TailwindCSS and PostCSS for responsive design and utility-first CSS
+
+## Deployment Infrastructure
+
+- **Primary Deployment**: Heroku for production backend hosting
+- **Alternative Deployment**: Serverless function support for Vercel/Netlify
+- **Environment Management**: dotenv for configuration management across environments
+- **Session Management**: localStorage-based session persistence with automatic token generation

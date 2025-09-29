@@ -1,1 +1,0 @@
-{"scripts":{"start":"node index.js","build":"npx webpack --config webpack.production.config.js","heroku-postbuild":"npm run build"}}
