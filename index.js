@@ -50,9 +50,14 @@ app.use(cors({
     // Check for exact origin match, Squarespace domains, or replit dev domains
     const isAllowed = !origin || // Same origin requests (server-to-server)
       allowedOrigins.includes(origin) ||
-      (origin && origin.includes('.squarespace.com')) || // Allow all Squarespace domains
-      (origin && origin.includes('.squarespace-cdn.com')) || // Squarespace CDN
-      (origin && origin.includes('static1.squarespace.com')) || // Squarespace static assets
+      (origin && (
+        origin.includes('.squarespace.com') || // Allow all Squarespace domains
+        origin.includes('.squarespace-cdn.com') || // Squarespace CDN
+        origin.includes('static1.squarespace.com') || // Squarespace static assets
+        origin.includes('squarespace.com') || // Any squarespace subdomain
+        origin.includes('beattagged.squarespace.com') || // Your specific site
+        origin.startsWith('https://') && origin.includes('squarespace') // Any HTTPS squarespace
+      )) ||
       (process.env.NODE_ENV !== 'production' && origin && (
         origin.includes('.replit.dev') || 
         origin.includes('.repl.co')
@@ -62,12 +67,18 @@ app.use(cors({
       callback(null, true);
     } else {
       console.warn('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS policy'));
+      // In development, be more permissive to help with debugging
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('🔧 Development mode: allowing origin for debugging');
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS policy'));
+      }
     }
   },
   credentials: false,
-  methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept', 'Cache-Control']
 }));
 
 // Trust proxy for Heroku
@@ -1718,40 +1729,86 @@ app.post('/api/import/linkedin', upload.any(), async (req, res) => {
     
     console.log(`📁 Processing ${uploadedFiles.length} file(s)`);
     
-    // Inline CSV processing (no external services needed)
+    // Enhanced CSV processing with better parsing
     const processCSVInline = async (fileBuffer, options = {}) => {
+      console.log('📁 Processing CSV file...');
       const csvText = fileBuffer.toString('utf-8');
+      
+      // Better CSV parsing to handle quotes and commas
+      const parseCSVLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+      
       const lines = csvText.split('\n').filter(line => line.trim());
       
       if (lines.length < 2) {
         throw new Error('CSV file is empty or has no data rows');
       }
       
-      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
       const contacts = [];
       
+      console.log('📋 CSV Headers found:', headers);
+      
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        const values = parseCSVLine(lines[i]);
         const contact = {};
         
         headers.forEach((header, index) => {
-          if (values[index]) {
-            if (header.includes('name') || header.includes('first')) contact.name = values[index];
-            else if (header.includes('email')) contact.email = values[index];
-            else if (header.includes('company')) contact.company = values[index];
-            else if (header.includes('position') || header.includes('title')) contact.position = values[index];
-            else if (header.includes('location')) contact.location = values[index];
+          const value = values[index] ? values[index].replace(/"/g, '').trim() : '';
+          if (value) {
+            // LinkedIn CSV format
+            if (header.includes('firstname') || header.includes('first')) contact.name = value;
+            else if (header.includes('lastname') && contact.name) contact.name += ' ' + value;
+            else if (header.includes('lastname') && !contact.name) contact.name = value;
+            else if (header.includes('emailaddress') || header.includes('email')) contact.email = value;
+            else if (header.includes('company')) contact.company = value;
+            else if (header.includes('position') || header.includes('title') || header.includes('job')) contact.position = value;
+            else if (header.includes('location') || header.includes('region')) contact.location = value;
+            else if (header.includes('connectedon')) contact.connectedDate = value;
+            
+            // Generic CSV format
+            else if (header === 'name' || header === 'fullname') contact.name = value;
+            else if (header === 'emails') contact.email = value;
+            else if (header === 'companies') contact.company = value;
+            else if (header === 'jobtitle') contact.position = value;
           }
         });
         
+        // Ensure we have at least a name or email
         if (contact.name || contact.email) {
+          if (!contact.name && contact.email) {
+            contact.name = contact.email.split('@')[0]; // Use email prefix as name fallback
+          }
           contacts.push(contact);
+          
+          if (contacts.length <= 3) {
+            console.log(`✅ Sample contact ${contacts.length}:`, contact);
+          }
         }
       }
       
+      console.log(`📊 Extracted ${contacts.length} valid contacts from ${lines.length - 1} rows`);
+      
       return {
         contacts,
-        stats: { processed: lines.length - 1, successful: contacts.length, skipped: 0 },
+        stats: { processed: lines.length - 1, successful: contacts.length, skipped: (lines.length - 1) - contacts.length },
         errors: []
       };
     };
