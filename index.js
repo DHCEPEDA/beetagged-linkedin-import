@@ -257,8 +257,12 @@ function parseLinkedInCSV(csvData) {
   const contacts = [];
   const lines = csvData.split('\n');
   
+  console.log('📄 Processing CSV file...');
+  console.log(`Total lines in CSV: ${lines.length}`);
+  
   if (lines.length < 2) {
-    throw new Error('Invalid CSV format');
+    console.error('❌ CSV must have at least 2 lines (header + data)');
+    throw new Error('Invalid CSV format: file is empty or missing header');
   }
   
   // Better CSV parsing to handle quotes and commas
@@ -283,21 +287,37 @@ function parseLinkedInCSV(csvData) {
   };
   
   // Parse header to detect column positions
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
-  console.log('CSV Headers detected:', headers);
+  const rawHeaders = parseCSVLine(lines[0]);
+  const headers = rawHeaders.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  console.log('📋 Raw CSV Headers:', rawHeaders);
+  console.log('📋 Normalized Headers:', headers);
   
   // Common LinkedIn CSV column mappings
   const columnMappings = {
     'firstname': 'firstName',
+    'firstnames': 'firstName',
+    'fname': 'firstName',
     'lastname': 'lastName',
+    'lastnames': 'lastName',
+    'lname': 'lastName',
     'emailaddress': 'email',
     'email': 'email',
+    'emails': 'email',
     'company': 'currentCompany',
+    'companyname': 'currentCompany',
+    'organization': 'currentCompany',
     'position': 'currentPosition',
+    'jobtitle': 'currentPosition',
+    'title': 'currentPosition',
     'connectedon': 'connectedOn',
     'url': 'linkedinUrl',
+    'linkedinurl': 'linkedinUrl',
+    'profileurl': 'linkedinUrl',
     'location': 'location'
   };
+  
+  let skippedRows = 0;
+  let processedRows = 0;
   
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -317,6 +337,8 @@ function parseLinkedInCSV(csvData) {
         contact[fieldName] = value;
       }
     });
+    
+    processedRows++;
     
     // Enhanced data processing
     if (contact.firstName && contact.lastName) {
@@ -338,7 +360,18 @@ function parseLinkedInCSV(csvData) {
       contact.searchScore = Math.floor(Math.random() * 100) + 1;
       
       contacts.push(contact);
+    } else {
+      skippedRows++;
+      if (skippedRows <= 3) {
+        console.log(`⚠️  Row ${i} skipped - missing name. Data:`, JSON.stringify(contact));
+      }
     }
+  }
+  
+  console.log(`✅ Processed ${processedRows} rows, extracted ${contacts.length} valid contacts, skipped ${skippedRows} rows`);
+  
+  if (contacts.length === 0 && processedRows > 0) {
+    console.error('❌ No valid contacts found! Check if CSV has "First Name" and "Last Name" columns');
   }
   
   return contacts;
