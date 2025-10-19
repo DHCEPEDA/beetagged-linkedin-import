@@ -65,8 +65,9 @@ RESTful API structure with specialized endpoints:
 ## File Processing and Data Import
 
 - **File Upload**: Multer for handling multipart form data and file uploads
-- **CSV Processing**: CSV-parser for LinkedIn data import functionality
-- **Data Merging**: Custom logic for combining LinkedIn Connections and Contacts CSV files
+- **CSV Processing**: PapaParse for robust LinkedIn CSV data import with header detection and format flexibility
+- **Format Support**: Handles both LinkedIn Connections export (First Name/Last Name columns) and Contacts export (single Name column)
+- **Data Merging**: Intelligent name parsing and field mapping for various LinkedIn CSV formats
 
 ## Development and Production Tools
 
@@ -78,6 +79,20 @@ RESTful API structure with specialized endpoints:
 ## Deployment Infrastructure
 
 - **Primary Deployment**: Heroku for production backend hosting
-- **Alternative Deployment**: Serverless function support for Vercel/Netlify
+- **Build Configuration**: Frontend pre-built in `dist-vite/`, dummy build script for Heroku compatibility
 - **Environment Management**: dotenv for configuration management across environments
 - **Session Management**: localStorage-based session persistence with automatic token generation
+
+# Recent Updates (October 2025)
+
+## CSV Import Enhancement
+- **Date**: October 19, 2025
+- **Change**: Replaced manual CSV parsing with PapaParse library for professional-grade CSV processing
+- **Impact**: CSV imports now handle all LinkedIn export formats (Connections, Contacts), quoted fields, special characters, and various column name formats
+- **Dependencies**: Added `papaparse` package
+
+## Heroku Deployment Fix
+- **Date**: October 19, 2025
+- **Change**: Modified package.json build script to use dummy echo command instead of vite build
+- **Reason**: Frontend is pre-built in `dist-vite/`, no need to rebuild on Heroku (avoids ES module errors)
+- **Build Script**: `"build": "echo 'Skipping frontend build - using pre-built dist-vite'"`
