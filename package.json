@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "vite",
+    "build": "echo 'Skipping frontend build - using pre-built dist-vite'",
     "preview": "vite preview"
   },
   "engines": {
