@@ -18,6 +18,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const Papa = require('papaparse');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const csv = require('csv-parser');
@@ -252,126 +253,94 @@ contactSchema.index({ searchScore: -1 });
 
 const Contact = mongoose.model('Contact', contactSchema);
 
-// Enhanced CSV processing function for LinkedIn exports
+// Robust CSV processing using PapaParse
 function parseLinkedInCSV(csvData) {
-  const contacts = [];
-  const lines = csvData.split('\n');
+  console.log('📄 Processing CSV with PapaParse...');
   
-  console.log('📄 Processing CSV file...');
-  console.log(`Total lines in CSV: ${lines.length}`);
+  // Parse CSV with PapaParse
+  const parseResult = Papa.parse(csvData, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (header) => header.trim()
+  });
   
-  if (lines.length < 2) {
-    console.error('❌ CSV must have at least 2 lines (header + data)');
-    throw new Error('Invalid CSV format: file is empty or missing header');
+  if (parseResult.errors.length > 0) {
+    console.error('⚠️  CSV parsing warnings:', parseResult.errors.slice(0, 3));
   }
   
-  // Better CSV parsing to handle quotes and commas
-  const parseCSVLine = (line) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  };
+  const rows = parseResult.data;
+  console.log(`📊 Parsed ${rows.length} rows from CSV`);
+  console.log('📋 CSV Columns:', parseResult.meta.fields);
   
-  // Parse header to detect column positions
-  const rawHeaders = parseCSVLine(lines[0]);
-  const headers = rawHeaders.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
-  console.log('📋 Raw CSV Headers:', rawHeaders);
-  console.log('📋 Normalized Headers:', headers);
+  if (rows.length === 0) {
+    throw new Error('CSV file is empty or has no data rows');
+  }
   
-  // Common LinkedIn CSV column mappings
-  const columnMappings = {
-    'firstname': 'firstName',
-    'firstnames': 'firstName',
-    'fname': 'firstName',
-    'lastname': 'lastName',
-    'lastnames': 'lastName',
-    'lname': 'lastName',
-    'emailaddress': 'email',
-    'email': 'email',
-    'emails': 'email',
-    'company': 'currentCompany',
-    'companyname': 'currentCompany',
-    'organization': 'currentCompany',
-    'position': 'currentPosition',
-    'jobtitle': 'currentPosition',
-    'title': 'currentPosition',
-    'connectedon': 'connectedOn',
-    'url': 'linkedinUrl',
-    'linkedinurl': 'linkedinUrl',
-    'profileurl': 'linkedinUrl',
-    'location': 'location'
-  };
+  const contacts = [];
+  let skipped = 0;
+  const issues = [];
   
-  let skippedRows = 0;
-  let processedRows = 0;
-  
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    
-    const values = parseCSVLine(line);
-    const contact = {
-      userId: 'default', // Will be set by the API
-      source: 'linkedin'
-    };
-    
-    // Map CSV columns to contact fields
-    headers.forEach((header, index) => {
-      const fieldName = columnMappings[header];
-      const value = values[index] ? values[index].replace(/"/g, '').trim() : '';
-      if (fieldName && value) {
-        contact[fieldName] = value;
-      }
-    });
-    
-    processedRows++;
-    
-    // Enhanced data processing
-    if (contact.firstName && contact.lastName) {
-      // Generate combined name
-      contact.name = `${contact.firstName} ${contact.lastName}`;
+  rows.forEach((row, index) => {
+    try {
+      // Flexible name extraction
+      let firstName = row['First Name'] || row['FirstName'] || row['first_name'] || '';
+      let lastName = row['Last Name'] || row['LastName'] || row['last_name'] || '';
       
-      // Generate profile photo URL (placeholder for LinkedIn integration)
-      if (contact.linkedinUrl) {
-        contact.profilePhoto = `https://via.placeholder.com/150x150?text=${contact.firstName.charAt(0)}${contact.lastName.charAt(0)}`;
+      // Handle single "Name" field by splitting
+      if (!firstName && !lastName && row['Name']) {
+        const nameParts = row['Name'].trim().split(/\s+/);
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || '';
       }
       
-      // Add default tags
-      contact.tags = ['linkedin-import'];
+      // Skip if no name at all
+      if (!firstName && !lastName) {
+        skipped++;
+        if (issues.length < 5) {
+          issues.push(`Row ${index + 2}: No name found`);
+        }
+        return;
+      }
+      
+      // Build contact object
+      const contact = {
+        firstName: firstName,
+        lastName: lastName,
+        name: `${firstName} ${lastName}`.trim(),
+        email: row['Email Address'] || row['Email'] || row['email'] || '',
+        currentCompany: row['Company'] || row['Organization'] || row['company'] || '',
+        currentPosition: row['Position'] || row['Job Title'] || row['Title'] || row['position'] || '',
+        location: row['Location'] || row['location'] || '',
+        linkedinUrl: row['URL'] || row['LinkedIn URL'] || row['Profile URL'] || row['url'] || '',
+        connectedOn: row['Connected On'] || row['connected_on'] || '',
+        source: 'linkedin',
+        tags: ['linkedin-import'],
+        searchScore: Math.floor(Math.random() * 100) + 1
+      };
+      
+      // Add company tag if available
       if (contact.currentCompany) {
-        contact.tags.push(contact.currentCompany.toLowerCase());
+        contact.tags.push(contact.currentCompany.toLowerCase().replace(/[^a-z0-9]/g, '-'));
       }
       
-      // Calculate basic experience score
-      contact.searchScore = Math.floor(Math.random() * 100) + 1;
+      // Generate placeholder profile photo
+      if (firstName && lastName) {
+        contact.profilePhoto = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}+${encodeURIComponent(lastName)}&size=150&background=0D8ABC&color=fff`;
+      }
       
       contacts.push(contact);
-    } else {
-      skippedRows++;
-      if (skippedRows <= 3) {
-        console.log(`⚠️  Row ${i} skipped - missing name. Data:`, JSON.stringify(contact));
+      
+    } catch (err) {
+      skipped++;
+      if (issues.length < 5) {
+        issues.push(`Row ${index + 2}: ${err.message}`);
       }
     }
-  }
+  });
   
-  console.log(`✅ Processed ${processedRows} rows, extracted ${contacts.length} valid contacts, skipped ${skippedRows} rows`);
-  
-  if (contacts.length === 0 && processedRows > 0) {
-    console.error('❌ No valid contacts found! Check if CSV has "First Name" and "Last Name" columns');
+  console.log(`✅ Successfully parsed ${contacts.length} contacts, skipped ${skipped} rows`);
+  if (issues.length > 0) {
+    console.log('⚠️  Sample issues:', issues);
   }
   
   return contacts;
