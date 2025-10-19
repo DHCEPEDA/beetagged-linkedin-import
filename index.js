@@ -269,11 +269,12 @@ function parseLinkedInCSV(csvData) {
   }
   
   const rows = parseResult.data;
+  const columns = parseResult.meta.fields || [];
   console.log(`📊 Parsed ${rows.length} rows from CSV`);
-  console.log('📋 CSV Columns:', parseResult.meta.fields);
+  console.log('📋 CSV Columns:', columns);
   
   if (rows.length === 0) {
-    throw new Error('CSV file is empty or has no data rows');
+    return { contacts: [], columns, issues: ['CSV file is empty or has no data rows'] };
   }
   
   const contacts = [];
@@ -282,9 +283,9 @@ function parseLinkedInCSV(csvData) {
   
   rows.forEach((row, index) => {
     try {
-      // Flexible name extraction
-      let firstName = row['First Name'] || row['FirstName'] || row['first_name'] || '';
-      let lastName = row['Last Name'] || row['LastName'] || row['last_name'] || '';
+      // Flexible name extraction - check all possible column names
+      let firstName = row['First Name'] || row['FirstName'] || row['first_name'] || row['First'] || '';
+      let lastName = row['Last Name'] || row['LastName'] || row['last_name'] || row['Last'] || '';
       
       // Handle single "Name" field by splitting
       if (!firstName && !lastName && row['Name']) {
@@ -297,7 +298,8 @@ function parseLinkedInCSV(csvData) {
       if (!firstName && !lastName) {
         skipped++;
         if (issues.length < 5) {
-          issues.push(`Row ${index + 2}: No name found`);
+          const availableFields = Object.keys(row).filter(k => row[k]).join(', ');
+          issues.push(`Row ${index + 2}: No name found. Available fields: ${availableFields}`);
         }
         return;
       }
@@ -307,7 +309,7 @@ function parseLinkedInCSV(csvData) {
         firstName: firstName,
         lastName: lastName,
         name: `${firstName} ${lastName}`.trim(),
-        email: row['Email Address'] || row['Email'] || row['email'] || '',
+        email: row['Email Address'] || row['Email'] || row['email'] || row['E-mail Address'] || '',
         currentCompany: row['Company'] || row['Organization'] || row['company'] || '',
         currentPosition: row['Position'] || row['Job Title'] || row['Title'] || row['position'] || '',
         location: row['Location'] || row['location'] || '',
@@ -343,7 +345,7 @@ function parseLinkedInCSV(csvData) {
     console.log('⚠️  Sample issues:', issues);
   }
   
-  return contacts;
+  return { contacts, columns, issues };
 }
 
 // File upload configuration
@@ -683,11 +685,18 @@ app.post('/api/linkedin/import', upload.single('csvFile'), async (req, res) => {
     console.log('Processing LinkedIn CSV import for user:', userId);
     
     // Parse CSV data
-    const parsedContacts = parseLinkedInCSV(csvData);
+    const parseResult = parseLinkedInCSV(csvData);
     
-    if (parsedContacts.length === 0) {
-      return res.status(400).json({ error: 'No valid contacts found in CSV' });
+    if (parseResult.contacts.length === 0) {
+      console.error('❌ No contacts found. Columns:', parseResult.columns);
+      return res.status(400).json({ 
+        error: 'No valid contacts found in CSV',
+        details: `Found columns: ${parseResult.columns.join(', ')}. Need at minimum: "First Name" and "Last Name" OR single "Name" column.`,
+        columnsFound: parseResult.columns
+      });
     }
+    
+    const parsedContacts = parseResult.contacts;
     
     // Add userId to all contacts
     const contactsWithUserId = parsedContacts.map(contact => ({
