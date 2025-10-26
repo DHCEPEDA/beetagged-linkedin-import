@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 
+// Use empty string for same-origin (Vite proxy) or full URL for production
 const API_URL = window.location.hostname.includes('localhost') || window.location.hostname.includes('replit')
-  ? 'http://localhost:3000'
+  ? '' // Use Vite proxy for /api requests
   : 'https://your-heroku-app.herokuapp.com'; // Update with your Heroku URL
 
 export default function BeeTaggedApp() {
