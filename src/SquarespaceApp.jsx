@@ -23,7 +23,9 @@ export default function BeeTaggedApp() {
 
     setIsSearching(true);
     try {
-      const response = await fetch(`${API_URL}/api/contacts?search=${encodeURIComponent(query)}`);
+      // Get userId from localStorage or default
+      const userId = localStorage.getItem('beetagged_user_id') || 'default';
+      const response = await fetch(`${API_URL}/api/contacts?userId=${userId}&search=${encodeURIComponent(query)}`);
       const data = await response.json();
       setSearchResults(data.contacts || []);
     } catch (error) {
@@ -44,7 +46,13 @@ export default function BeeTaggedApp() {
 
     const formData = new FormData();
     formData.append('csvFile', file);
-    formData.append('userId', 'default-user');
+    // Use consistent userId from localStorage or default
+    let userId = localStorage.getItem('beetagged_user_id');
+    if (!userId) {
+      userId = 'default';
+      localStorage.setItem('beetagged_user_id', userId);
+    }
+    formData.append('userId', userId);
 
     try {
       const response = await fetch(`${API_URL}/api/linkedin/import`, {
