@@ -284,12 +284,13 @@ function parseLinkedInCSV(csvData) {
   rows.forEach((row, index) => {
     try {
       // Flexible name extraction - check all possible column names
-      let firstName = row['First Name'] || row['FirstName'] || row['first_name'] || row['First'] || '';
-      let lastName = row['Last Name'] || row['LastName'] || row['last_name'] || row['Last'] || '';
+      let firstName = row['FirstName'] || row['First Name'] || row['first_name'] || row['First'] || '';
+      let lastName = row['LastName'] || row['Last Name'] || row['last_name'] || row['Last'] || '';
       
-      // Handle single "Name" field by splitting
-      if (!firstName && !lastName && row['Name']) {
-        const nameParts = row['Name'].trim().split(/\s+/);
+      // Handle FullName or Name field by splitting
+      if (!firstName && !lastName && (row['FullName'] || row['Name'])) {
+        const fullName = (row['FullName'] || row['Name']).trim();
+        const nameParts = fullName.split(/\s+/);
         firstName = nameParts[0] || '';
         lastName = nameParts.slice(1).join(' ') || '';
       }
@@ -304,17 +305,29 @@ function parseLinkedInCSV(csvData) {
         return;
       }
       
+      // Extract email from Emails field (may be comma-separated)
+      let email = row['Emails'] || row['Email'] || row['Email Address'] || row['email'] || row['E-mail Address'] || '';
+      if (email && email.includes(',')) {
+        email = email.split(',')[0].trim(); // Take first email if multiple
+      }
+      
+      // Extract company from Companies field (may be comma-separated)
+      let company = row['Companies'] || row['Company'] || row['Organization'] || row['company'] || '';
+      if (company && company.includes(',')) {
+        company = company.split(',')[0].trim(); // Take first company if multiple
+      }
+      
       // Build contact object
       const contact = {
         firstName: firstName,
         lastName: lastName,
         name: `${firstName} ${lastName}`.trim(),
-        email: row['Email Address'] || row['Email'] || row['email'] || row['E-mail Address'] || '',
-        currentCompany: row['Company'] || row['Organization'] || row['company'] || '',
-        currentPosition: row['Position'] || row['Job Title'] || row['Title'] || row['position'] || '',
+        email: email,
+        currentCompany: company,
+        currentPosition: row['Title'] || row['Position'] || row['Job Title'] || row['position'] || '',
         location: row['Location'] || row['location'] || '',
-        linkedinUrl: row['URL'] || row['LinkedIn URL'] || row['Profile URL'] || row['url'] || '',
-        connectedOn: row['Connected On'] || row['connected_on'] || '',
+        linkedinUrl: row['Profiles'] || row['URL'] || row['LinkedIn URL'] || row['Profile URL'] || row['url'] || '',
+        connectedOn: row['CreatedAt'] || row['Created At'] || row['Connected On'] || row['connected_on'] || '',
         source: 'linkedin',
         tags: ['linkedin-import'],
         searchScore: Math.floor(Math.random() * 100) + 1
