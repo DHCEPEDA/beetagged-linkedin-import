@@ -55,55 +55,28 @@ app.use(limiter);
 app.use(compression());
 app.use(morgan('combined'));
 
-// Enhanced CORS configuration for Squarespace
+// Enhanced CORS configuration for Squarespace embedded widgets
 app.use(cors({
   origin: function (origin, callback) {
-    const prodOrigins = [
-      'https://www.beetagged.com',
-      'https://beetagged.com'
-    ];
-    
-    const devOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5000',
-      'http://127.0.0.1:3000',
-      'https://replit.dev'
-    ];
-    
-    let allowedOrigins;
-    if (process.env.NODE_ENV === 'production') {
-      allowedOrigins = prodOrigins;
-    } else {
-      allowedOrigins = [...prodOrigins, ...devOrigins];
+    // Allow requests with no origin (server-to-server, curl, Postman)
+    if (!origin) {
+      return callback(null, true);
     }
     
-    // Check for exact origin match, Squarespace domains, or replit dev domains
-    const isAllowed = !origin || // Same origin requests (server-to-server)
-      allowedOrigins.includes(origin) ||
-      (origin && (
-        origin.includes('.squarespace.com') || // Allow all Squarespace domains
-        origin.includes('.squarespace-cdn.com') || // Squarespace CDN
-        origin.includes('static1.squarespace.com') || // Squarespace static assets
-        origin.includes('squarespace.com') || // Any squarespace subdomain
-        origin.includes('beattagged.squarespace.com') || // Your specific site
-        origin.startsWith('https://') && origin.includes('squarespace') // Any HTTPS squarespace
-      )) ||
-      (process.env.NODE_ENV !== 'production' && origin && (
-        origin.includes('.replit.dev') || 
-        origin.includes('.repl.co')
-      ));
+    // Check for allowed origins
+    const isAllowed = 
+      origin.includes('.squarespace.com') || // All Squarespace sites
+      origin.includes('.sqsp.com') || // Squarespace CDN
+      origin.includes('localhost') || // Local development
+      origin.includes('.replit.dev') || // Replit development
+      origin.includes('.repl.co') || // Replit preview
+      origin.startsWith('https://'); // Any HTTPS origin for embedded widgets
     
     if (isAllowed) {
       callback(null, true);
     } else {
       console.warn('CORS blocked origin:', origin);
-      // In development, be more permissive to help with debugging
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('🔧 Development mode: allowing origin for debugging');
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS policy'));
-      }
+      callback(new Error('Not allowed by CORS policy'));
     }
   },
   credentials: false,
