@@ -29,7 +29,7 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enhanced security middleware
+// Enhanced security middleware with iframe embedding support
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -38,9 +38,11 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
+      frameAncestors: ["'self'", "https://*.squarespace.com", "https://*.sqsp.com"], // Allow Squarespace embedding
     },
   },
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  frameguard: false // Disable X-Frame-Options to allow iframe embedding
 }));
 
 // Rate limiting
