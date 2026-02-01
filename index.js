@@ -38,7 +38,7 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      frameAncestors: ["'self'", "https://*.squarespace.com", "https://*.sqsp.com"], // Allow Squarespace embedding
+      frameAncestors: ["*"], // Allow embedding from any domain
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
