@@ -354,13 +354,153 @@ const upload = multer({
 
 // API Routes
 
-// Root endpoint
+// Root endpoint - Serve BeeTagged App HTML
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'BeeTagged Server running',
-    environment: process.env.NODE_ENV || 'development',
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeeTagged - AI-Powered Contact Search</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { font-size: 2.5em; color: #667eea; margin-bottom: 10px; }
+    .header p { color: #666; font-size: 1.1em; }
+    .search-box { position: relative; margin-bottom: 30px; }
+    .search-input { width: 100%; padding: 16px 20px; font-size: 1.1em; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; transition: border-color 0.2s; }
+    .search-input:focus { border-color: #667eea; }
+    .upload-section { background: #f0f4ff; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px; }
+    .upload-section h3 { color: #4a5568; margin-bottom: 10px; }
+    .upload-section p { color: #718096; margin-bottom: 20px; font-size: 0.9em; }
+    .upload-btn { background: #667eea; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 1em; cursor: pointer; }
+    .upload-btn:hover { background: #5a6fd6; }
+    .upload-btn:disabled { background: #a0aec0; cursor: not-allowed; }
+    .status { padding: 12px; border-radius: 8px; margin-top: 15px; }
+    .status.success { background: #c6f6d5; color: #276749; }
+    .status.error { background: #fed7d7; color: #c53030; }
+    .results { margin-top: 20px; }
+    .contact-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .contact-name { font-size: 1.2em; font-weight: 600; color: #2d3748; margin-bottom: 5px; }
+    .contact-detail { color: #718096; font-size: 0.95em; margin-bottom: 3px; }
+    .hidden { display: none; }
+    .loading { color: #667eea; text-align: center; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🐝 BeeTagged</h1>
+      <p>AI-Powered Contact Search</p>
+    </div>
+    
+    <div class="search-box">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search your contacts... (e.g., 'engineers at Google' or 'founders in SF')">
+    </div>
+    
+    <div id="results" class="results"></div>
+    
+    <div class="upload-section">
+      <h3>📁 Import LinkedIn Contacts</h3>
+      <p>Upload your LinkedIn Connections.csv or Contacts.csv file</p>
+      <input type="file" id="fileInput" accept=".csv" style="display:none">
+      <button class="upload-btn" id="uploadBtn" onclick="document.getElementById('fileInput').click()">Choose CSV File</button>
+      <div id="uploadStatus"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '';
+    let searchTimeout;
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      clearTimeout(searchTimeout);
+      const query = e.target.value.trim();
+      
+      if (query.length < 2) {
+        document.getElementById('results').innerHTML = '';
+        return;
+      }
+      
+      searchTimeout = setTimeout(() => searchContacts(query), 300);
+    });
+
+    async function searchContacts(query) {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
+      
+      try {
+        const userId = localStorage.getItem('beetagged_user_id') || 'default';
+        const response = await fetch(API_URL + '/api/contacts?userId=' + userId + '&search=' + encodeURIComponent(query));
+        const data = await response.json();
+        
+        if (data.contacts && data.contacts.length > 0) {
+          resultsDiv.innerHTML = data.contacts.map(c => 
+            '<div class="contact-card">' +
+              '<div class="contact-name">' + (c.firstName || '') + ' ' + (c.lastName || '') + '</div>' +
+              (c.position ? '<div class="contact-detail">💼 ' + c.position + '</div>' : '') +
+              (c.company ? '<div class="contact-detail">🏢 ' + c.company + '</div>' : '') +
+              (c.email ? '<div class="contact-detail">📧 ' + c.email + '</div>' : '') +
+            '</div>'
+          ).join('');
+        } else {
+          resultsDiv.innerHTML = '<div class="loading">No contacts found</div>';
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = '<div class="status error">Search failed: ' + error.message + '</div>';
+      }
+    }
+
+    // File upload functionality
+    document.getElementById('fileInput').addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const btn = document.getElementById('uploadBtn');
+      const status = document.getElementById('uploadStatus');
+      
+      btn.disabled = true;
+      btn.textContent = 'Uploading...';
+      status.innerHTML = '';
+      
+      const formData = new FormData();
+      formData.append('csvFile', file);
+      
+      let userId = localStorage.getItem('beetagged_user_id');
+      if (!userId) {
+        userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('beetagged_user_id', userId);
+      }
+      formData.append('userId', userId);
+      
+      try {
+        const response = await fetch(API_URL + '/api/linkedin/import', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          status.innerHTML = '<div class="status success">✅ Imported ' + result.results.imported + ' contacts!</div>';
+        } else {
+          status.innerHTML = '<div class="status error">❌ ' + (result.error || 'Upload failed') + '</div>';
+        }
+      } catch (error) {
+        status.innerHTML = '<div class="status error">❌ ' + error.message + '</div>';
+      }
+      
+      btn.disabled = false;
+      btn.textContent = 'Choose CSV File';
+      e.target.value = '';
+    });
+  </script>
+</body>
+</html>
+  `);
 });
 
 // Health check
