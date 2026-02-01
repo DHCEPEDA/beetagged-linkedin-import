@@ -407,7 +407,7 @@ app.get('/', (req, res) => {
       <h3>📁 Import LinkedIn Contacts</h3>
       <p>Upload your LinkedIn Connections.csv or Contacts.csv file</p>
       <input type="file" id="fileInput" accept=".csv" style="display:none">
-      <button class="upload-btn" id="uploadBtn" onclick="document.getElementById('fileInput').click()">Choose CSV File</button>
+      <button class="upload-btn" id="uploadBtn">Choose CSV File</button>
       <div id="uploadStatus"></div>
     </div>
   </div>
@@ -454,6 +454,11 @@ app.get('/', (req, res) => {
         resultsDiv.innerHTML = '<div class="status error">Search failed: ' + error.message + '</div>';
       }
     }
+
+    // Upload button click handler
+    document.getElementById('uploadBtn').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
 
     // File upload functionality
     document.getElementById('fileInput').addEventListener('change', async function(e) {
