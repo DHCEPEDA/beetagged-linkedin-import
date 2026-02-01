@@ -494,7 +494,7 @@ app.get("/", (req, res) => {
   </div>
 
   <script>
-    const API_URL = '';
+    const API_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
     let searchTimeout;
 
     // Search functionality
