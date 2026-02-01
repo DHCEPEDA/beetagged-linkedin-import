@@ -308,6 +308,10 @@ function parseLinkedInCSV(csvData) {
         row["Last"] ||
         "";
 
+      // Trim whitespace
+      firstName = firstName.trim();
+      lastName = lastName.trim();
+
       // Handle FullName or Name field by splitting
       if (!firstName && !lastName && (row["FullName"] || row["Name"])) {
         const fullName = (row["FullName"] || row["Name"]).trim();
@@ -328,6 +332,17 @@ function parseLinkedInCSV(csvData) {
           );
         }
         return;
+      }
+
+      // If only firstName exists, use "Unknown" for lastName
+      if (firstName && !lastName) {
+        lastName = "Unknown";
+      }
+
+      // If only lastName exists, use it as firstName and set lastName to "Unknown"
+      if (!firstName && lastName) {
+        firstName = lastName;
+        lastName = "Unknown";
       }
 
       // Extract email - supports both Connections (Email Address) and Contacts (Emails) formats
@@ -838,6 +853,20 @@ app.post("/api/import/linkedin", upload.array("file"), async (req, res) => {
 
     for (const contact of allContacts) {
       try {
+        // Validate that firstName and lastName exist and are not empty
+        if (
+          !contact.firstName ||
+          !contact.lastName ||
+          contact.firstName.trim() === "" ||
+          contact.lastName.trim() === ""
+        ) {
+          console.log(
+            `Skipping contact with invalid name: firstName="${contact.firstName}", lastName="${contact.lastName}"`,
+          );
+          skippedCount++;
+          continue;
+        }
+
         // Basic duplicate check by email or name
         const duplicateQuery = {
           userId: contact.userId || "default",
@@ -939,6 +968,20 @@ app.post("/api/linkedin/import", upload.single("csvFile"), async (req, res) => {
 
     for (const contactData of contactsWithUserId) {
       try {
+        // Validate that firstName and lastName exist and are not empty
+        if (
+          !contactData.firstName ||
+          !contactData.lastName ||
+          contactData.firstName.trim() === "" ||
+          contactData.lastName.trim() === ""
+        ) {
+          console.log(
+            `Skipping contact with invalid name: firstName="${contactData.firstName}", lastName="${contactData.lastName}"`,
+          );
+          importResults.errors++;
+          continue;
+        }
+
         // Check for duplicates
         const existingContact = await Contact.findOne({
           userId: contactData.userId,
@@ -958,7 +1001,12 @@ app.post("/api/linkedin/import", upload.single("csvFile"), async (req, res) => {
         importResults.imported++;
         importResults.contacts.push(savedContact);
       } catch (error) {
-        console.error("Error saving contact:", error);
+        console.error(
+          "Error saving contact:",
+          error.message,
+          "Contact data:",
+          JSON.stringify(contactData),
+        );
         importResults.errors++;
       }
     }
