@@ -1,5 +1,5 @@
 /*
- * COMPLETE BEETAGGED REPLIT PACKAGE
+ * COMPLETE BEETAGGED REPLIT PACKAGE - FIXED VERSION
  *
  * Instructions for Replit Setup:
  * 1. Create a new Node.js Repl in Replit
@@ -477,13 +477,13 @@ app.get("/", (req, res) => {
       <h1>🐝 BeeTagged</h1>
       <p>AI-Powered Contact Search</p>
     </div>
-    
+
     <div class="search-box">
       <input type="text" class="search-input" id="searchInput" placeholder="Search your contacts... (e.g., 'engineers at Google' or 'founders in SF')">
     </div>
-    
+
     <div id="results" class="results"></div>
-    
+
     <div class="upload-section">
       <h3>📁 Import LinkedIn Contacts</h3>
       <p>Upload your LinkedIn Connections.csv or Contacts.csv file</p>
@@ -494,31 +494,32 @@ app.get("/", (req, res) => {
   </div>
 
   <script>
-    const API_URL = 'https://beetagged-app-53414697acd3.herokuapp.com';
+    // FIXED: Use current domain instead of hardcoded Heroku URL
+    const API_URL = window.location.origin;
     let searchTimeout;
 
     // Search functionality
     document.getElementById('searchInput').addEventListener('input', function(e) {
       clearTimeout(searchTimeout);
       const query = e.target.value.trim();
-      
+
       if (query.length < 2) {
         document.getElementById('results').innerHTML = '';
         return;
       }
-      
+
       searchTimeout = setTimeout(() => searchContacts(query), 300);
     });
 
     async function searchContacts(query) {
       const resultsDiv = document.getElementById('results');
       resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
-      
+
       try {
         const userId = localStorage.getItem('beetagged_user_id') || 'default';
         const response = await fetch(API_URL + '/api/contacts?userId=' + userId + '&search=' + encodeURIComponent(query));
         const data = await response.json();
-        
+
         if (data.contacts && data.contacts.length > 0) {
           resultsDiv.innerHTML = data.contacts.map(c => 
             '<div class="contact-card">' +
@@ -545,40 +546,48 @@ app.get("/", (req, res) => {
     document.getElementById('fileInput').addEventListener('change', async function(e) {
       const file = e.target.files[0];
       if (!file) return;
-      
+
       const btn = document.getElementById('uploadBtn');
       const status = document.getElementById('uploadStatus');
-      
+
       btn.disabled = true;
       btn.textContent = 'Uploading...';
       status.innerHTML = '';
-      
+
       const formData = new FormData();
       formData.append('csvFile', file);
-      
+
       let userId = localStorage.getItem('beetagged_user_id');
       if (!userId) {
         userId = 'user_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('beetagged_user_id', userId);
       }
       formData.append('userId', userId);
-      
+
       try {
         const response = await fetch(API_URL + '/api/linkedin/import', {
           method: 'POST',
           body: formData
         });
+
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Server returned non-JSON response. Please check server logs.');
+        }
+
         const result = await response.json();
-        
+
         if (result.success) {
           status.innerHTML = '<div class="status success">✅ Imported ' + result.results.imported + ' contacts!</div>';
         } else {
           status.innerHTML = '<div class="status error">❌ ' + (result.error || 'Upload failed') + '</div>';
         }
       } catch (error) {
+        console.error('Upload error:', error);
         status.innerHTML = '<div class="status error">❌ ' + error.message + '</div>';
       }
-      
+
       btn.disabled = false;
       btn.textContent = 'Choose CSV File';
       e.target.value = '';
@@ -1244,7 +1253,7 @@ app.get("/squarespace-widget", (req, res) => {
     <div class="beetagged-widget">
         <h2>🐝 BeeTagged Contact Import</h2>
         <p>Upload your LinkedIn connections CSV file to import contacts</p>
-        
+
         <div class="upload-area" id="uploadArea">
             <div>
                 <strong>📁 Click to select file or drag and drop your CSV</strong>
@@ -1253,25 +1262,25 @@ app.get("/squarespace-widget", (req, res) => {
             </div>
             <input type="file" id="csvFile" accept=".csv" style="display: none;">
         </div>
-        
+
         <div id="fileInfo" style="display: none;">
             <p><strong>Selected file:</strong> <span id="fileName"></span></p>
             <p><strong>Size:</strong> <span id="fileSize"></span></p>
         </div>
-        
+
         <div class="progress-bar" id="progressBar" style="display: none;">
             <div class="progress-fill" id="progressFill"></div>
         </div>
-        
+
         <div id="status"></div>
-        
+
         <button class="btn" id="uploadBtn" style="display: none;">Upload Contacts</button>
         <button class="btn" id="clearBtn" style="display: none;">Clear Selection</button>
     </div>
 
     <script>
         const API_BASE = '${API_BASE_URL}';
-        
+
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('csvFile');
         const fileInfo = document.getElementById('fileInfo');
@@ -1282,63 +1291,63 @@ app.get("/squarespace-widget", (req, res) => {
         const status = document.getElementById('status');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
-        
+
         let selectedFile = null;
-        
+
         // File selection handlers
         uploadArea.addEventListener('click', () => fileInput.click());
         uploadArea.addEventListener('dragover', handleDragOver);
         uploadArea.addEventListener('drop', handleDrop);
         uploadArea.addEventListener('dragleave', handleDragLeave);
-        
+
         fileInput.addEventListener('change', handleFileSelect);
         uploadBtn.addEventListener('click', uploadFile);
         clearBtn.addEventListener('click', clearSelection);
-        
+
         function handleDragOver(e) {
             e.preventDefault();
             uploadArea.classList.add('dragover');
         }
-        
+
         function handleDragLeave(e) {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
         }
-        
+
         function handleDrop(e) {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            
+
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 handleFile(files[0]);
             }
         }
-        
+
         function handleFileSelect(e) {
             const files = e.target.files;
             if (files.length > 0) {
                 handleFile(files[0]);
             }
         }
-        
+
         function handleFile(file) {
             if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
                 showStatus('Please select a CSV file', 'error');
                 return;
             }
-            
+
             selectedFile = file;
             fileName.textContent = file.name;
             fileSize.textContent = formatFileSize(file.size);
-            
+
             fileInfo.style.display = 'block';
             uploadBtn.style.display = 'inline-block';
             clearBtn.style.display = 'inline-block';
-            
+
             showStatus('File selected and ready to upload', 'success');
         }
-        
+
         function clearSelection() {
             selectedFile = null;
             fileInput.value = '';
@@ -1348,7 +1357,7 @@ app.get("/squarespace-widget", (req, res) => {
             progressBar.style.display = 'none';
             status.innerHTML = '';
         }
-        
+
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -1356,29 +1365,29 @@ app.get("/squarespace-widget", (req, res) => {
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
-        
+
         function showStatus(message, type) {
             status.innerHTML = '<div class="status ' + type + '">' + message + '</div>';
         }
-        
+
         function updateProgress(percent) {
             progressBar.style.display = 'block';
             progressFill.style.width = percent + '%';
         }
-        
+
         async function uploadFile() {
             if (!selectedFile) {
                 showStatus('Please select a file first', 'error');
                 return;
             }
-            
+
             const formData = new FormData();
             formData.append('file', selectedFile);
-            
+
             try {
                 showStatus('Uploading and processing CSV...', 'loading');
                 updateProgress(0);
-                
+
                 // Simulate progress updates
                 const progressInterval = setInterval(() => {
                     const currentWidth = parseInt(progressFill.style.width) || 0;
@@ -1386,24 +1395,24 @@ app.get("/squarespace-widget", (req, res) => {
                         updateProgress(currentWidth + 10);
                     }
                 }, 200);
-                
+
                 const response = await fetch(API_BASE + '/api/import/linkedin', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 clearInterval(progressInterval);
                 updateProgress(100);
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok && result.success) {
                     showStatus(
                         '✅ Success! Imported ' + result.stats.contactsInserted + ' contacts. ' +
                         (result.stats.duplicatesSkipped > 0 ? 'Skipped ' + result.stats.duplicatesSkipped + ' duplicates.' : ''),
                         'success'
                     );
-                    
+
                     // Auto-clear after successful upload
                     setTimeout(() => {
                         clearSelection();
@@ -1411,7 +1420,7 @@ app.get("/squarespace-widget", (req, res) => {
                 } else {
                     throw new Error(result.message || 'Upload failed');
                 }
-                
+
             } catch (error) {
                 showStatus('❌ Upload failed: ' + error.message, 'error');
                 progressBar.style.display = 'none';
